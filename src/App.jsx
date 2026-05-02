@@ -256,6 +256,8 @@ export default function App() {
                 Buy {companyGrades[gameState.currentCompanyGrade]} company (
                 {companyPrice} gold) You have {gameState.company} company
               </ActionButton>
+            
+              <script src="https://adm.shinobi.jp/s/ee035d1a4d6979e3db24ad8c00eea169"></script>
               <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeRzoCLdOouLOmvHB8CneGfsPhwGZueCeXQBubKn2pZqohobQ/viewform?embedded=true" width="100%" height="400" frameborder="0" marginheight="0" marginwidth="0">読み込んでいます…</iframe>
             </div>
           )}
