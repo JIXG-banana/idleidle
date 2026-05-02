@@ -256,6 +256,7 @@ export default function App() {
                 Buy {companyGrades[gameState.currentCompanyGrade]} company (
                 {companyPrice} gold) You have {gameState.company} company
               </ActionButton>
+              <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeRzoCLdOouLOmvHB8CneGfsPhwGZueCeXQBubKn2pZqohobQ/viewform?embedded=true" width="100%" height="400" frameborder="0" marginheight="0" marginwidth="0">読み込んでいます…</iframe>
             </div>
           )}
           {activeTab === "achievements" && (
