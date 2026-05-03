@@ -314,7 +314,8 @@ export default function App() {
           >
             setting
           </TabButton>
-          <AdMax url="/ad-side.html" />
+          <AdMax url="/ad-side.html" width="160" height="600" />
+
         </div>
       </div>
     </div>

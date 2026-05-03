@@ -1,13 +1,13 @@
 import React from 'react';
 
-// url という変数（Props）を受け取れるようにします
-const AdMax = ({ url = "/ad.html" }) => {
+// width と height を外から受け取れるように変更
+const AdMax = ({ url = "/ad.html", width = "300", height = "250" }) => {
   return (
     <div style={{ margin: '30px auto', textAlign: 'center' }}>
       <iframe 
-        src={url} // ← ここを url に変更します
-        width="300"  
-        height="250" 
+        src={url}
+        width={width}  
+        height={height} 
         style={{ border: 'none' }} 
         scrolling="no"
         title="Advertisement"
