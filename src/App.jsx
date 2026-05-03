@@ -147,7 +147,7 @@ export default function App() {
   };
   // const currentCompanyGrade = 1
   const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
-  const upgradeCompanyPrice = Math.floor(10 * 1.15 * gameState.gold);
+  const upgradeCompanyPrice = Math.floor(gameState.gold / 3) + 10;
 
   const buyIndieDev = () => {
     if (gameState.gold >= indieDevPrice) {
