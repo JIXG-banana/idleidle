@@ -96,7 +96,7 @@ const achievementsList = [
     key: "1-company",
     title: "The company",
     icon: "💼",
-    condition: (state) => state.smallCompany >= 1,
+    condition: (state) => state.company >= 1,
   },
   {
     key: "10000000-gold",
@@ -147,7 +147,7 @@ export default function App() {
   };
   // const currentCompanyGrade = 1
   const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
-  const upgradeCompanyPrice = Math.floor(gameState.gold / 3) + 10;
+  const upgradeCompanyPrice = Math.floor(gameState.gold / 1.5) + 100;
 
   const buyIndieDev = () => {
     if (gameState.gold >= indieDevPrice) {
