@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import * as math from "mathjs"
 import AdMax from './AdMax';
 
 const TabButton = ({ active, onClick, children }) => {
@@ -129,7 +130,7 @@ export default function App() {
         dp: 0,
         players: 0,
         indieDev: 0,
-        Company: 0,
+        company: 0,
         currentCompanyGrade: 1,
         unlockedAchievements: [],
       };
@@ -145,7 +146,8 @@ export default function App() {
     6: "JIXG's",
   };
   // const currentCompanyGrade = 1
-  const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0));
+  const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
+  const upgradeCompanyPrice = Math.floor(100 * 1.15 ** gameState.games);
 
   const buyIndieDev = () => {
     if (gameState.gold >= indieDevPrice) {
@@ -166,6 +168,17 @@ export default function App() {
       }));
     }
   };
+
+  const upgradeCompany = () => {
+    if (gameState.gold >= upgradeCompanyPrice) {
+      setGameState((prev) => ({
+        ...prev,
+        gold: prev.gold - upgradeCompanyPrice,
+        indieDev: prev.indieDev - prev.indieDev,
+        currentCompanyGrade: prev.currentCompanyGrade + 1,
+      }))
+    }
+  }
 
   const lastTimeRef = useRef(null);
 
@@ -194,7 +207,7 @@ export default function App() {
           };
 
           const newlyUnlocked = achievementsList.filter(
-            (ach) => !nextState.unlockedAchievements.includes(ach.id) && ach.condition(nextState)
+            (ach) => !nextState.unlockedAchievements.includes(ach.key) && ach.condition(nextState)
           );
 
           if (newlyUnlocked.length > 0) {
@@ -257,6 +270,10 @@ export default function App() {
                 Buy {companyGrades[gameState.currentCompanyGrade]} company (
                 {companyPrice} gold) You have {gameState.company} company
               </ActionButton>
+              <ActionButton
+                onClick={upgradeCompany}
+                disabled={gameState.gold < upgradeCompanyPrice}
+              >reset your indieDevs to upgrade company({upgradeCompanyPrice} gold)</ActionButton>
               <AdMax />
               <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeRzoCLdOouLOmvHB8CneGfsPhwGZueCeXQBubKn2pZqohobQ/viewform?embedded=true" width="100%" height="400" frameborder="0" marginheight="0" marginwidth="0">読み込んでいます…</iframe>
             </div>
