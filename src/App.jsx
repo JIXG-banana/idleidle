@@ -147,7 +147,7 @@ export default function App() {
   };
   // const currentCompanyGrade = 1
   const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
-  const upgradeCompanyPrice = Math.floor(gameState.gold / 1.5) + 100;
+  const upgradeCompanyPrice = Math.floor((gameState.gold / 1.5) + (gameState.currentCompanyGrade ** 3)) + 500;
 
   const buyIndieDev = () => {
     if (gameState.gold >= indieDevPrice) {
@@ -283,7 +283,7 @@ export default function App() {
               {/*ad*/}
               <div className="mt-4">               
                 <div className="block md:hidden flex justify-center">
-                  <AdMax url="/ad-mobile.html" width="320" height="50" />
+                  <AdMax url="/ad-mobile.html" width="320" height="50" /> <br />
                   <AdMax url="/ad-mobile2.html" width="320" height="50" />
                 </div>
                 <div className="hidden md:flex justify-center">
