@@ -147,7 +147,7 @@ export default function App() {
   };
   // const currentCompanyGrade = 1
   const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
-  const upgradeCompanyPrice = Math.floor(100 * 1.15 ** gameState.games);
+  const upgradeCompanyPrice = Math.floor(1000 * 1.15 ** gameState.games);
 
   const buyIndieDev = () => {
     if (gameState.gold >= indieDevPrice) {
@@ -273,7 +273,7 @@ export default function App() {
               <ActionButton
                 onClick={upgradeCompany}
                 disabled={gameState.gold < upgradeCompanyPrice}
-              >reset your indieDevs to upgrade company({upgradeCompanyPrice} gold)</ActionButton>
+              >reset your indieDevs to upgrade {companyGrades[gameState.currentCompanyGrade]} company to {companyGrades[gameState.currentCompanyGrade + 1]} company ({upgradeCompanyPrice} gold)</ActionButton>
               <AdMax />
               <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeRzoCLdOouLOmvHB8CneGfsPhwGZueCeXQBubKn2pZqohobQ/viewform?embedded=true" width="100%" height="400" frameborder="0" marginheight="0" marginwidth="0">読み込んでいます…</iframe>
             </div>
