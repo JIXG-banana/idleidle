@@ -1,11 +1,11 @@
 import React from 'react';
 
-const AdMax = () => {
+// url という変数（Props）を受け取れるようにします
+const AdMax = ({ url = "/ad.html" }) => {
   return (
     <div style={{ margin: '30px auto', textAlign: 'center' }}>
       <iframe 
-        src="/ad.html" 
-        // ⚠️ 忍者AdMaxで設定した広告のサイズに合わせて数値を変更してください
+        src={url} // ← ここを url に変更します
         width="300"  
         height="250" 
         style={{ border: 'none' }} 
