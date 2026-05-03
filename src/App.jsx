@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as math from "mathjs"
+//import "./i18n";
 import AdMax from './AdMax';
 
 const TabButton = ({ active, onClick, children }) => {
@@ -360,6 +361,7 @@ export default function App() {
               setting
             </TabButton>
           </div>
+          <img src="http://www5.kannet.ne.jp/~counter/count.cgi?name=main01&type=1&width=6"></img>
           <div className="hidden md:flex justify-center">
             <AdMax url="/ad-side.html" width="160" height="600" />
           </div>
