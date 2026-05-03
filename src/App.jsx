@@ -282,8 +282,8 @@ export default function App() {
                           
               {/*ad*/}
               <div className="mt-4">               
-                <div className="block md:hidden flex justify-center">
-                  <AdMax url="/ad-mobile.html" width="320" height="50" /> <br />
+                <div className="block md:hidden flex flex-col items-center leading-[0]">
+                  <AdMax url="/ad-mobile.html" width="320" height="50" />
                   <AdMax url="/ad-mobile2.html" width="320" height="50" />
                 </div>
                 <div className="hidden md:flex justify-center">
