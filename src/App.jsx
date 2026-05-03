@@ -247,15 +247,16 @@ export default function App() {
     return () => clearInterval(autoSaveInterval);
   }, []);
 
-
   return (
-    <div className="p-5">
-      <div className="flex">
-        <div className="flex-1 border-4 border-gray-300 p-5 mr-5 rounded-lg">
+    <div className="p-3 md:p-5 pb-24 md:pb-5">
+      <div className="flex flex-col md:flex-row">
+
+        <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-hidden">
           {activeTab === "idle2" && (
-            <div className="flex flex-col">
-              <h1 className="text-5xl">Games: {Math.floor(gameState.games)}</h1>
-              <h1 className="text-4xl">Gold: {Math.floor(gameState.gold)}</h1>
+            <div className="flex flex-col gap-2 break-words">
+              <h1 className="text-3xl md:text-5xl font-bold">Games: {Math.floor(gameState.games)}</h1>
+              <h1 className="text-2xl md:text-4xl font-bold mb-2">Gold: {Math.floor(gameState.gold)}</h1>
+              
               <ActionButton
                 onClick={buyIndieDev}
                 disabled={gameState.gold < indieDevPrice}
@@ -263,6 +264,7 @@ export default function App() {
                 Buy indieDev ({indieDevPrice} gold) You have{" "}
                 {gameState.indieDev} indieDev
               </ActionButton>
+              
               <ActionButton
                 onClick={buyCompany}
                 disabled={gameState.gold < companyPrice}
@@ -270,16 +272,39 @@ export default function App() {
                 Buy {companyGrades[gameState.currentCompanyGrade]} company (
                 {companyPrice} gold) You have {gameState.company} company
               </ActionButton>
+              
               <ActionButton
                 onClick={upgradeCompany}
-                disabled={gameState.gold < upgradeCompanyPrice || gameState.indieDev < 50 || gameState.company < 10}
-              >reset your indieDevs to upgrade {companyGrades[gameState.currentCompanyGrade]} company to {companyGrades[gameState.currentCompanyGrade + 1]} company ({upgradeCompanyPrice} gold)</ActionButton>
-              <AdMax />
-              <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeRzoCLdOouLOmvHB8CneGfsPhwGZueCeXQBubKn2pZqohobQ/viewform?embedded=true" width="100%" height="400" frameborder="0" marginheight="0" marginwidth="0">読み込んでいます…</iframe>
+                disabled={gameState.gold < upgradeCompanyPrice}
+              >
+                Reset your indieDevs to upgrade company ({upgradeCompanyPrice} gold)
+              </ActionButton>
+                          
+              {/*add*/}
+              <div className="mt-4">               
+                <div className="block md:hidden flex justify-center">
+                  <AdMax url="/ad-mobile.html" width="320" height="50" />
+                </div>
+                <div className="hidden md:flex justify-center">
+                  <AdMax url="/ad.html" width="300" height="250" />
+                </div>
+              </div>
+
+              <div className="w-full mt-4 rounded-md overflow-hidden bg-gray-50">
+                <iframe 
+                  src="https://docs.google.com/forms/d/e/1FAIpQLSeRzoCLdOouLOmvHB8CneGfsPhwGZueCeXQBubKn2pZqohobQ/viewform?embedded=true" 
+                  width="100%" 
+                  height="400" 
+                  frameBorder="0" 
+                  marginHeight="0" 
+                  marginWidth="0">
+                  読み込んでいます…
+                </iframe>
+              </div>
             </div>
           )}
           {activeTab === "achievements" && (
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap justify-center md:justify-start gap-4">
               {achievementsList.map((item, index) => (
                 <AchievementCard
                   key={item.key}
@@ -312,29 +337,36 @@ export default function App() {
             </div>
           )}
         </div>
-        <div className="flex flex-col gap-2 w-40">
-          <TabButton
-            active={activeTab === "idle2"}
-            onClick={() => setActiveTab("idle2")}
-          >
-            idle²
-          </TabButton>
-          <TabButton
-            active={activeTab === "achievements"}
-            onClick={() => setActiveTab("achievements")}
-          >
-            achievements
-          </TabButton>
-          <TabButton
-            active={activeTab === "setting"}
-            onClick={() => setActiveTab("setting")}
-          >
-            setting
-          </TabButton>
-          <AdMax url="/ad-side.html" width="160" height="600" />
 
+        <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 p-3 z-50 md:static md:w-40 md:bg-transparent md:border-t-0 md:p-0 flex flex-col gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-none">
+          <div className="flex flex-row md:flex-col gap-2 overflow-x-auto">
+            <TabButton
+              active={activeTab === "idle2"}
+              onClick={() => setActiveTab("idle2")}
+            >
+              idle²
+            </TabButton>
+            <TabButton
+              active={activeTab === "achievements"}
+              onClick={() => setActiveTab("achievements")}
+            >
+              achievements
+            </TabButton>
+            <TabButton
+              active={activeTab === "setting"}
+              onClick={() => setActiveTab("setting")}
+            >
+              setting
+            </TabButton>
+          </div>
+          <div className="hidden md:flex justify-center">
+            <AdMax url="/ad-side.html" width="160" height="600" />
+          </div>
         </div>
+
       </div>
     </div>
   );
+
+
 }
