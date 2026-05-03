@@ -136,7 +136,7 @@ export default function App() {
       };
     }
   });
-  const indieDevPrice = Math.floor(10 * 1.15 ** gameState.indieDev);
+  const indieDevPrice = Math.floor(10 * 1.15 * gameState.indieDev);
   const companyGrades = {
     1: "small",
     2: "normal",
