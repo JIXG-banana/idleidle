@@ -170,11 +170,11 @@ export default function App() {
   };
 
   const upgradeCompany = () => {
-    if (gameState.gold >= upgradeCompanyPrice && gameState.indieDev >= 50 && gameState.company >= 10) {
+    if (gameState.gold >= upgradeCompanyPrice && gameState.company >= 1) {
       setGameState((prev) => ({
         ...prev,
-        gold: prev.gold - upgradeCompanyPrice,
-        indieDev: prev.indieDev - prev.indieDev,
+        gold: 0,
+        company: 0,
         currentCompanyGrade: prev.currentCompanyGrade + 1,
       }))
     }
@@ -197,7 +197,7 @@ export default function App() {
         */
        // 正しい書き方
         setGameState((prev) => {
-          const newGames = prev.games + prev.indieDev * (1 / 6) * deltaTime;
+          const newGames = prev.games + (prev.indieDev * (1 / 6) + (prev.currentCompanyGrade ** 3) * (prev.company * (1 / 3.5))) * deltaTime;
           const newGold = prev.gold + Math.floor(prev.games) * deltaTime;
   
           const nextState = {
@@ -277,13 +277,14 @@ export default function App() {
                 onClick={upgradeCompany}
                 disabled={gameState.gold < upgradeCompanyPrice}
               >
-                Reset your indieDevs to upgrade company ({upgradeCompanyPrice} gold)
+                Reset your compnies and games to upgrade company (request at least {upgradeCompanyPrice} gold)
               </ActionButton>
                           
-              {/*add*/}
+              {/*ad*/}
               <div className="mt-4">               
                 <div className="block md:hidden flex justify-center">
                   <AdMax url="/ad-mobile.html" width="320" height="50" />
+                  <AdMax url="/ad-mobile2.html" width="320" height="50" />
                 </div>
                 <div className="hidden md:flex justify-center">
                   <AdMax url="/ad.html" width="300" height="250" />
