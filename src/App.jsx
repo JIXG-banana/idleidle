@@ -343,6 +343,7 @@ export default function App() {
                   <option value="zh-CN">简体中文</option>
                 </select>
               </div>
+              <a href="https://www.buymeacoffee.com/jiaxianglif"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=jiaxianglif&button_colour=5F7FFF&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00" /></a>
               <ActionButton
                 onClick={() =>
                   localStorage.setItem("save", JSON.stringify(gameState))
@@ -385,8 +386,9 @@ export default function App() {
               {t('tabs.setting')}
             </TabButton>
           </div>
-          <a href="https://www.buymeacoffee.com/jiaxianglif"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=jiaxianglif&button_colour=5F7FFF&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00" /></a>
+          <div className="hidden md:flex justify-center">
           <AccessCounter />
+          </div>
           <div className="hidden md:flex justify-center">
             <AdMax url="/ad-side.html" width="160" height="600" />
           </div>
