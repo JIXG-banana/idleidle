@@ -1,31 +1,31 @@
 // src/i18n.js
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
+
+import ja from './locales/ja.json';
+import en from './locales/en.json';
+import zhCN from './locales/zh-cn.json';
 
 const resources = {
-  en: {
-    translation: {
-      "welcome": "Welcome to React",
-      "description": "This is a multi-language app."
-    }
-  },
   ja: {
-    translation: {
-      "welcome": "Reactへようこそ",
-      "description": "これは多言語対応アプリです。"
-    }
+    translation: ja
+  },
+  en: {
+    translation: en
+  },
+  'zh-CN': {
+    translation: zhCN
   }
 };
 
 i18n
-  .use(LanguageDetector) // ブラウザの言語設定を自動で読み取る
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: "ja", // 見つからない時のデフォルト言語
+    lng: 'en',
+    fallbackLng: 'en',
     interpolation: {
-      escapeValue: false 
+      escapeValue: false
     }
   });
 

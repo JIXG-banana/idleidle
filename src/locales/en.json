@@ -1,0 +1,37 @@
+{
+  "ui": {
+    "games": "Games: {{count}}",
+    "gold": "Gold: {{count}}"
+  },
+  "actions": {
+    "buy_indie": "Hire Indie Developer ({{price}} gold) / Owned: {{count}}",
+    "buy_company": "Buy {{grade}} Company ({{price}} gold) / Owned: {{count}}",
+    "upgrade_company": "Reset to upgrade company (Required: {{price}} gold)",
+    "save": "Save",
+    "clear_save": "Clear Save"
+  },
+  "company_grades": {
+    "small": "Small",
+    "normal": "Normal",
+    "big": "Big",
+    "huge": "Huge",
+    "legal": "Legal",
+    "JIXG's": "JIXG's"
+  },
+  "tabs": {
+    "idle2": "idle²",
+    "achievements": "Achievements",
+    "setting": "Settings"
+  },
+  "achievements": {
+    "first-game": "First Game",
+    "100-game": "100!!",
+    "1000-game": "1000 is too big",
+    "100-gold": "Rich",
+    "1000-gold": "Super Rich",
+    "many-gold": "Elon Musk",
+    "1-indie-dev": "Team Assembled",
+    "1-company": "The Company",
+    "10000000-gold": "Yay, shiny!"
+  }
+}

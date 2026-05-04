@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as math from "mathjs"
-//import "./i18n";
+import { useTranslation } from 'react-i18next'; 
+import i18n from './i18n'
 import AdMax from './AdMax';
+import AccessCounter from './AccessCounter';
 
 const TabButton = ({ active, onClick, children }) => {
   const baseClass = "text-white font-bold py-2 px-4 rounded transition-colors";
@@ -23,7 +25,7 @@ const ActionButton = ({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`mt-2 ${colorClass} text-white font-bold py-2 px-2 rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors`}
+      className={`mt-2 ${colorClass} text-white font-bold py-1 px-1 rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors`}
     >
       {children}
     </button>
@@ -53,61 +55,53 @@ const AchievementCard = ({ number, title, icon, isLocked }) => {
 const achievementsList = [
   {
     key: "first-game",
-    title: "First Game",
     icon: "🐣",
     condition: (state) => state.games >= 1,
   },
   {
     key: "100-game",
-    title: "100!!",
     icon: "💰",
     condition: (state) => state.games >= 100,
   },
   {
     key: "1000-game",
-    title: "1000 is too big",
     icon: "💰",
     condition: (state) => state.games >= 1000,
   },
   { 
     key: "100-gold",
-    title: "Rich", 
     icon: "🪙", 
     condition: (state) => state.gold > 100,
   },
   {
     key: "1000-gold",
-    title: "Very Rich",
     icon: "💰",
     condition: (state) => state.gold >= 1000,
   },
   {
     key: "many-gold",
-    title: "Elon Musk",
     icon: "🤑",
     condition: (state) => state.gold >= 1000000000,
   },
   {
     key: "1-indie-dev",
-    title: "Team Setup",
     icon: "🤝",
     condition: (state) => state.indieDev >= 1,
   },
   {
     key: "1-company",
-    title: "The company",
     icon: "💼",
     condition: (state) => state.company >= 1,
   },
   {
     key: "10000000-gold",
-    title: "わーいピカピカ！",
     icon: "👑",
     condition: (state) => state.gold >= 10000000,
   },
 ];
 
 export default function App() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
   const [gameState, setGameState] = useState(() => {
     try {
@@ -123,6 +117,7 @@ export default function App() {
             company: 0,
             currentCompanyGrade: 1,
             unlockedAchievements: [],
+            language: 'en'
           };
     } catch {
       return {
@@ -134,19 +129,25 @@ export default function App() {
         company: 0,
         currentCompanyGrade: 1,
         unlockedAchievements: [],
+        language: 'en'
       };
     }
   });
+
+    useEffect(() => {
+    i18n.changeLanguage(gameState.language)
+  }, [gameState.language])
+
   const indieDevPrice = Math.floor(10 * 1.15 * gameState.indieDev);
   const companyGrades = {
-    1: "small",
-    2: "normal",
-    3: "big",
-    4: "huge",
-    5: "legal",
-    6: "JIXG's",
+    1: t('company_grades.small'),
+    2: t('company_grades.normal'),
+    3: t('company_grades.big'),
+    4: t('company_grades.huge'),
+    5: t('company_grades.legal'),
+    6: t("compmay_grades.JIXG's"),
   };
-  // const currentCompanyGrade = 1
+  
   const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
   const upgradeCompanyPrice = Math.floor((gameState.gold / 1.5) + (gameState.currentCompanyGrade ** 3)) + 500;
 
@@ -174,7 +175,9 @@ export default function App() {
     if (gameState.gold >= upgradeCompanyPrice && gameState.company >= 1) {
       setGameState((prev) => ({
         ...prev,
-        gold: 0,
+        games: 0,
+        gold: 20,
+        indieDev: 0,
         company: 0,
         currentCompanyGrade: prev.currentCompanyGrade + 1,
       }))
@@ -243,7 +246,7 @@ export default function App() {
         console.log("saved")
         return stateToSave;
       });
-    }, 60000);
+    }, 10000);
 
     return () => clearInterval(autoSaveInterval);
   }, []);
@@ -255,30 +258,28 @@ export default function App() {
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-hidden">
           {activeTab === "idle2" && (
             <div className="flex flex-col gap-2 break-words">
-              <h1 className="text-3xl md:text-5xl font-bold">Games: {Math.floor(gameState.games)}</h1>
-              <h1 className="text-2xl md:text-4xl font-bold mb-2">Gold: {Math.floor(gameState.gold)}</h1>
+              <h1 className="text-3xl md:text-5xl font-bold">{t('ui.games', {count: Math.floor(gameState.games)})}</h1>
+              <h1 className="text-2xl md:text-4xl font-bold mb-2">{t('ui.gold', {count: Math.floor(gameState.gold)})}</h1>
               
               <ActionButton
                 onClick={buyIndieDev}
                 disabled={gameState.gold < indieDevPrice}
               >
-                Buy indieDev ({indieDevPrice} gold) You have{" "}
-                {gameState.indieDev} indieDev
+                {t('actions.buy_indie', {price: indieDevPrice, count: gameState.indieDev})}
               </ActionButton>
               
               <ActionButton
                 onClick={buyCompany}
                 disabled={gameState.gold < companyPrice}
               >
-                Buy {companyGrades[gameState.currentCompanyGrade]} company (
-                {companyPrice} gold) You have {gameState.company} company
+                {t('actions.buy_company', {price: companyPrice, count: gameState.company, grade: companyGrades[gameState.currentCompanyGrade]})}
               </ActionButton>
               
               <ActionButton
                 onClick={upgradeCompany}
                 disabled={gameState.gold < upgradeCompanyPrice}
               >
-                Reset your compnies and games to upgrade company (request at least {upgradeCompanyPrice} gold)
+                {t('actions.upgrade_company', {price: upgradeCompanyPrice})}
               </ActionButton>
                           
               {/*ad*/}
@@ -296,10 +297,7 @@ export default function App() {
                 <iframe 
                   src="https://docs.google.com/forms/d/e/1FAIpQLSeRzoCLdOouLOmvHB8CneGfsPhwGZueCeXQBubKn2pZqohobQ/viewform?embedded=true" 
                   width="100%" 
-                  height="400" 
-                  frameBorder="0" 
-                  marginHeight="0" 
-                  marginWidth="0">
+                  height="868">
                   読み込んでいます…
                 </iframe>
               </div>
@@ -311,7 +309,8 @@ export default function App() {
                 <AchievementCard
                   key={item.key}
                   number={index}
-                  {...item}
+                  icon={item.icon}
+                  title={t(`achievements.${item.key}`)} 
                   isLocked={!gameState.unlockedAchievements.includes(item.key)}
                 />
               ))}
@@ -319,13 +318,38 @@ export default function App() {
           )}
           {activeTab === "setting" && (
             <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 p-3 rounded">
+                <label htmlFor="language-select" className="font-bold whitespace-nowrap">
+                  Language / 言語:
+                </label>
+                <select
+                  id="language-select"
+                  value={i18n.language}
+                  onChange={(e) => {
+                    i18n.changeLanguage(e.target.value);
+
+                    setGameState(prev => {
+                      return {
+                        ...prev,
+                        language: e.target.value
+                      }
+                    })
+                  
+                  }}
+                  className="flex-1 p-2 border border-gray-400 rounded bg-white text-black font-bold cursor-pointer hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ja">日本語</option>
+                  <option value="en">English</option>
+                  <option value="zh-CN">简体中文</option>
+                </select>
+              </div>
               <ActionButton
                 onClick={() =>
                   localStorage.setItem("save", JSON.stringify(gameState))
                 }
                 colorClass="bg-green-700"
               >
-                Save
+                {t('actions.save')}
               </ActionButton>
               <ActionButton
                 onClick={() => {
@@ -334,7 +358,7 @@ export default function App() {
                 }}
                 colorClass="bg-red-800"
               >
-                Clear Save
+                {t('actions.clear_save')}
               </ActionButton>
             </div>
           )}
@@ -346,23 +370,23 @@ export default function App() {
               active={activeTab === "idle2"}
               onClick={() => setActiveTab("idle2")}
             >
-              idle²
+              {t('tabs.idle2')}
             </TabButton>
             <TabButton
               active={activeTab === "achievements"}
               onClick={() => setActiveTab("achievements")}
             >
-              achievements
+              {t('tabs.achievements')}
             </TabButton>
             <TabButton
               active={activeTab === "setting"}
               onClick={() => setActiveTab("setting")}
             >
-              setting
+              {t('tabs.setting')}
             </TabButton>
           </div>
           <a href="https://www.buymeacoffee.com/jiaxianglif"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=jiaxianglif&button_colour=5F7FFF&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00" /></a>
-          <img src="http://www5.kannet.ne.jp/~counter/count.cgi?name=main01&type=1&width=6"></img>
+          <AccessCounter />
           <div className="hidden md:flex justify-center">
             <AdMax url="/ad-side.html" width="160" height="600" />
           </div>

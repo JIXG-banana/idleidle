@@ -1,0 +1,37 @@
+{
+  "ui": {
+    "games": "Games: {{count}}",
+    "gold": "Gold: {{count}}"
+  },
+  "actions": {
+    "buy_indie": "顾用个人开发者 ({{price}} gold) / 所有: {{count}}",
+    "buy_company": "合并一个{{grade}}公司 ({{price}} gold) / 所有: {{count}}",
+    "upgrade_company": "为了升级公司，清零所有数据（需要: {{price}} gold）",
+    "save": "保存",
+    "clear_save": "清零保存"
+  },
+  "company_grades": {
+    "small": "小",
+    "normal": "普通",
+    "big": "大",
+    "huge": "巨大",
+    "legal": "合法的",
+    "JIXG's": "JIXG的"
+  },
+  "tabs": {
+    "idle2": "idle²",
+    "achievements": "成就",
+    "setting": "設定"
+  },
+  "achievements": {
+    "first-game": "第一个游戏",
+    "100-game": "100!!",
+    "1000-game": "1000个游戏太厉害了!",
+    "100-gold": "有钱",
+    "1000-gold": "特别有钱",
+    "many-gold": "马斯克",
+    "1-indie-dev": "团体结成",
+    "1-company": "企业",
+    "10000000-gold": "财富"
+  }
+}

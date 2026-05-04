@@ -1,0 +1,37 @@
+{
+  "ui": {
+    "games": "Games: {{count}}",
+    "gold": "Gold: {{count}}"
+  },
+  "actions": {
+    "buy_indie": "インディー開発者を雇う ({{price}}G) / 所持: {{count}}人",
+    "buy_company": "{{grade}}企業を買収 ({{price}}G) / 所持: {{count}}社",
+    "upgrade_company": "全データをリセットして企業をアップグレード（必要: {{price}}G）",
+    "save": "セーブする",
+    "clear_save": "セーブデータを消去"
+  },
+  "company_grades": {
+    "small": "零細",
+    "normal": "普通の",
+    "big": "大きな",
+    "huge": "巨大",
+    "legal": "合法な",
+    "JIXG's": "JIXGの"
+  },
+  "tabs": {
+    "idle2": "idle²",
+    "achievements": "実績",
+    "setting": "設定"
+  },
+  "achievements": {
+    "first-game": "はじめてのゲーム",
+    "100-game": "100個のゲーム!",
+    "1000-game": "ゲームを1000もつくるなんて…",
+    "100-gold": "お金持ち",
+    "1000-gold": "超お金持ち",
+    "many-gold": "イーロン・マスク",
+    "1-indie-dev": "チーム結成",
+    "1-company": "ザ・カンパニー",
+    "10000000-gold": "わーいピカピカ！"
+  }
+}
