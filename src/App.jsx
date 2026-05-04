@@ -148,7 +148,11 @@ export default function App() {
     3: t('company_grades.big'),
     4: t('company_grades.huge'),
     5: t('company_grades.legal'),
-    6: t("compmay_grades.JIXG's"),
+    6: t("compmay_grades.illegal"),
+    7: t('company_grades.ultimet'),
+    8: t("company_grades.extreme"),
+    9: t('company_grades.endless'),
+    10: t("'company_grades.JIXG's")
   };
   
   const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
@@ -280,7 +284,7 @@ export default function App() {
               
               <ActionButton
                 onClick={upgradeCompany}
-                disabled={gameState.gold < upgradeCompanyPrice}
+                disabled={gameState.gold < upgradeCompanyPrice || gameState.company <= 0 || gameState.currentCompanyGrade >= 9}
               >
                 {t('actions.upgrade_company', {price: upgradeCompanyPrice})}
               </ActionButton>
