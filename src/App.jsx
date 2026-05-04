@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as math from "mathjs"
 import { useTranslation } from 'react-i18next'; 
-import i18n from './i18n'
 import AdMax from './AdMax';
 import AccessCounter from './AccessCounter';
 
@@ -101,7 +100,7 @@ const achievementsList = [
 ];
 
 export default function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
   const [gameState, setGameState] = useState(() => {
     try {
@@ -134,8 +133,12 @@ export default function App() {
     }
   });
 
-    useEffect(() => {
+  useEffect(() => {
     i18n.changeLanguage(gameState.language)
+  }, [gameState.language, i18n])
+
+  useEffect(() => {
+    document.documentElement.lang = gameState.language;
   }, [gameState.language])
 
   const indieDevPrice = Math.floor(10 * 1.15 * gameState.indieDev);

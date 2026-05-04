@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: 'ComicNeue';
+  src: url('./assets/ComicNeue-Regular.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: ZenMaruGothic;
+    src: url('./assets/ZenMaruGothic-Regular.ttf') format('truetype');
+}
+
+@theme {
+  --comicneue: 'ComicNeue', sans-serif;
+}
+
+:lang(en) {
+  font-family: 'ComicNeue', comic-sans-ms, sans-serif;
+}
+
+:lang(ja) {
+  font-family: 'ZenMaruGothic', sans-serif; /* 日本語用のフォントを指定 */
+}
