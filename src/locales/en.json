@@ -6,7 +6,7 @@
   "actions": {
     "buy_indie": "Hire Indie Developer ({{price}} money) / Owned: {{count}}",
     "buy_company": "Buy {{grade}} Company ({{price}} money) / Owned: {{count}}",
-    "upgrade_company": "Reset to upgrade company (Required: {{price}} money)",
+    "upgrade_company": "Upgrade company ({{price}} money)",
     "save": "Save",
     "clear_save": "Clear Save"
   },

@@ -1,12 +1,12 @@
 {
   "ui": {
     "games": "Games: {{count}}",
-    "money": "money: {{count}}"
+    "money": "money: {{count}}G"
   },
   "actions": {
     "buy_indie": "インディー開発者を雇う ({{price}}G) / 所持: {{count}}人",
     "buy_company": "{{grade}}企業を買収 ({{price}}G) / 所持: {{count}}社",
-    "upgrade_company": "全データをリセットして企業をアップグレード（必要: {{price}}G）",
+    "upgrade_company": "企業をアップグレード（{{price}}G）",
     "save": "セーブする",
     "clear_save": "セーブデータを消去"
   },

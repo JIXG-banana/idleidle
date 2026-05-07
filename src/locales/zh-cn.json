@@ -6,7 +6,6 @@
   "actions": {
     "buy_indie": "顾用个人开发者 ({{price}} money) / 所有: {{count}}",
     "buy_company": "合并一个{{grade}}公司 ({{price}} money) / 所有: {{count}}",
-    "upgrade_company": "为了升级公司，清零所有数据（需要: {{price}} money）",
     "save": "保存",
     "clear_save": "清零保存"
   },
