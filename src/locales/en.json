@@ -33,9 +33,14 @@
     "1000-game": "1000 is too big",
     "100-money": "Rich",
     "1000-money": "Super Rich",
+    "100000-money": "Yay, shiny!",
     "many-money": "Elon Musk",
     "1-indie-dev": "Team Assembled",
     "1-company": "The Company",
-    "10000000-money": "Yay, shiny!"
+    "10-company": "10 Companies",
+    "100-company": "too many companies",
+    "1000-company": "great",
+    "first-upgrade": "It's the time",
+    "last-upgrade": "Wow!"
   }
 }

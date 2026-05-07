@@ -60,7 +60,7 @@ const AchievementCard = ({ number, title, icon, isLocked }) => {
       </span>
       <span className="text-3xl mb-1">{isLocked ? "🔒" : icon}</span>
       <span className="text-[11px] px-2 text-center leading-tight">
-        {title}
+        {isLocked ? "???" : title}
       </span>
     </div>
   );
@@ -73,10 +73,15 @@ const achievementsList = [
   { key: "1000-game", icon: "💰", condition: (state) => state.games.gte(1000) },
   { key: "100-money", icon: "🪙", condition: (state) => state.money.gt(100) },
   { key: "1000-money", icon: "💰", condition: (state) => state.money.gte(1000) },
+  { key: "100000-money", icon: "👑", condition: (state) => state.money.gte(100000) },
   { key: "many-money", icon: "🤑", condition: (state) => state.money.gte(1000000000) },
   { key: "1-indie-dev", icon: "🤝", condition: (state) => state.indieDev >= 1 },
   { key: "1-company", icon: "💼", condition: (state) => state.company >= 1 },
-  { key: "10000000-money", icon: "👑", condition: (state) => state.money.gte(10000000) },
+  { key: "10-company", icon: "", condition: (state) => state.company >= 10 },
+  { key: "100-company", icon: "", condition: (state) => state.company >= 100 },
+  { key: "1000-company", icon: "", condition: (state) => state.company >= 1000 },
+  { key: "first-upgrade", icon: "", condition: (state) => state.currentCompanyGrade >= 1 },
+  { key: "last-upgrade", icon: "", condition: (state) => state.currentCompanyGrade >= 9 }
 ];
 
 export default function App() {
@@ -258,7 +263,7 @@ export default function App() {
             <div className="flex flex-col gap-2 break-words">
               <div className="flex md:items-center gap-3 md:gap-4 w-full my-2">
               <h1 className="text-3xl md:text-5xl font-bold">{t('ui.games', {count: formatNumber(gameState.games)})}</h1>
-                <div className="w-[25%] md:w-[500px] bg-gray-200 rounded-full h-6 my-2 ml-auto shadow-inner overflow-hidden border border-gray-300 relative">
+                <div className="w-[25%] md:w-[50%] bg-gray-200 rounded-full h-6 my-2 ml-auto shadow-inner overflow-hidden border border-gray-300 relative">
                 <div 
                   className="bg-green-500 h-full" 
                   style={{ 
