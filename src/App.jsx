@@ -256,7 +256,20 @@ export default function App() {
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-hidden">
           {activeTab === "idle2" && (
             <div className="flex flex-col gap-2 break-words">
+              <div className="flex md:items-center gap-3 md:gap-4 w-full my-2">
               <h1 className="text-3xl md:text-5xl font-bold">{t('ui.games', {count: formatNumber(gameState.games)})}</h1>
+                <div className="w-[25%] md:w-[500px] bg-gray-200 rounded-full h-6 my-2 ml-auto shadow-inner overflow-hidden border border-gray-300 relative">
+                <div 
+                  className="bg-green-500 h-full" 
+                  style={{ 
+                    width: `${gameState.games.minus(gameState.games.floor()).times(100).toNumber()}%` 
+                  }}
+                ></div>
+                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 drop-shadow-md">
+                  {gameState.games.minus(gameState.games.floor()).times(100).floor().toNumber()}%
+                </div>
+              </div>
+              </div>
               <h1 className="text-2xl md:text-4xl font-bold mb-2">{t('ui.money', {count: formatNumber(gameState.money)})}</h1>
               
               <ActionButton
