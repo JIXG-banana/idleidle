@@ -1,7 +1,7 @@
 {
   "ui": {
     "games": "Games: {{count}}",
-    "gold": "Gold: {{count}}"
+    "money": "money: {{count}}"
   },
   "actions": {
     "buy_indie": "インディー開発者を雇う ({{price}}G) / 所持: {{count}}人",
@@ -31,11 +31,11 @@
     "first-game": "はじめてのゲーム",
     "100-game": "100個のゲーム!",
     "1000-game": "ゲームを1000もつくるなんて…",
-    "100-gold": "お金持ち",
-    "1000-gold": "超お金持ち",
-    "many-gold": "イーロン・マスク",
+    "100-money": "お金持ち",
+    "1000-money": "超お金持ち",
+    "many-money": "イーロン・マスク",
     "1-indie-dev": "チーム結成",
     "1-company": "ザ・カンパニー",
-    "10000000-gold": "わーいピカピカ！"
+    "10000000-money": "わーいピカピカ！"
   }
 }

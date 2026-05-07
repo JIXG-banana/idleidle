@@ -1,8 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
-import * as math from "mathjs"
+import Decimal from "break_infinity.js"; // 追加
 import { useTranslation } from 'react-i18next'; 
 import AdMax from './AdMax';
 import AccessCounter from './AccessCounter';
+
+//自分では無理だったごめん🙏
+// 巨大な数字を読みやすくフォーマットする関数 (例: 1.23e4)
+const formatNumber = (val) => {
+  const dec = new Decimal(val);
+  if (dec.lt(1000)) return dec.floor().toNumber().toString(); // 1000未満はそのまま
+  return dec.toExponential(2).replace('+', ''); // 1.23e+4 を 1.23e4 にする
+};
+
+// 階乗を計算するヘルパー (Decimal用)
+const getFactorial = (n) => {
+  let res = new Decimal(1);
+  for(let i = 2; i <= n; i++) res = res.times(i);
+  return res;
+};
 
 const TabButton = ({ active, onClick, children }) => {
   const baseClass = "text-white font-bold py-2 px-4 rounded transition-colors";
@@ -51,85 +66,50 @@ const AchievementCard = ({ number, title, icon, isLocked }) => {
   );
 };
 
+// 条件を Decimal(.gte(), .gt()) に変更
 const achievementsList = [
-  {
-    key: "first-game",
-    icon: "🐣",
-    condition: (state) => state.games >= 1,
-  },
-  {
-    key: "100-game",
-    icon: "💰",
-    condition: (state) => state.games >= 100,
-  },
-  {
-    key: "1000-game",
-    icon: "💰",
-    condition: (state) => state.games >= 1000,
-  },
-  { 
-    key: "100-gold",
-    icon: "🪙", 
-    condition: (state) => state.gold > 100,
-  },
-  {
-    key: "1000-gold",
-    icon: "💰",
-    condition: (state) => state.gold >= 1000,
-  },
-  {
-    key: "many-gold",
-    icon: "🤑",
-    condition: (state) => state.gold >= 1000000000,
-  },
-  {
-    key: "1-indie-dev",
-    icon: "🤝",
-    condition: (state) => state.indieDev >= 1,
-  },
-  {
-    key: "1-company",
-    icon: "💼",
-    condition: (state) => state.company >= 1,
-  },
-  {
-    key: "10000000-gold",
-    icon: "👑",
-    condition: (state) => state.gold >= 10000000,
-  },
+  { key: "first-game", icon: "🐣", condition: (state) => state.games.gte(1) },
+  { key: "100-game", icon: "💰", condition: (state) => state.games.gte(100) },
+  { key: "1000-game", icon: "💰", condition: (state) => state.games.gte(1000) },
+  { key: "100-money", icon: "🪙", condition: (state) => state.money.gt(100) },
+  { key: "1000-money", icon: "💰", condition: (state) => state.money.gte(1000) },
+  { key: "many-money", icon: "🤑", condition: (state) => state.money.gte(1000000000) },
+  { key: "1-indie-dev", icon: "🤝", condition: (state) => state.indieDev >= 1 },
+  { key: "1-company", icon: "💼", condition: (state) => state.company >= 1 },
+  { key: "10000000-money", icon: "👑", condition: (state) => state.money.gte(10000000) },
 ];
 
 export default function App() {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
   const [gameState, setGameState] = useState(() => {
+    const defaultState = {
+      money: new Decimal(20),
+      games: new Decimal(0),
+      dp: 0,
+      players: 0,
+      indieDev: 0,
+      company: 0,
+      currentCompanyGrade: 1,
+      unlockedAchievements: [],
+      language: 'en'
+    };
+
     try {
       const saveData = localStorage.getItem("save");
-      return saveData
-        ? JSON.parse(saveData)
-        : {
-            gold: 20,
-            games: 0,
-            dp: 0,
-            players: 0,
-            indieDev: 0,
-            company: 0,
-            currentCompanyGrade: 1,
-            unlockedAchievements: [],
-            language: 'en'
-          };
+      if (saveData) {
+        const parsed = JSON.parse(saveData);
+        return {
+          ...defaultState,
+          ...parsed,
+          // 旧バージョンの gold を money に引き継ぐ
+          money: new Decimal(parsed.money ?? parsed.gold ?? 20),
+          games: new Decimal(parsed.games ?? 0),
+        };
+      }
+      return defaultState;
     } catch {
-      return {
-        gold: 20,
-        games: 0,
-        dp: 0,
-        players: 0,
-        indieDev: 0,
-        company: 0,
-        currentCompanyGrade: 1,
-        unlockedAchievements: [],
-        language: 'en'
-      };
+      return defaultState;
     }
   });
 
@@ -141,7 +121,9 @@ export default function App() {
     document.documentElement.lang = gameState.language;
   }, [gameState.language])
 
-  const indieDevPrice = Math.floor(10 * 1.15 * gameState.indieDev);
+  // 価格の計算を Decimal に置き換え
+  const indieDevPrice = new Decimal(1.15).pow(gameState.indieDev).times(10).floor();
+  
   const companyGrades = {
     1: t('company_grades.small'),
     2: t('company_grades.normal'),
@@ -155,35 +137,44 @@ export default function App() {
     10: t("'company_grades.JIXG's")
   };
   
-  const companyPrice = Math.floor(10 * 2.5 * 1.2 ** (gameState.company || 0) * math.factorial((gameState.currentCompanyGrade) + 1));
-  const upgradeCompanyPrice = Math.floor((gameState.gold / 1.5) + (gameState.currentCompanyGrade ** 5)) + 1000;
+  // Math.floor(10 * 2.5 * 1.2 ** company * math.factorial(grade + 1))
+  const companyPrice = new Decimal(1.2).pow(gameState.company || 0)
+    .times(25) // 10 * 2.5
+    .times(getFactorial(gameState.currentCompanyGrade + 1))
+    .floor();
+
+  // (money / 1.5) + (grade ** 5) + 1000
+  const upgradeCompanyPrice = gameState.money.div(1.5)
+    .plus(new Decimal(gameState.currentCompanyGrade).pow(5))
+    .plus(1000)
+    .floor();
 
   const buyIndieDev = () => {
-    if (gameState.gold >= indieDevPrice) {
+    if (gameState.money.gte(indieDevPrice)) {
       setGameState((prev) => ({
         ...prev,
-        gold: prev.gold - indieDevPrice,
+        money: prev.money.minus(indieDevPrice),
         indieDev: prev.indieDev + 1,
       }));
     }
   };
 
   const buyCompany = () => {
-    if (gameState.gold >= companyPrice) {
+    if (gameState.money.gte(companyPrice)) {
       setGameState((prev) => ({
         ...prev,
-        gold: prev.gold - companyPrice,
+        money: prev.money.minus(companyPrice),
         company: prev.company + 1,
       }));
     }
   };
 
   const upgradeCompany = () => {
-    if (gameState.gold >= upgradeCompanyPrice && gameState.company >= 1) {
+    if (gameState.money.gte(upgradeCompanyPrice) && gameState.company >= 1) {
       setGameState((prev) => ({
         ...prev,
-        games: 0,
-        gold: 20,
+        games: new Decimal(0),
+        money: new Decimal(20),
         indieDev: 0,
         company: 0,
         currentCompanyGrade: prev.currentCompanyGrade + 1,
@@ -198,23 +189,22 @@ export default function App() {
 
     const gameLoop = (currentTime) => {
       if (lastTimeRef.current !== null) {
-        const deltaTime = (currentTime - lastTimeRef.current) / 1000;
-        /*
-        setGameState((prev) => ({
-          ...prev,
-          games: prev.games + prev.indieDev * (1 / 6) * deltaTime,
-          gold: prev.gold + Math.floor(prev.games) * deltaTime,
-        }));
-        */
-       // 正しい書き方
+        const deltaTime = new Decimal((currentTime - lastTimeRef.current) / 1000);
+        
         setGameState((prev) => {
-          const newGames = prev.games + (prev.indieDev * (1 / 6) + (prev.currentCompanyGrade ** 3) * (prev.company * (1 / 3.5))) * deltaTime;
-          const newGold = prev.gold + Math.floor(prev.games) * deltaTime;
+          // gamesPerSec = indieDev * (1/6) + (grade^3) * (company * (1/3.5))
+          const devProd = new Decimal(prev.indieDev).div(6);
+          const compProd = new Decimal(prev.currentCompanyGrade).pow(3).times(prev.company).div(3.5);
+          const gamesPerSec = devProd.plus(compProd);
+
+          const newGames = prev.games.plus(gamesPerSec.times(deltaTime));
+          // money = money + Math.floor(games) * deltaTime
+          const newMoney = prev.money.plus(prev.games.floor().times(deltaTime));
   
           const nextState = {
             ...prev,
             games: newGames,
-            gold: newGold,
+            money: newMoney,
           };
 
           const newlyUnlocked = achievementsList.filter(
@@ -244,13 +234,14 @@ export default function App() {
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
 
-    // オートセーブ
+  // オートセーブ
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
       setGameState((currentState) => {
+        // DecimalオブジェクトはJSON.stringifyで自動的に保存可能な形式に変換されます
         const stateToSave = { ...currentState, lastSavedTime: Date.now() };
         localStorage.setItem("save", JSON.stringify(stateToSave));
-        console.log("saved")
+        console.log("saved");
         return stateToSave;
       });
     }, 10000);
@@ -265,28 +256,28 @@ export default function App() {
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-hidden">
           {activeTab === "idle2" && (
             <div className="flex flex-col gap-2 break-words">
-              <h1 className="text-3xl md:text-5xl font-bold">{t('ui.games', {count: Math.floor(gameState.games)})}</h1>
-              <h1 className="text-2xl md:text-4xl font-bold mb-2">{t('ui.gold', {count: Math.floor(gameState.gold)})}</h1>
+              <h1 className="text-3xl md:text-5xl font-bold">{t('ui.games', {count: formatNumber(gameState.games)})}</h1>
+              <h1 className="text-2xl md:text-4xl font-bold mb-2">{t('ui.money', {count: formatNumber(gameState.money)})}</h1>
               
               <ActionButton
                 onClick={buyIndieDev}
-                disabled={gameState.gold < indieDevPrice}
+                disabled={gameState.money.lt(indieDevPrice)}
               >
-                {t('actions.buy_indie', {price: indieDevPrice, count: gameState.indieDev})}
+                {t('actions.buy_indie', {price: formatNumber(indieDevPrice), count: gameState.indieDev})}
               </ActionButton>
               
               <ActionButton
                 onClick={buyCompany}
-                disabled={gameState.gold < companyPrice}
+                disabled={gameState.money.lt(companyPrice)}
               >
-                {t('actions.buy_company', {price: companyPrice, count: gameState.company, grade: companyGrades[gameState.currentCompanyGrade]})}
+                {t('actions.buy_company', {price: formatNumber(companyPrice), count: gameState.company, grade: companyGrades[gameState.currentCompanyGrade]})}
               </ActionButton>
               
               <ActionButton
                 onClick={upgradeCompany}
-                disabled={gameState.gold < upgradeCompanyPrice || gameState.company <= 0 || gameState.currentCompanyGrade >= 9}
+                disabled={gameState.money.lt(upgradeCompanyPrice) || gameState.company <= 0 || gameState.currentCompanyGrade >= 9}
               >
-                {t('actions.upgrade_company', {price: upgradeCompanyPrice})}
+                {t('actions.upgrade_company', {price: formatNumber(upgradeCompanyPrice)})}
               </ActionButton>
                           
               {/*ad*/}
@@ -404,6 +395,4 @@ export default function App() {
       </div>
     </div>
   );
-
-
 }
