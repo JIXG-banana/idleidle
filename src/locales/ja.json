@@ -8,6 +8,8 @@
     "buy_company": "{{grade}}企業を買収 ({{price}}G) / 所持: {{count}}社",
     "upgrade_company": "企業をアップグレード（{{price}}G）",
     "save": "セーブする",
+    "import": "ロード",
+    "export":"セーブデータを書き出し",
     "clear_save": "セーブデータを消去"
   },
   "company_grades": {

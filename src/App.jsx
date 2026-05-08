@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import Decimal from "break_infinity.js";
+import CryptoJS from "crypto-js";
 import { useTranslation } from "react-i18next";
 import AdMax from "./AdMax";
 import AccessCounter from "./AccessCounter";
+
+const SECRET_KEY = "AgsqyqyY(bu7*7^2…7[bu&x#a@es729100qiYe29Bw3"
 
 // 巨大な数字を読みやすくフォーマットする関数
 const formatNumber = (val) => {
@@ -160,7 +163,15 @@ export default function App() {
     try {
       const saveData = localStorage.getItem("save");
       if (saveData) {
-        const parsed = JSON.parse(saveData);
+        let parsed
+        try {
+          const bytes = CryptoJS.AES.decrypt(saveData, SECRET_KEY);
+          const decryptedData = bytes.toString(CryptoJS.enc.Utf8)
+          if (!decryptedData) throw new Error("エラー！")
+          parsed = JSON.parse(decryptedData)
+        } catch {
+          parsed = JSON.parse(saveData);
+        }
         return {
           ...defaultState,
           ...parsed,
@@ -341,10 +352,15 @@ export default function App() {
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
       setGameState((currentState) => {
-        const stateToSave = { ...currentState, lastSavedTime: Date.now() };
-        localStorage.setItem("save", JSON.stringify(stateToSave));
+        const stateToSave = { ...currentState};
+        const jsonText = JSON.stringify(stateToSave);
+        const encryptedText = CryptoJS.AES.encrypt(
+          jsonText,
+          SECRET_KEY,
+        ).toString();
+        localStorage.setItem("save", encryptedText);
         console.log("saved");
-        return currentState; // ステート自体は変更しない
+        return currentState;
       });
     }, 1000);
 
@@ -473,14 +489,53 @@ export default function App() {
                   alt="Buy me a coffee"
                 />
               </a>
+
               <ActionButton
-                onClick={() =>
-                  localStorage.setItem("save", JSON.stringify(gameState))
-                }
-                colorClass="bg-green-700"
+                onClick={() => {
+                  const jsonText = JSON.stringify(gameState);
+                const encryptedText = CryptoJS.AES.encrypt(jsonText, SECRET_KEY).toString();
+                localStorage.setItem("save", encryptedText);
+                alert("セーブしました！");
+              }}
+              colorClass="bg-green-700"
               >
                 {t("actions.save")}
               </ActionButton>
+
+              <ActionButton
+                onClick={() => {
+                const jsonText = JSON.stringify(gameState);
+                const encryptedText = CryptoJS.AES.encrypt(jsonText, SECRET_KEY).toString();
+                navigator.clipboard.writeText(encryptedText)
+                  .then(() => alert("セーブデータをクリップボードにコピーしました"))
+                  .catch(() => alert("コピーに失敗しました。"));
+                }}
+                colorClass="bg-blue-600"
+              >
+               {t("actions.export")}
+              </ActionButton>
+
+              <ActionButton
+                onClick={() => {
+                const importText = prompt("セーブデータのテキストを貼り付けてください");
+                if (importText) {
+                  try {
+                        const bytes = CryptoJS.AES.decrypt(importText, SECRET_KEY);
+                        const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+                        if (!decryptedText) throw new Error("？？？");
+                        localStorage.setItem("save", importText);
+                        window.location.reload();
+                  } catch {
+                  alert("無効なセーブデータです。");
+                  }
+                }
+                }}
+                colorClass="bg-yellow-600"
+              >
+                {t("actions.import")}
+              </ActionButton>
+
+
               <ActionButton
                 onClick={() => {
                   localStorage.clear();
