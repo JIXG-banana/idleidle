@@ -15,11 +15,13 @@ const formatNumber = (val) => {
 };
 
 // 階乗を計算するヘルパー
+/*
 const getFactorial = (n) => {
   let res = new Decimal(1);
   for (let i = 2; i <= n; i++) res = res.times(i);
   return res;
 };
+*/
 
 // ★ 最適化1: React.memo で包み、プロパティが変わらない限り再描画しないようにする
 const TabButton = memo(({ active, onClick, children }) => {
@@ -135,7 +137,7 @@ const achievementsList = [
   {
     key: "first-upgrade",
     icon: "",
-    condition: (state) => state.currentCompanyGrade >= 1,
+    condition: (state) => state.currentCompanyGrade >= 2,
   },
   {
     key: "last-upgrade",
@@ -214,14 +216,13 @@ export default function App() {
 
   const companyPrice = new Decimal(1.2)
     .pow(gameState.company || 0)
+    .pow(gameState.currentCompanyGrade + 2)
     .times(100)
-    .times(getFactorial(gameState.currentCompanyGrade + 1))
     .floor();
 
   const upgradeCompanyPrice = gameState.money
     .div(1.5)
-    .plus(new Decimal(gameState.currentCompanyGrade).pow(5))
-    .plus(1000)
+    .times(new Decimal(gameState.currentCompanyGrade).pow(5))
     .floor();
 
   // ★ 最適化3: useCallbackを使って関数の再生成を防ぐ（子コンポーネントの再描画を抑えるため）
@@ -247,8 +248,8 @@ export default function App() {
     setGameState((prev) => {
       const currentPrice = new Decimal(1.2)
         .pow(prev.company || 0)
+        .times(prev.currentCompanyGrade + 2)
         .times(25)
-        .times(getFactorial(prev.currentCompanyGrade + 1))
         .floor();
       if (prev.money.gte(currentPrice)) {
         return {
@@ -265,8 +266,7 @@ export default function App() {
     setGameState((prev) => {
       const currentPrice = prev.money
         .div(1.5)
-        .plus(new Decimal(prev.currentCompanyGrade).pow(5))
-        .plus(1000)
+        .times(new Decimal(prev.currentCompanyGrade).pow(5))
         .floor();
       if (
         prev.money.gte(currentPrice) &&
@@ -439,6 +439,8 @@ export default function App() {
                   price: formatNumber(upgradeCompanyPrice),
                 })}
               </ActionButton>
+
+              <span>{t("messages.intro") }</span>
 
               {/* iframeと広告のコンポーネント呼び出し */}
               <StaticAdsAndForm />

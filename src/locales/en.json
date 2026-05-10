@@ -3,11 +3,16 @@
     "games": "Games: {{count}}",
     "money": "Money: {{count}}"
   },
+  "messages": {
+    "intro": "Use your starting funds to hire developers and create idle games. These games will generate a steady stream of income for you!"
+  },
   "actions": {
     "buy_indie": "Hire Indie Developer ({{price}} money) / Owned: {{count}}",
     "buy_company": "Buy {{grade}} Company ({{price}} money) / Owned: {{count}}",
     "upgrade_company": "Upgrade company ({{price}} money)",
     "save": "Save",
+    "import": "Import",
+    "export": "Export save",
     "clear_save": "Clear Save"
   },
   "company_grades": {

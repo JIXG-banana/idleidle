@@ -3,6 +3,9 @@
     "games": "Games: {{count}}",
     "money": "money: {{count}}G"
   },
+  "messages": {
+    "intro": "初期資金で開発者を雇って、放置ゲームを生産させましょう。放置ゲームはあなたに収入をもたらします。"
+  },
   "actions": {
     "buy_indie": "インディー開発者を雇う ({{price}}G) / 所持: {{count}}人",
     "buy_company": "{{grade}}企業を買収 ({{price}}G) / 所持: {{count}}社",
