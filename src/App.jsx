@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import Decimal from "break_infinity.js";
 import CryptoJS from "crypto-js";
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AdMax from "./AdMax";
 import AccessCounter from "./AccessCounter";
 
-const SECRET_KEY = "AgsqyqyY(bu7*7^2…7[bu&x#a@es729100qiYe29Bw3"
+const SECRET_KEY = "AgsqyqyY(bu7*7^2…7[bu&x#a@es729100qiYe29Bw3";
 
-// 巨大な数字を読みやすくフォーマットする関数
+// 巨大数字フォーマット
 const formatNumber = (val) => {
   const dec = new Decimal(val);
   if (dec.lt(1000)) return dec.floor().toNumber().toString();
   return dec.toExponential(2).replace("+", "");
 };
 
-// 階乗を計算するヘルパー
 /*
 const getFactorial = (n) => {
   let res = new Decimal(1);
@@ -41,8 +42,6 @@ const ActionButton = memo(
     children,
     colorClass = "bg-blue-500 hover:bg-blue-600",
   }) => {
-
-
     const activeStyle = !disabled
       ? "active:translate-y-[2px] active:shadow-none shadow-[0_4px_0_0_rgba(0,0,200,0.8)]"
       : "opacity-50 cursor-not-allowed translate-y-[2px]";
@@ -67,7 +66,6 @@ const ActionButton = memo(
   },
 );
 
-
 const AchievementCard = memo(({ number, title, icon, isLocked }) => {
   const baseStyles =
     "w-32 h-32 relative rounded-xl border-2 flex flex-col justify-center items-center font-bold shadow-sm transition-all duration-200";
@@ -87,6 +85,46 @@ const AchievementCard = memo(({ number, title, icon, isLocked }) => {
     </div>
   );
 });
+
+const AchievementToast = ({ achievement, onComplete }) => {
+  return (
+    <motion.div
+      initial={{ y: 500, x: "-50%", rotate: -20, scale: 0.5, opacity: 1 }}
+
+      animate={{
+        y: [500, -20, 0],
+        x: "-50%",
+        rotate: [10, -10, 5, 0],
+        scale: 1,
+        opacity: 1,
+      }}
+      exit={{
+        y: 800,
+        x: "-80%",
+        scale: 0,
+        opacity: 1,
+        transition: { duration: 0.8, ease: "backIn" },
+      }}
+      transition={{
+        duration: 1.2,
+        times: [0, 0.6, 0.8, 0.9, 1],
+        ease: "easeOut",
+      }}
+      onAnimationComplete={() => {
+        setTimeout(onComplete, 3000);
+      }}
+      className="fixed top-1/2 left-1/2 z-[100] w-64 p-6 bg-yellow-400 border-4 border-white rounded-2xl shadow-2xl flex flex-col items-center justify-center text-center"
+    >
+      <div className="text-6xl mb-2">{achievement.icon}</div>
+      <div className="text-black font-black text-xl uppercase tracking-tighter">
+        Achievement Unlocked!
+      </div>
+      <div className="text-yellow-900 font-bold text-lg leading-tight">
+        {achievement.title}
+      </div>
+    </motion.div>
+  );
+};
 
 // ★ 最適化2: 激重の原因になりやすい iframe や広告を別コンポーネント化して memo 化
 // これにより、毎フレームの更新時にブラウザが iframe を再評価するのを完全に防ぎます。
@@ -162,6 +200,11 @@ const achievementsList = [
 ];
 
 export default function App() {
+  const [toastQueue, setToastQueue] = useState([]);
+  const removeToast = useCallback((id) => {
+    setToastQueue((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
   const [gameState, setGameState] = useState(() => {
@@ -180,12 +223,12 @@ export default function App() {
     try {
       const saveData = localStorage.getItem("save");
       if (saveData) {
-        let parsed
+        let parsed;
         try {
           const bytes = CryptoJS.AES.decrypt(saveData, SECRET_KEY);
-          const decryptedData = bytes.toString(CryptoJS.enc.Utf8)
-          if (!decryptedData) throw new Error("エラー！")
-          parsed = JSON.parse(decryptedData)
+          const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+          if (!decryptedData) throw new Error("エラー！");
+          parsed = JSON.parse(decryptedData);
         } catch {
           parsed = JSON.parse(saveData);
         }
@@ -318,7 +361,7 @@ export default function App() {
             const devProd = new Decimal(prev.indieDev).div(6);
             const compProd = new Decimal(prev.currentCompanyGrade)
               .pow(2.25)
-              .times(prev.company)
+              .times(prev.company);
             const gamesPerSec = devProd.plus(compProd);
 
             const newGames = prev.games.plus(gamesPerSec.times(deltaTime));
@@ -339,6 +382,12 @@ export default function App() {
             );
 
             if (newlyUnlocked.length > 0) {
+              const newToasts = newlyUnlocked.map((ach) => ({
+                id: Date.now() + ach.key,
+                icon: ach.icon,
+                title: t(`achievements.${ach.key}`),
+              }));
+              setToastQueue((prev) => [...prev, ...newToasts]);
               return {
                 ...nextState,
                 unlockedAchievements: [
@@ -361,13 +410,13 @@ export default function App() {
     animationFrameId = requestAnimationFrame(gameLoop);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, []);
+  }, [t]);
 
   // オートセーブ
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
       setGameState((currentState) => {
-        const stateToSave = { ...currentState};
+        const stateToSave = { ...currentState };
         const jsonText = JSON.stringify(stateToSave);
         const encryptedText = CryptoJS.AES.encrypt(
           jsonText,
@@ -431,10 +480,10 @@ export default function App() {
                 </div>
               </div>
               <div className="flex w-full items-center">
-              <h1 className="text-2xl md:text-4xl font-bold mb-2">
-                {t("ui.money", { count: formatNumber(gameState.money) })}
-              </h1>
-              <span className="">+{formatNumber(mps)}/s</span>
+                <h1 className="text-2xl md:text-4xl font-bold mb-2">
+                  {t("ui.money", { count: formatNumber(gameState.money) })}
+                </h1>
+                <span className="">+{formatNumber(mps)}/s</span>
               </div>
 
               <ActionButton
@@ -593,6 +642,16 @@ export default function App() {
             </div>
           )}
         </div>
+
+        <AnimatePresence>
+          {toastQueue.map((toast) => (
+            <AchievementToast
+              key={toast.id}
+              achievement={toast}
+              onComplete={() => removeToast(toast.id)}
+            />
+          ))}
+        </AnimatePresence>
 
         <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 p-3 z-50 md:static md:w-40 md:bg-transparent md:border-t-0 md:p-0 flex flex-col gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-none">
           <div className="flex flex-row md:flex-col gap-2 overflow-x-auto">
