@@ -41,17 +41,32 @@ const ActionButton = memo(
     children,
     colorClass = "bg-blue-500 hover:bg-blue-600",
   }) => {
+
+
+    const activeStyle = !disabled
+      ? "active:translate-y-[2px] active:shadow-none shadow-[0_4px_0_0_rgba(0,0,200,0.8)]"
+      : "opacity-50 cursor-not-allowed translate-y-[2px]";
+
     return (
       <button
         onClick={onClick}
         disabled={disabled}
-        className={`mt-2 ${colorClass} text-white font-bold py-1 px-1 rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors`}
+        className={`
+        ${colorClass} text-white font-bold py-2 px-4 rounded-lg
+        transition-all duration-75 relative
+        ${activeStyle}
+      `}
+        style={{
+          display: "inline-block",
+          verticalAlign: "middle",
+        }}
       >
         {children}
       </button>
     );
   },
 );
+
 
 const AchievementCard = memo(({ number, title, icon, isLocked }) => {
   const baseStyles =
@@ -375,6 +390,18 @@ export default function App() {
   );
   const handleTabSetting = useCallback(() => setActiveTab("setting"), []);
 
+  const gps = React.useMemo(() => {
+    const devProd = new Decimal(gameState.indieDev).div(6);
+    const compProd = new Decimal(gameState.currentCompanyGrade)
+      .pow(2.25)
+      .times(gameState.company);
+    return devProd.plus(compProd);
+  }, [gameState.indieDev, gameState.currentCompanyGrade, gameState.company]);
+
+  const mps = React.useMemo(() => {
+    return gameState.games.floor();
+  }, [gameState.games]);
+
   return (
     <div className="p-3 md:p-5 pb-24 md:pb-5">
       <div className="flex flex-col md:flex-row">
@@ -385,6 +412,7 @@ export default function App() {
                 <h1 className="text-3xl md:text-5xl font-bold">
                   {t("ui.games", { count: formatNumber(gameState.games) })}
                 </h1>
+                <span>+{gps.toNumber().toFixed(2)}/s</span>
                 <div className="w-[25%] md:w-[50%] bg-gray-200 rounded-full h-6 my-2 ml-auto shadow-inner overflow-hidden border border-gray-300 relative">
                   <div
                     className="bg-green-500 h-full transition-all duration-75 ease-linear"
@@ -402,9 +430,12 @@ export default function App() {
                   </div>
                 </div>
               </div>
+              <div className="flex w-full items-center">
               <h1 className="text-2xl md:text-4xl font-bold mb-2">
                 {t("ui.money", { count: formatNumber(gameState.money) })}
               </h1>
+              <span className="">+{formatNumber(mps)}/s</span>
+              </div>
 
               <ActionButton
                 onClick={buyIndieDev}
@@ -440,9 +471,8 @@ export default function App() {
                 })}
               </ActionButton>
 
-              <span>{t("messages.intro") }</span>
+              <span>{t("messages.intro")}</span>
 
-              {/* iframeと広告のコンポーネント呼び出し */}
               <StaticAdsAndForm />
             </div>
           )}
@@ -495,48 +525,61 @@ export default function App() {
               <ActionButton
                 onClick={() => {
                   const jsonText = JSON.stringify(gameState);
-                const encryptedText = CryptoJS.AES.encrypt(jsonText, SECRET_KEY).toString();
-                localStorage.setItem("save", encryptedText);
-                alert("セーブしました！");
-              }}
-              colorClass="bg-green-700"
+                  const encryptedText = CryptoJS.AES.encrypt(
+                    jsonText,
+                    SECRET_KEY,
+                  ).toString();
+                  localStorage.setItem("save", encryptedText);
+                  alert("セーブしました！");
+                }}
+                colorClass="bg-green-700"
               >
                 {t("actions.save")}
               </ActionButton>
 
               <ActionButton
                 onClick={() => {
-                const jsonText = JSON.stringify(gameState);
-                const encryptedText = CryptoJS.AES.encrypt(jsonText, SECRET_KEY).toString();
-                navigator.clipboard.writeText(encryptedText)
-                  .then(() => alert("セーブデータをクリップボードにコピーしました"))
-                  .catch(() => alert("コピーに失敗しました。"));
+                  const jsonText = JSON.stringify(gameState);
+                  const encryptedText = CryptoJS.AES.encrypt(
+                    jsonText,
+                    SECRET_KEY,
+                  ).toString();
+                  navigator.clipboard
+                    .writeText(encryptedText)
+                    .then(() =>
+                      alert("セーブデータをクリップボードにコピーしました"),
+                    )
+                    .catch(() => alert("コピーに失敗しました。"));
                 }}
                 colorClass="bg-blue-600"
               >
-               {t("actions.export")}
+                {t("actions.export")}
               </ActionButton>
 
               <ActionButton
                 onClick={() => {
-                const importText = prompt("セーブデータのテキストを貼り付けてください");
-                if (importText) {
-                  try {
-                        const bytes = CryptoJS.AES.decrypt(importText, SECRET_KEY);
-                        const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-                        if (!decryptedText) throw new Error("？？？");
-                        localStorage.setItem("save", importText);
-                        window.location.reload();
-                  } catch {
-                  alert("無効なセーブデータです。");
+                  const importText = prompt(
+                    "セーブデータのテキストを貼り付けてください",
+                  );
+                  if (importText) {
+                    try {
+                      const bytes = CryptoJS.AES.decrypt(
+                        importText,
+                        SECRET_KEY,
+                      );
+                      const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+                      if (!decryptedText) throw new Error("？？？");
+                      localStorage.setItem("save", importText);
+                      window.location.reload();
+                    } catch {
+                      alert("無効なセーブデータです。");
+                    }
                   }
-                }
                 }}
                 colorClass="bg-yellow-600"
               >
                 {t("actions.import")}
               </ActionButton>
-
 
               <ActionButton
                 onClick={() => {
@@ -573,7 +616,6 @@ export default function App() {
             <AccessCounter />
           </div>
 
-          {/* サイド広告コンポーネント呼び出し */}
           <SideAds />
         </div>
       </div>
