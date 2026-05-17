@@ -5,7 +5,8 @@
     "company_upgraded": "会社が {{grade}} にアップグレードされました！",
     "help": "ヘルプ",
     "help_title": "遊び方と解説",
-    "close": "閉じる"
+    "close": "閉じる",
+    "offline_income_toast": "おかえりなさい！ +{{games}} ゲーム / +{{money}} お金 ({{seconds}}秒, 効率50%)"
   },
   "help": {
     "basics_title": "基本ルール",

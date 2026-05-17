@@ -130,14 +130,20 @@ const ActionButton = memo(
 );
 
 const AchievementCard = memo(({ number, title, icon, isLocked, description }) => {
+  const [showOverlay, setShowOverlay] = useState(false);
+  
   const baseStyles =
-    "group w-32 h-32 relative rounded-xl border-2 flex flex-col justify-center items-center font-bold shadow-sm transition-all duration-200 cursor-help";
+    "group w-32 h-32 relative rounded-xl border-2 flex flex-col justify-center items-center font-bold shadow-sm transition-all duration-200 cursor-pointer select-none";
   const stateStyles = isLocked
     ? "bg-gray-100 border-gray-300 text-gray-400 grayscale"
     : "bg-white border-gray-200 text-gray-800 hover:border-yellow-400 hover:shadow-md";
 
   return (
-    <div className={`${baseStyles} ${stateStyles}`}>
+    <div 
+      className={`${baseStyles} ${stateStyles}`}
+      onClick={() => setShowOverlay(!showOverlay)}
+      onMouseLeave={() => setShowOverlay(false)}
+    >
       <span className="absolute top-2 left-2 text-[10px] font-mono opacity-50">
         {String(number).padStart(3, "0")}
       </span>
@@ -146,8 +152,8 @@ const AchievementCard = memo(({ number, title, icon, isLocked, description }) =>
         {isLocked ? "???" : title}
       </span>
       
-      {/* Hover Overlay for Description */}
-      <div className="absolute inset-0 bg-white/95 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center shadow-inner border border-blue-200 z-10">
+      {/* Hover/Click Overlay for Description */}
+      <div className={`absolute inset-0 bg-white/95 rounded-xl transition-opacity flex flex-col items-center justify-center p-2 text-center shadow-inner border border-blue-200 z-10 pointer-events-none ${showOverlay ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
         <span className="text-[10px] text-blue-600 mb-1 font-black uppercase tracking-tighter">Requirement</span>
         <span className="text-[11px] text-gray-800 leading-tight">
           {description}
@@ -377,7 +383,7 @@ const achievementsList = [
   },
   {
     key: "1000000000-game",
-    icon: " Telescope",
+    icon: "🔭",
     condition: (state) => state.games.gte(1000000000),
   },
   {
@@ -768,7 +774,11 @@ export default function App() {
                 id: uniqueId,
                 icon: "💤",
                 type: "info",
-                title: `Welcome back! +${format(gamesGained)} games / +${format(moneyGained)} money (${cappedSeconds}s, 50% rate)`,
+                title: t("ui.offline_income_toast", {
+                  games: format(gamesGained),
+                  money: format(moneyGained),
+                  seconds: cappedSeconds,
+                }),
               },
             ];
           });

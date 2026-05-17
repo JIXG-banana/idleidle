@@ -5,7 +5,8 @@
     "company_upgraded": "Company upgraded to {{grade}}!",
     "help": "Help",
     "help_title": "How to play & Explanation",
-    "close": "Close"
+    "close": "Close",
+    "offline_income_toast": "Welcome back! +{{games}} games / +{{money}} money ({{seconds}}s, 50% rate)"
   },
   "help": {
     "basics_title": "Basic Rules",

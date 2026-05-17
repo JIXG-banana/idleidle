@@ -5,7 +5,8 @@
     "company_upgraded": "公司已升级为 {{grade}}！",
     "help": "帮助",
     "help_title": "玩法说明",
-    "close": "关闭"
+    "close": "关闭",
+    "offline_income_toast": "欢迎回来！ +{{games}} 游戏 / +{{money}} 资金 ({{seconds}}秒, 50% 效率)"
   },
   "help": {
     "basics_title": "基本规则",
