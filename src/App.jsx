@@ -129,39 +129,45 @@ const ActionButton = memo(
   },
 );
 
-const AchievementCard = memo(({ number, title, icon, isLocked, description }) => {
-  const [showOverlay, setShowOverlay] = useState(false);
-  
-  const baseStyles =
-    "group w-32 h-32 relative rounded-xl border-2 flex flex-col justify-center items-center font-bold shadow-sm transition-all duration-200 cursor-pointer select-none";
-  const stateStyles = isLocked
-    ? "bg-gray-100 border-gray-300 text-gray-400 grayscale"
-    : "bg-white border-gray-200 text-gray-800 hover:border-yellow-400 hover:shadow-md";
+const AchievementCard = memo(
+  ({ number, title, icon, isLocked, description }) => {
+    const [showOverlay, setShowOverlay] = useState(false);
 
-  return (
-    <div 
-      className={`${baseStyles} ${stateStyles}`}
-      onClick={() => setShowOverlay(!showOverlay)}
-      onMouseLeave={() => setShowOverlay(false)}
-    >
-      <span className="absolute top-2 left-2 text-[10px] font-mono opacity-50">
-        {String(number).padStart(3, "0")}
-      </span>
-      <span className="text-3xl mb-1">{isLocked ? "🔒" : icon}</span>
-      <span className="text-[11px] px-2 text-center leading-tight">
-        {isLocked ? "???" : title}
-      </span>
-      
-      {/* Hover/Click Overlay for Description */}
-      <div className={`absolute inset-0 bg-white/95 rounded-xl transition-opacity flex flex-col items-center justify-center p-2 text-center shadow-inner border border-blue-200 z-10 pointer-events-none ${showOverlay ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-        <span className="text-[10px] text-blue-600 mb-1 font-black uppercase tracking-tighter">Requirement</span>
-        <span className="text-[11px] text-gray-800 leading-tight">
-          {description}
+    const baseStyles =
+      "group w-32 h-32 relative rounded-xl border-2 flex flex-col justify-center items-center font-bold shadow-sm transition-all duration-200 cursor-pointer select-none";
+    const stateStyles = isLocked
+      ? "bg-gray-100 border-gray-300 text-gray-400 grayscale"
+      : "bg-white border-gray-200 text-gray-800 hover:border-yellow-400 hover:shadow-md";
+
+    return (
+      <div
+        className={`${baseStyles} ${stateStyles}`}
+        onClick={() => setShowOverlay(!showOverlay)}
+        onMouseLeave={() => setShowOverlay(false)}
+      >
+        <span className="absolute top-2 left-2 text-[10px] font-mono opacity-50">
+          {String(number).padStart(3, "0")}
         </span>
+        <span className="text-3xl mb-1">{isLocked ? "🔒" : icon}</span>
+        <span className="text-[11px] px-2 text-center leading-tight">
+          {isLocked ? "???" : title}
+        </span>
+
+        {/* Hover/Click Overlay for Description */}
+        <div
+          className={`absolute inset-0 bg-white/95 rounded-xl transition-opacity flex flex-col items-center justify-center p-2 text-center shadow-inner border border-blue-200 z-10 pointer-events-none ${showOverlay ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+        >
+          <span className="text-[10px] text-blue-600 mb-1 font-black uppercase tracking-tighter">
+            Requirement
+          </span>
+          <span className="text-[11px] text-gray-800 leading-tight">
+            {description}
+          </span>
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 const InfoToast = ({ toast, onComplete }) => {
   useEffect(() => {
@@ -294,7 +300,11 @@ const achievementsList = [
   },
   { key: "1-company", icon: "💼", condition: (state) => state.company >= 1 },
   { key: "10-company", icon: "🏪", condition: (state) => state.company >= 10 },
-  { key: "100-company", icon: "🏭", condition: (state) => state.company >= 100 },
+  {
+    key: "100-company",
+    icon: "🏭",
+    condition: (state) => state.company >= 100,
+  },
   {
     key: "1000-company",
     icon: "🏙️",
@@ -732,6 +742,21 @@ export default function App() {
     });
   }, []);
 
+  // 生産量の計算をメモ化
+  const gps = React.useMemo(() => {
+    const devProd = new Decimal(gameState.indieDev).div(6);
+    const aiProd = new Decimal(gameState.aiDev || 0).times(10000);
+    const compProd = new Decimal(gameState.currentCompanyGrade)
+      .pow(2.25)
+      .times(gameState.company);
+    return devProd.plus(aiProd).plus(compProd);
+  }, [
+    gameState.indieDev,
+    gameState.aiDev,
+    gameState.currentCompanyGrade,
+    gameState.company,
+  ]);
+
   // オフライン収入の計算
   useEffect(() => {
     if (offlineProcessedRef.current) return;
@@ -767,7 +792,8 @@ export default function App() {
 
           const uniqueId = `offline-income-${now}-${Math.random().toString(36).substr(2, 9)}`;
           setToastQueue((prev) => {
-            if (prev.some((t) => t.id.startsWith("offline-income"))) return prev;
+            if (prev.some((t) => t.id.startsWith("offline-income")))
+              return prev;
             return [
               ...prev,
               {
@@ -791,6 +817,12 @@ export default function App() {
   // ★ 最適化4: gameLoopの更新頻度の調整（スロットリング）
   const lastTimeRef = useRef(null);
 
+  // 生産量をループ内で軽量に参照するためのRef
+  const gpsRef = useRef(gps);
+  useEffect(() => {
+    gpsRef.current = gps;
+  }, [gps]);
+
   useEffect(() => {
     let animationFrameId;
     let accumulatedTime = 0;
@@ -805,51 +837,16 @@ export default function App() {
           const deltaTime = new Decimal(accumulatedTime / 1000);
 
           setGameState((prev) => {
-            const devProd = new Decimal(prev.indieDev).div(6);
-            const aiProd = new Decimal(prev.aiDev || 0).times(10000);
-            const compProd = new Decimal(prev.currentCompanyGrade)
-              .pow(2.25)
-              .times(prev.company);
-            const gamesPerSec = devProd.plus(aiProd).plus(compProd);
-
-            const newGames = prev.games.plus(gamesPerSec.times(deltaTime));
+            const newGames = prev.games.plus(gpsRef.current.times(deltaTime));
             const newMoney = prev.money.plus(
               prev.games.floor().times(deltaTime),
             );
 
-            const nextState = {
+            return {
               ...prev,
               games: newGames,
               money: newMoney,
             };
-
-            const newlyUnlocked = achievementsList.filter(
-              (ach) =>
-                !nextState.unlockedAchievements.includes(ach.key) &&
-                ach.condition(nextState),
-            );
-
-            if (newlyUnlocked.length > 0) {
-              // Toast updates are side effects and should ideally be handled outside,
-              // but using a more unique ID minimizes conflicts if the updater runs multiple times.
-              const newToasts = newlyUnlocked.map((ach) => ({
-                id: `ach-${Date.now()}-${ach.key}-${Math.random().toString(36).substr(2, 5)}`,
-                icon: ach.icon,
-                type: "achievement",
-                title: t(`achievements.${ach.key}`),
-              }));
-
-              // Use a small delay or ensure this runs only once per cycle
-              setTimeout(() => {
-                setToastQueue((prev) => [...prev, ...newToasts]);
-              }, 0);
-
-              nextState.unlockedAchievements = [
-                ...nextState.unlockedAchievements,
-                ...newlyUnlocked.map((a) => a.key),
-              ];
-            }
-            return nextState;
           });
 
           accumulatedTime = accumulatedTime % RENDER_INTERVAL;
@@ -863,6 +860,38 @@ export default function App() {
     animationFrameId = requestAnimationFrame(gameLoop);
 
     return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+
+  // 実績チェックを毎秒実行に制限（負荷軽減）
+  useEffect(() => {
+    const checkAchievements = setInterval(() => {
+      setGameState((prev) => {
+        const newlyUnlocked = achievementsList.filter(
+          (ach) =>
+            !prev.unlockedAchievements.includes(ach.key) && ach.condition(prev),
+        );
+
+        if (newlyUnlocked.length === 0) return prev;
+
+        const newToasts = newlyUnlocked.map((ach) => ({
+          id: `ach-${Date.now()}-${ach.key}-${Math.random().toString(36).substr(2, 5)}`,
+          icon: ach.icon,
+          type: "achievement",
+          title: t(`achievements.${ach.key}`),
+        }));
+
+        setToastQueue((q) => [...q, ...newToasts]);
+
+        return {
+          ...prev,
+          unlockedAchievements: [
+            ...prev.unlockedAchievements,
+            ...newlyUnlocked.map((a) => a.key),
+          ],
+        };
+      });
+    }, 1000);
+    return () => clearInterval(checkAchievements);
   }, [t]);
 
   // オートセーブ
@@ -888,7 +917,7 @@ export default function App() {
         console.log("saved");
         return currentState;
       });
-    }, 1000);
+    }, 20000); // 保存頻度を20秒に1回に下げて負荷軽減
 
     return () => {
       clearTimeout(enableTimer);
@@ -911,20 +940,6 @@ export default function App() {
     setActiveTab("setting");
     setTimeout(updateTargetPos, 50);
   }, [updateTargetPos]);
-
-  const gps = React.useMemo(() => {
-    const devProd = new Decimal(gameState.indieDev).div(6);
-    const aiProd = new Decimal(gameState.aiDev || 0).times(10000);
-    const compProd = new Decimal(gameState.currentCompanyGrade)
-      .pow(2.25)
-      .times(gameState.company);
-    return devProd.plus(aiProd).plus(compProd);
-  }, [
-    gameState.indieDev,
-    gameState.aiDev,
-    gameState.currentCompanyGrade,
-    gameState.company,
-  ]);
 
   const mps = React.useMemo(() => {
     return gameState.games.floor();
