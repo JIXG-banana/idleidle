@@ -5,6 +5,8 @@ import { initReactI18next } from 'react-i18next';
 import ja from './locales/ja.json';
 import en from './locales/en.json';
 import zhCN from './locales/zh-cn.json';
+import sw from './locales/sw.json';
+import emoji from './locales/emoji.json';
 
 const resources = {
   ja: {
@@ -15,6 +17,12 @@ const resources = {
   },
   'zh-CN': {
     translation: zhCN
+  },
+  sw: {
+    translation: sw
+  },
+  emoji: {
+    translation: emoji
   }
 };
 

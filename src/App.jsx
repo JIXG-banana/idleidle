@@ -287,6 +287,11 @@ const achievementsList = [
     icon: "🤑",
     condition: (state) => state.money.gte(1000000000),
   },
+  {
+    key: "international",
+    icon: "🌍",
+    condition: (state) => (state.usedLanguages || []).length >= 5,
+  },
   { key: "1-indie-dev", icon: "🤝", condition: (state) => state.indieDev >= 1 },
   {
     key: "10-indie-dev",
@@ -487,6 +492,7 @@ export default function App() {
       useScientific: false,
       lastTimestamp: Date.now(),
       language: "en",
+      usedLanguages: ["en"],
     };
 
     try {
@@ -501,6 +507,12 @@ export default function App() {
         } catch {
           parsed = JSON.parse(saveData);
         }
+        const language = parsed.language ?? "en";
+        const usedLanguages = parsed.usedLanguages ?? [language];
+        if (!usedLanguages.includes(language)) {
+          usedLanguages.push(language);
+        }
+
         return {
           ...defaultState,
           ...parsed,
@@ -509,6 +521,7 @@ export default function App() {
           useScientific: parsed.useScientific ?? false,
           money: new Decimal(parsed.money ?? parsed.gold ?? 20),
           games: new Decimal(parsed.games ?? 0),
+          usedLanguages,
         };
       }
       return defaultState;
@@ -957,11 +970,17 @@ export default function App() {
             <div className="flex flex-col gap-4">
               <button
                 onClick={() =>
-                  setGameState((prev) => ({
-                    ...prev,
-                    language: "ja",
-                    languageSelected: true,
-                  }))
+                  setGameState((prev) => {
+                    const usedLanguages = prev.usedLanguages ?? [];
+                    return {
+                      ...prev,
+                      language: "ja",
+                      languageSelected: true,
+                      usedLanguages: usedLanguages.includes("ja")
+                        ? usedLanguages
+                        : [...usedLanguages, "ja"],
+                    };
+                  })
                 }
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
               >
@@ -969,11 +988,17 @@ export default function App() {
               </button>
               <button
                 onClick={() =>
-                  setGameState((prev) => ({
-                    ...prev,
-                    language: "en",
-                    languageSelected: true,
-                  }))
+                  setGameState((prev) => {
+                    const usedLanguages = prev.usedLanguages ?? [];
+                    return {
+                      ...prev,
+                      language: "en",
+                      languageSelected: true,
+                      usedLanguages: usedLanguages.includes("en")
+                        ? usedLanguages
+                        : [...usedLanguages, "en"],
+                    };
+                  })
                 }
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
               >
@@ -981,15 +1006,57 @@ export default function App() {
               </button>
               <button
                 onClick={() =>
-                  setGameState((prev) => ({
-                    ...prev,
-                    language: "zh-CN",
-                    languageSelected: true,
-                  }))
+                  setGameState((prev) => {
+                    const usedLanguages = prev.usedLanguages ?? [];
+                    return {
+                      ...prev,
+                      language: "zh-CN",
+                      languageSelected: true,
+                      usedLanguages: usedLanguages.includes("zh-CN")
+                        ? usedLanguages
+                        : [...usedLanguages, "zh-CN"],
+                    };
+                  })
                 }
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
               >
                 简体中文 (Chinese)
+              </button>
+              <button
+                onClick={() =>
+                  setGameState((prev) => {
+                    const usedLanguages = prev.usedLanguages ?? [];
+                    return {
+                      ...prev,
+                      language: "sw",
+                      languageSelected: true,
+                      usedLanguages: usedLanguages.includes("sw")
+                        ? usedLanguages
+                        : [...usedLanguages, "sw"],
+                    };
+                  })
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                Kiswahili (Swahili)
+              </button>
+              <button
+                onClick={() =>
+                  setGameState((prev) => {
+                    const usedLanguages = prev.usedLanguages ?? [];
+                    return {
+                      ...prev,
+                      language: "emoji",
+                      languageSelected: true,
+                      usedLanguages: usedLanguages.includes("emoji")
+                        ? usedLanguages
+                        : [...usedLanguages, "emoji"],
+                    };
+                  })
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                絵文字 (Emoji)
               </button>
             </div>
           </div>
@@ -1123,17 +1190,26 @@ export default function App() {
                   id="language-select"
                   value={i18n.language}
                   onChange={(e) => {
-                    i18n.changeLanguage(e.target.value);
-                    setGameState((prev) => ({
-                      ...prev,
-                      language: e.target.value,
-                    }));
+                    const newLang = e.target.value;
+                    i18n.changeLanguage(newLang);
+                    setGameState((prev) => {
+                      const usedLanguages = prev.usedLanguages ?? [];
+                      return {
+                        ...prev,
+                        language: newLang,
+                        usedLanguages: usedLanguages.includes(newLang)
+                          ? usedLanguages
+                          : [...usedLanguages, newLang],
+                      };
+                    });
                   }}
                   className="flex-1 p-2 border border-gray-400 rounded bg-white text-black font-bold cursor-pointer hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="ja">日本語</option>
                   <option value="en">English</option>
                   <option value="zh-CN">简体中文</option>
+                  <option value="sw">Kiswahili</option>
+                  <option value="emoji">絵文字 (Emoji)</option>
                 </select>
               </div>
               <div className="flex items-center gap-3 p-3 rounded">
