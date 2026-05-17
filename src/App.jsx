@@ -150,14 +150,9 @@ const AchievementCard = memo(({ number, title, icon, isLocked }) => {
 });
 
 const InfoToast = ({ toast, onComplete }) => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
     const timer = setTimeout(onComplete, 3000); // 3秒で消去
     return () => {
-      window.removeEventListener("resize", handleResize);
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,10 +160,10 @@ const InfoToast = ({ toast, onComplete }) => {
 
   return (
     <motion.div
-      initial={{ y: 50, opacity: 0 }}
+      initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 50, opacity: 0 }}
-      className={`fixed ${isMobile ? "bottom-24" : "bottom-10"} left-1/2 -translate-x-1/2 z-[110] bg-gray-900/90 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-gray-700 backdrop-blur-md w-max max-w-[90vw]`}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="bg-gray-900/90 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-gray-700 backdrop-blur-md w-max max-w-[90vw] pointer-events-auto"
     >
       <span className="text-2xl">{toast.icon}</span>
       <span className="font-bold text-sm tracking-tight">{toast.title}</span>
@@ -531,36 +526,42 @@ export default function App() {
   }, []);
 
   const upgradeCompany = useCallback(() => {
-    setGameState((prev) => {
-      const currentPrice = new Decimal(1000)
-        .times(new Decimal(5).pow(prev.currentCompanyGrade - 1))
-        .floor();
-      if (
-        prev.money.gte(currentPrice) &&
-        prev.company >= 1 &&
-        prev.currentCompanyGrade < 9
-      ) {
-        const nextGrade = prev.currentCompanyGrade + 1;
-        setToastQueue((q) => [
-          ...q,
-          {
-            id: `upgrade-${Date.now()}`,
-            icon: "",
-            type: "info",
-            title: t("ui.company_upgraded", {
-              grade: companyGrades[nextGrade],
-            }),
-          },
-        ]);
-        return {
-          ...prev,
-          games: new Decimal(0),
-          currentCompanyGrade: nextGrade,
-        };
-      }
-      return prev;
-    });
-  }, [t, companyGrades]);
+    const currentPrice = new Decimal(1000)
+      .times(new Decimal(5).pow(gameState.currentCompanyGrade - 1))
+      .floor();
+
+    if (
+      gameState.money.gte(currentPrice) &&
+      gameState.company >= 1 &&
+      gameState.currentCompanyGrade < 9
+    ) {
+      const nextGrade = gameState.currentCompanyGrade + 1;
+      const toastId = `upgrade-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+      setToastQueue((q) => [
+        ...q,
+        {
+          id: toastId,
+          icon: "",
+          type: "info",
+          title: t("ui.company_upgraded", { grade: companyGrades[nextGrade] }),
+        },
+      ]);
+
+      setGameState((prev) => ({
+        ...prev,
+        money: prev.money.minus(currentPrice),
+        games: new Decimal(0),
+        currentCompanyGrade: nextGrade,
+      }));
+    }
+  }, [
+    gameState.money,
+    gameState.company,
+    gameState.currentCompanyGrade,
+    t,
+    companyGrades,
+  ]);
 
   const unlockAI = useCallback(() => {
     setGameState((prev) => ({
@@ -675,20 +676,24 @@ export default function App() {
             );
 
             if (newlyUnlocked.length > 0) {
+              // Toast updates are side effects and should ideally be handled outside,
+              // but using a more unique ID minimizes conflicts if the updater runs multiple times.
               const newToasts = newlyUnlocked.map((ach) => ({
                 id: `ach-${Date.now()}-${ach.key}-${Math.random().toString(36).substr(2, 5)}`,
                 icon: ach.icon,
                 type: "achievement",
                 title: t(`achievements.${ach.key}`),
               }));
-              setToastQueue((prev) => [...prev, ...newToasts]);
-              return {
-                ...nextState,
-                unlockedAchievements: [
-                  ...nextState.unlockedAchievements,
-                  ...newlyUnlocked.map((a) => a.key),
-                ],
-              };
+
+              // Use a small delay or ensure this runs only once per cycle
+              setTimeout(() => {
+                setToastQueue((prev) => [...prev, ...newToasts]);
+              }, 0);
+
+              nextState.unlockedAchievements = [
+                ...nextState.unlockedAchievements,
+                ...newlyUnlocked.map((a) => a.key),
+              ];
             }
             return nextState;
           });
@@ -1068,6 +1073,21 @@ export default function App() {
           )}
         </div>
 
+        {/* Info Toasts Stack - 積み上げ表示用のコンテナ */}
+        <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 z-[110] flex flex-col-reverse gap-2 items-center pointer-events-none">
+          <AnimatePresence>
+            {toastQueue
+              .filter((t) => t.type !== "achievement")
+              .map((toast) => (
+                <InfoToast
+                  key={toast.id}
+                  toast={toast}
+                  onComplete={() => removeToast(toast.id)}
+                />
+              ))}
+          </AnimatePresence>
+        </div>
+
         <AnimatePresence>
           {showHelp && (
             <motion.div
@@ -1118,21 +1138,16 @@ export default function App() {
               </motion.div>
             </motion.div>
           )}
-          {toastQueue.map((toast) =>
-            toast.type === "achievement" ? (
-              <AchievementToast
-                key={toast.id}
-                achievement={toast}
-                targetPos={targetPos}
-                onComplete={() => removeToast(toast.id)}
-              />
-            ) : (
-              <InfoToast
-                key={toast.id}
-                toast={toast}
-                onComplete={() => removeToast(toast.id)}
-              />
-            ),
+          {toastQueue.map(
+            (toast) =>
+              toast.type === "achievement" && (
+                <AchievementToast
+                  key={toast.id}
+                  achievement={toast}
+                  targetPos={targetPos}
+                  onComplete={() => removeToast(toast.id)}
+                />
+              ),
           )}
         </AnimatePresence>
 
