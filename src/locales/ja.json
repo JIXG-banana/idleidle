@@ -2,6 +2,7 @@
   "ui": {
     "games": "Games: {{count}}",
     "money": "money: {{count}}G",
+    "company_upgraded": "会社が {{grade}} にアップグレードされました！",
     "help": "ヘルプ",
     "help_title": "遊び方と解説",
     "close": "閉じる"

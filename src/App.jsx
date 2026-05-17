@@ -418,18 +418,65 @@ export default function App() {
     .times(10)
     .floor();
 
-  const companyGrades = {
-    1: t("company_grades.small"),
-    2: t("company_grades.normal"),
-    3: t("company_grades.big"),
-    4: t("company_grades.huge"),
-    5: t("company_grades.legal"),
-    6: t("company_grades.illegal"),
-    7: t("company_grades.ultimet"),
-    8: t("company_grades.extreme"),
-    9: t("company_grades.endless"),
-    10: t("company_grades.JIXG"),
-  };
+  const companyGrades = React.useMemo(
+    () => ({
+      1: t("company_grades.small"),
+      2: t("company_grades.normal"),
+      3: t("company_grades.big"),
+      4: t("company_grades.huge"),
+      5: t("company_grades.legal"),
+      6: t("company_grades.illegal"),
+      7: t("company_grades.ultimet"),
+      8: t("company_grades.extreme"),
+      9: t("company_grades.endless"),
+      10: t("company_grades.JIXG"),
+    }),
+    [t],
+  );
+
+  const companyButtonColors = React.useMemo(() => {
+    const colors = [
+      {
+        color: "bg-blue-500 hover:bg-blue-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.blue.700)]",
+      },
+      {
+        color: "bg-emerald-500 hover:bg-emerald-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.emerald.700)]",
+      },
+      {
+        color: "bg-yellow-500 hover:bg-yellow-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.yellow.700)]",
+      },
+      {
+        color: "bg-orange-500 hover:bg-orange-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.orange.700)]",
+      },
+      {
+        color: "bg-red-500 hover:bg-red-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.red.700)]",
+      },
+      {
+        color: "bg-pink-500 hover:bg-pink-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.pink.700)]",
+      },
+      {
+        color: "bg-purple-500 hover:bg-purple-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.purple.700)]",
+      },
+      {
+        color: "bg-indigo-500 hover:bg-indigo-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.indigo.700)]",
+      },
+      {
+        color: "bg-gray-800 hover:bg-gray-900",
+        shadow: "shadow-[0_4px_0_0_theme(colors.gray.950)]",
+      },
+    ];
+    return colors[
+      Math.min(gameState.currentCompanyGrade - 1, colors.length - 1)
+    ];
+  }, [gameState.currentCompanyGrade]);
 
   const companyPrice = new Decimal(1.2)
     .pow(gameState.company || 0)
@@ -493,15 +540,27 @@ export default function App() {
         prev.company >= 1 &&
         prev.currentCompanyGrade < 9
       ) {
+        const nextGrade = prev.currentCompanyGrade + 1;
+        setToastQueue((q) => [
+          ...q,
+          {
+            id: `upgrade-${Date.now()}`,
+            icon: "🏢✨",
+            type: "info",
+            title: t("ui.company_upgraded", {
+              grade: companyGrades[nextGrade],
+            }),
+          },
+        ]);
         return {
           ...prev,
           games: new Decimal(0),
-          currentCompanyGrade: prev.currentCompanyGrade + 1,
+          currentCompanyGrade: nextGrade,
         };
       }
       return prev;
     });
-  }, []);
+  }, [t, companyGrades]);
 
   const unlockAI = useCallback(() => {
     setGameState((prev) => ({
@@ -816,6 +875,8 @@ export default function App() {
               <ActionButton
                 onClick={buyCompany}
                 disabled={gameState.money.lt(companyPrice)}
+                colorClass={companyButtonColors.color}
+                shadowClass={companyButtonColors.shadow}
               >
                 {t("actions.buy_company", {
                   price: format(companyPrice),
@@ -858,8 +919,6 @@ export default function App() {
                 </ActionButton>
               )}
 
-
-              
               <StaticAdsAndForm />
             </div>
           )}
