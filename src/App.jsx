@@ -294,7 +294,7 @@ const achievementsList = [
   {
     key: "last-upgrade",
     icon: "🎖️",
-    condition: (state) => state.currentCompanyGrade >= 9,
+    condition: (state) => state.currentCompanyGrade >= 15,
   },
   { key: "ai-unlocked", icon: "⚡", condition: (state) => state.aiEnabled },
   {
@@ -369,7 +369,7 @@ const achievementsList = [
   },
   {
     key: "1000000000-game",
-    icon: "🔭",
+    icon: " Telescope",
     condition: (state) => state.games.gte(1000000000),
   },
   {
@@ -443,6 +443,7 @@ export default function App() {
   }, []);
   const preventAutoSave = useRef(true); // 初期ロード時や削除操作中のガード
   const [showHelp, setShowHelp] = useState(false);
+  const offlineProcessedRef = useRef(false);
 
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
@@ -525,6 +526,11 @@ export default function App() {
       8: t("company_grades.extreme"),
       9: t("company_grades.endless"),
       10: t("company_grades.JIXG"),
+      11: t("company_grades.multiverse"),
+      12: t("company_grades.omnipotent"),
+      13: t("company_grades.eternal"),
+      14: t("company_grades.godly"),
+      15: t("company_grades.transcendent"),
     }),
     [t],
   );
@@ -566,6 +572,30 @@ export default function App() {
       {
         color: "bg-gray-800 hover:bg-gray-900",
         shadow: "shadow-[0_4px_0_0_theme(colors.gray.950)]",
+      },
+      {
+        color: "bg-cyan-500 hover:bg-cyan-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.cyan.700)]",
+      },
+      {
+        color: "bg-lime-500 hover:bg-lime-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.lime.700)]",
+      },
+      {
+        color: "bg-teal-500 hover:bg-teal-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.teal.700)]",
+      },
+      {
+        color: "bg-fuchsia-500 hover:bg-fuchsia-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.fuchsia.700)]",
+      },
+      {
+        color: "bg-rose-500 hover:bg-rose-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.rose.700)]",
+      },
+      {
+        color: "bg-sky-500 hover:bg-sky-600",
+        shadow: "shadow-[0_4px_0_0_theme(colors.sky.700)]",
       },
     ];
     return colors[
@@ -633,7 +663,7 @@ export default function App() {
     if (
       gameState.money.gte(currentPrice) &&
       gameState.company >= 1 &&
-      gameState.currentCompanyGrade < 9
+      gameState.currentCompanyGrade < 15
     ) {
       const nextGrade = gameState.currentCompanyGrade + 1;
       const toastId = `upgrade-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -690,6 +720,9 @@ export default function App() {
 
   // オフライン収入の計算
   useEffect(() => {
+    if (offlineProcessedRef.current) return;
+    offlineProcessedRef.current = true;
+
     if (gameState.lastTimestamp) {
       const now = Date.now();
       const diffInSeconds = Math.floor((now - gameState.lastTimestamp) / 1000);
@@ -719,15 +752,18 @@ export default function App() {
           }));
 
           const uniqueId = `offline-income-${now}-${Math.random().toString(36).substr(2, 9)}`;
-          setToastQueue((prev) => [
-            ...prev,
-            {
-              id: uniqueId,
-              icon: "💤",
-              type: "info",
-              title: `Welcome back! +${format(gamesGained)} games / +${format(moneyGained)} money (${cappedSeconds}s, 50% rate)`,
-            },
-          ]);
+          setToastQueue((prev) => {
+            if (prev.some((t) => t.id.startsWith("offline-income"))) return prev;
+            return [
+              ...prev,
+              {
+                id: uniqueId,
+                icon: "💤",
+                type: "info",
+                title: `Welcome back! +${format(gamesGained)} games / +${format(moneyGained)} money (${cappedSeconds}s, 50% rate)`,
+              },
+            ];
+          });
         }
       }
     }
@@ -990,7 +1026,7 @@ export default function App() {
                 })}
               </ActionButton>
 
-              {gameState.currentCompanyGrade < 9 ? (
+              {gameState.currentCompanyGrade < 15 ? (
                 <ActionButton
                   onClick={upgradeCompany}
                   disabled={
