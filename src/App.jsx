@@ -346,6 +346,8 @@ export default function App() {
   const removeToast = useCallback((id) => {
     setToastQueue((prev) => prev.filter((item) => item.id !== id));
   }, []);
+  const preventAutoSave = useRef(true); // 初期ロード時や削除操作中のガード
+  const [showHelp, setShowHelp] = useState(false);
 
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
@@ -435,9 +437,8 @@ export default function App() {
     .times(25)
     .floor();
 
-  const upgradeCompanyPrice = gameState.money
-    .div(1.5)
-    .times(new Decimal(gameState.currentCompanyGrade).pow(5))
+  const upgradeCompanyPrice = new Decimal(1000)
+    .times(new Decimal(5).pow(gameState.currentCompanyGrade - 1))
     .floor();
 
   const aiDevPrice = new Decimal(1.5)
@@ -484,9 +485,8 @@ export default function App() {
 
   const upgradeCompany = useCallback(() => {
     setGameState((prev) => {
-      const currentPrice = prev.money
-        .div(1.5)
-        .times(new Decimal(prev.currentCompanyGrade).pow(5))
+      const currentPrice = new Decimal(1000)
+        .times(new Decimal(5).pow(prev.currentCompanyGrade - 1))
         .floor();
       if (
         prev.money.gte(currentPrice) &&
@@ -649,8 +649,14 @@ export default function App() {
 
   // オートセーブ
   useEffect(() => {
+    // 起動後2秒間は「ロード中」としてオートセーブを無効化
+    const enableTimer = setTimeout(() => {
+      preventAutoSave.current = false;
+    }, 2000);
+
     const autoSaveInterval = setInterval(() => {
       setGameState((currentState) => {
+        if (preventAutoSave.current) return currentState;
         const stateToSave = {
           ...currentState,
           lastTimestamp: Date.now(),
@@ -666,7 +672,10 @@ export default function App() {
       });
     }, 1000);
 
-    return () => clearInterval(autoSaveInterval);
+    return () => {
+      clearTimeout(enableTimer);
+      clearInterval(autoSaveInterval);
+    };
   }, []);
 
   // タブ切り替え用のハンドラも useCallback で安定化
@@ -757,8 +766,15 @@ export default function App() {
       <div className="flex flex-col md:flex-row">
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-hidden">
           {activeTab === "idle2" && (
-            <div className="flex flex-col gap-2 break-words">
-              <div className="flex md:items-center gap-3 md:gap-4 w-full my-2">
+            <div className="flex flex-col gap-2 break-words relative">
+              <button
+                onClick={() => setShowHelp(true)}
+                className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full text-gray-600 font-bold transition-all shadow-sm z-10 hover:scale-110 active:scale-95"
+                title={t("ui.help")}
+              >
+                ?
+              </button>
+              <div className="flex md:items-center gap-3 md:gap-4 w-full my-2 pr-10">
                 <h1 className="text-3xl md:text-5xl font-bold">
                   {t("ui.games", { count: format(gameState.games) })}
                 </h1>
@@ -842,8 +858,8 @@ export default function App() {
                 </ActionButton>
               )}
 
-              <span>{t("messages.intro")}</span>
 
+              
               <StaticAdsAndForm />
             </div>
           )}
@@ -964,6 +980,7 @@ export default function App() {
                       );
                       const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
                       if (!decryptedText) throw new Error("？？？");
+                      preventAutoSave.current = true;
                       localStorage.setItem("save", importText);
                       window.location.reload();
                     } catch {
@@ -979,6 +996,7 @@ export default function App() {
 
               <ActionButton
                 onClick={() => {
+                  preventAutoSave.current = true;
                   localStorage.clear();
                   window.location.reload();
                 }}
@@ -992,6 +1010,55 @@ export default function App() {
         </div>
 
         <AnimatePresence>
+          {showHelp && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setShowHelp(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[80vh] relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {t("ui.help_title")}
+                  </h2>
+                  <button
+                    onClick={() => setShowHelp(false)}
+                    className="text-gray-400 hover:text-gray-600 text-3xl font-light"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div className="space-y-4 text-gray-700 leading-relaxed text-sm md:text-base">
+                  <section>
+                    <h3 className="font-bold text-blue-600 mb-1">
+                      {t("help.basics_title")}
+                    </h3>
+                    <p>{t("help.basics_text")}</p>
+                  </section>
+                  <section>
+                    <h3 className="font-bold text-blue-600 mb-1">
+                      {t("help.offline_title")}
+                    </h3>
+                    <p>{t("help.offline_text")}</p>
+                  </section>
+                </div>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors"
+                >
+                  {t("ui.close")}
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
           {toastQueue.map((toast) =>
             toast.type === "achievement" ? (
               <AchievementToast
