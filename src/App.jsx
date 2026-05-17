@@ -594,8 +594,8 @@ export default function App() {
       const now = Date.now();
       const diffInSeconds = Math.floor((now - gameState.lastTimestamp) / 1000);
 
-      // 最大5時間 (5 * 60 * 60 = 18,000秒) に制限
-      const cappedSeconds = Math.min(diffInSeconds, 18000);
+      // 最大3時間 (3 * 60 * 60 = 10,800秒) に制限
+      const cappedSeconds = Math.min(diffInSeconds, 10800);
 
       // 1分(60秒)以上離れていた場合に適用
       if (cappedSeconds >= 60) {
@@ -606,10 +606,10 @@ export default function App() {
           .times(gameState.company);
         const gps = devProd.plus(aiProd).plus(compProd);
 
-        // ゲームの増加量: 制限された秒数 * 秒間生産量
-        const gamesGained = gps.times(cappedSeconds);
-        // お金の増加量 (簡易計算: 離脱時のゲーム数 * 制限された秒数)
-        const moneyGained = gameState.games.times(cappedSeconds);
+        // ゲームの増加量: 制限された秒数 * 秒間生産量 (オフラインは通常の半分)
+        const gamesGained = gps.times(cappedSeconds).div(2);
+        // お金の増加量 (簡易計算: 離脱時のゲーム数 * 制限された秒数) (オフラインは通常の半分)
+        const moneyGained = gameState.games.times(cappedSeconds).div(2);
 
         if (gamesGained.gt(0) || moneyGained.gt(0)) {
           setGameState((prev) => ({
@@ -625,7 +625,7 @@ export default function App() {
               id: uniqueId,
               icon: "💤",
               type: "info",
-              title: `Welcome back! +${format(gamesGained)} games / +${format(moneyGained)} money (${cappedSeconds}s)`,
+              title: `Welcome back! +${format(gamesGained)} games / +${format(moneyGained)} money (${cappedSeconds}s, 50% rate)`,
             },
           ]);
         }
