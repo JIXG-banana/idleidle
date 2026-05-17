@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo, useCallback } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback, forwardRef } from "react";
 import Decimal from "break_infinity.js";
 import CryptoJS from "crypto-js";
 // eslint-disable-next-line no-unused-vars
@@ -25,15 +25,15 @@ const getFactorial = (n) => {
 */
 
 // ★ 最適化1: React.memo で包み、プロパティが変わらない限り再描画しないようにする
-const TabButton = memo(({ active, onClick, children }) => {
+const TabButton = memo(forwardRef(({ active, onClick, children }, ref) => {
   const baseClass = "text-white font-bold py-2 px-4 rounded transition-colors";
   const activeClass = active ? "bg-green-800" : "bg-gray-500 hover:bg-blue-600";
   return (
-    <button onClick={onClick} className={`${baseClass} ${activeClass}`}>
+    <button ref={ref} onClick={onClick} className={`${baseClass} ${activeClass}`}>
       {children}
     </button>
   );
-});
+}));
 
 const ActionButton = memo(
   ({
@@ -86,11 +86,45 @@ const AchievementCard = memo(({ number, title, icon, isLocked }) => {
   );
 });
 
-const AchievementToast = ({ achievement, onComplete }) => {
+const InfoToast = ({ toast, onComplete }) => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    const timer = setTimeout(onComplete, 3000); // 3秒で消去
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ y: 50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 50, opacity: 0 }}
+      className={`fixed ${isMobile ? "bottom-24" : "bottom-10"} left-1/2 -translate-x-1/2 z-[110] bg-gray-900/90 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-gray-700 backdrop-blur-md w-max max-w-[90vw]`}
+    >
+      <span className="text-2xl">{toast.icon}</span>
+      <span className="font-bold text-sm tracking-tight">{toast.title}</span>
+    </motion.div>
+  );
+};
+
+const AchievementToast = ({ achievement, onComplete, targetPos }) => {
+  // タイマーを使って確実に削除を実行するように修正
+  useEffect(() => {
+    // 表示時間（約2.5秒）が経過したら削除
+    const timer = setTimeout(onComplete, 2500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 空の配列にすることで、再レンダリングによるタイマーリセットを防ぐ
+
   return (
     <motion.div
       initial={{ y: 500, x: "-50%", rotate: -20, scale: 0.5, opacity: 1 }}
-
       animate={{
         y: [500, -20, 0],
         x: "-50%",
@@ -98,20 +132,17 @@ const AchievementToast = ({ achievement, onComplete }) => {
         scale: 1,
         opacity: 1,
       }}
-      exit={{
-        y: 800,
-        x: "-80%",
-        scale: 0,
-        opacity: 1,
-        transition: { duration: 0.8, ease: "backIn" },
+      exit={{ 
+        x: targetPos.x, 
+        y: targetPos.y, 
+        scale: 0, 
+        opacity: 0, 
+        transition: { duration: 0.7, ease: "backIn" } 
       }}
       transition={{
         duration: 1.2,
         times: [0, 0.6, 0.8, 0.9, 1],
         ease: "easeOut",
-      }}
-      onAnimationComplete={() => {
-        setTimeout(onComplete, 3000);
       }}
       className="fixed top-1/2 left-1/2 z-[100] w-64 p-6 bg-yellow-400 border-4 border-white rounded-2xl shadow-2xl flex flex-col items-center justify-center text-center"
     >
@@ -200,6 +231,33 @@ const achievementsList = [
 ];
 
 export default function App() {
+  const achievementTabRef = useRef(null);
+  const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
+
+  // 実績タブの座標を計算する関数
+  const updateTargetPos = useCallback(() => {
+    if (achievementTabRef.current) {
+      const rect = achievementTabRef.current.getBoundingClientRect();
+      // トーストは fixed top-1/2 left-1/2 なので、画面中央からのオフセットを計算
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      setTargetPos({
+        x: centerX - window.innerWidth / 2,
+        y: centerY - window.innerHeight / 2,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    // 初回レンダリング後に少し待ってから計算（レイアウト確定のため）
+    const timer = setTimeout(updateTargetPos, 500);
+    window.addEventListener("resize", updateTargetPos);
+    return () => {
+      window.removeEventListener("resize", updateTargetPos);
+      clearTimeout(timer);
+    };
+  }, [updateTargetPos]);
+
   const [toastQueue, setToastQueue] = useState([]);
   const removeToast = useCallback((id) => {
     setToastQueue((prev) => prev.filter((item) => item.id !== id));
@@ -217,6 +275,8 @@ export default function App() {
       company: 0,
       currentCompanyGrade: 1,
       unlockedAchievements: [],
+      languageSelected: false,
+      lastTimestamp: Date.now(),
       language: "en",
     };
 
@@ -235,6 +295,8 @@ export default function App() {
         return {
           ...defaultState,
           ...parsed,
+          lastTimestamp: parsed.lastTimestamp ?? Date.now(),
+          languageSelected: parsed.languageSelected ?? false,
           money: new Decimal(parsed.money ?? parsed.gold ?? 20),
           games: new Decimal(parsed.games ?? 0),
         };
@@ -269,13 +331,13 @@ export default function App() {
     7: t("company_grades.ultimet"),
     8: t("company_grades.extreme"),
     9: t("company_grades.endless"),
-    10: t("'company_grades.JIXG's"),
+    10: t("company_grades.JIXG"),
   };
 
   const companyPrice = new Decimal(1.2)
     .pow(gameState.company || 0)
-    .pow(gameState.currentCompanyGrade + 2)
-    .times(100)
+    .times(gameState.currentCompanyGrade + 2)
+    .times(25)
     .floor();
 
   const upgradeCompanyPrice = gameState.money
@@ -341,6 +403,51 @@ export default function App() {
     });
   }, []);
 
+  // オフライン収入の計算
+  useEffect(() => {
+    if (gameState.lastTimestamp) {
+      const now = Date.now();
+      const diffInSeconds = Math.floor((now - gameState.lastTimestamp) / 1000);
+
+      // 最大5時間 (5 * 60 * 60 = 18,000秒) に制限
+      const cappedSeconds = Math.min(diffInSeconds, 18000);
+
+      // 1分(60秒)以上離れていた場合に適用
+      if (cappedSeconds >= 60) {
+        const devProd = new Decimal(gameState.indieDev).div(6);
+        const compProd = new Decimal(gameState.currentCompanyGrade)
+          .pow(2.25)
+          .times(gameState.company);
+        const gps = devProd.plus(compProd);
+
+        // ゲームの増加量: 制限された秒数 * 秒間生産量
+        const gamesGained = gps.times(cappedSeconds);
+        // お金の増加量 (簡易計算: 離脱時のゲーム数 * 制限された秒数)
+        const moneyGained = gameState.games.times(cappedSeconds);
+
+        if (gamesGained.gt(0) || moneyGained.gt(0)) {
+          setGameState((prev) => ({
+            ...prev,
+            games: prev.games.plus(gamesGained),
+            money: prev.money.plus(moneyGained),
+          }));
+
+          const uniqueId = `offline-income-${now}-${Math.random().toString(36).substr(2, 9)}`;
+          setToastQueue((prev) => [
+            ...prev,
+            {
+              id: uniqueId,
+              icon: "💤",
+              type: "info",
+              title: `Welcome back! +${formatNumber(gamesGained)} games / +${formatNumber(moneyGained)} money (${cappedSeconds}s)`,
+            },
+          ]);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 初回マウント時のみ実行
+
   // ★ 最適化4: gameLoopの更新頻度の調整（スロットリング）
   const lastTimeRef = useRef(null);
 
@@ -383,8 +490,9 @@ export default function App() {
 
             if (newlyUnlocked.length > 0) {
               const newToasts = newlyUnlocked.map((ach) => ({
-                id: Date.now() + ach.key,
+                id: `ach-${Date.now()}-${ach.key}-${Math.random().toString(36).substr(2, 5)}`,
                 icon: ach.icon,
+                type: "achievement",
                 title: t(`achievements.${ach.key}`),
               }));
               setToastQueue((prev) => [...prev, ...newToasts]);
@@ -416,7 +524,10 @@ export default function App() {
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
       setGameState((currentState) => {
-        const stateToSave = { ...currentState };
+        const stateToSave = {
+          ...currentState,
+          lastTimestamp: Date.now(),
+        };
         const jsonText = JSON.stringify(stateToSave);
         const encryptedText = CryptoJS.AES.encrypt(
           jsonText,
@@ -453,6 +564,55 @@ export default function App() {
 
   return (
     <div className="p-3 md:p-5 pb-24 md:pb-5">
+      {/* 初回言語選択モーダル */}
+      {!gameState.languageSelected && (
+        <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
+            <h2 className="text-3xl font-black mb-6 text-gray-800">
+              Select Language
+            </h2>
+            <div className="flex flex-col gap-4">
+              <button
+                onClick={() =>
+                  setGameState((prev) => ({
+                    ...prev,
+                    language: "ja",
+                    languageSelected: true,
+                  }))
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                日本語 (Japanese)
+              </button>
+              <button
+                onClick={() =>
+                  setGameState((prev) => ({
+                    ...prev,
+                    language: "en",
+                    languageSelected: true,
+                  }))
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                English
+              </button>
+              <button
+                onClick={() =>
+                  setGameState((prev) => ({
+                    ...prev,
+                    language: "zh-CN",
+                    languageSelected: true,
+                  }))
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                简体中文 (Chinese)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row">
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-hidden">
           {activeTab === "idle2" && (
@@ -573,7 +733,10 @@ export default function App() {
 
               <ActionButton
                 onClick={() => {
-                  const jsonText = JSON.stringify(gameState);
+                  const jsonText = JSON.stringify({
+                    ...gameState,
+                    lastTimestamp: Date.now(),
+                  });
                   const encryptedText = CryptoJS.AES.encrypt(
                     jsonText,
                     SECRET_KEY,
@@ -588,7 +751,10 @@ export default function App() {
 
               <ActionButton
                 onClick={() => {
-                  const jsonText = JSON.stringify(gameState);
+                  const jsonText = JSON.stringify({
+                    ...gameState,
+                    lastTimestamp: Date.now(),
+                  });
                   const encryptedText = CryptoJS.AES.encrypt(
                     jsonText,
                     SECRET_KEY,
@@ -644,13 +810,22 @@ export default function App() {
         </div>
 
         <AnimatePresence>
-          {toastQueue.map((toast) => (
-            <AchievementToast
-              key={toast.id}
-              achievement={toast}
-              onComplete={() => removeToast(toast.id)}
-            />
-          ))}
+          {toastQueue.map((toast) =>
+            toast.type === "achievement" ? (
+              <AchievementToast
+                key={toast.id}
+                achievement={toast}
+                targetPos={targetPos}
+                onComplete={() => removeToast(toast.id)}
+              />
+            ) : (
+              <InfoToast
+                key={toast.id}
+                toast={toast}
+                onComplete={() => removeToast(toast.id)}
+              />
+            ),
+          )}
         </AnimatePresence>
 
         <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 p-3 z-50 md:static md:w-40 md:bg-transparent md:border-t-0 md:p-0 flex flex-col gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-none">
@@ -659,6 +834,7 @@ export default function App() {
               {t("tabs.idle2")}
             </TabButton>
             <TabButton
+              ref={achievementTabRef}
               active={activeTab === "achievements"}
               onClick={handleTabAchievements}
             >
