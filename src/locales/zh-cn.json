@@ -6,6 +6,8 @@
   "actions": {
     "buy_indie": "顾用个人开发者 ({{price}} money) / 所有: {{count}}",
     "buy_company": "合并一个{{grade}}公司 ({{price}} money) / 所有: {{count}}",
+    "unlock_ai": "出售所有独立开发者以解锁 AI 开发者",
+    "buy_ai": "雇佣 AI 开发者 (价格: {{price}}, 数量: {{count}})",
     "save": "保存",
     "clear_save": "清零保存"
   },

@@ -10,6 +10,8 @@
     "buy_indie": "Hire Indie Developer ({{price}} money) / Owned: {{count}}",
     "buy_company": "Buy {{grade}} Company ({{price}} money) / Owned: {{count}}",
     "upgrade_company": "Upgrade company ({{price}} money)",
+    "unlock_ai": "Sell all indie devs to unlock AI Developer",
+    "buy_ai": "Hire AI Dev (Price: {{price}}, Count: {{count}})",
     "save": "Save",
     "import": "Import",
     "export": "Export save",
@@ -46,6 +48,11 @@
     "100-company": "too many companies",
     "1000-company": "great",
     "first-upgrade": "It's the time",
-    "last-upgrade": "Wow!"
+    "last-upgrade": "Wow!",
+    "10-indie-dev": "Development Team",
+    "50-indie-dev": "Massive Office",
+    "ai-unlocked": "Dawn of Singularity",
+    "1-ai-dev": "Digital Intelligence",
+    "10-ai-dev": "Global AI Network"
   }
 }

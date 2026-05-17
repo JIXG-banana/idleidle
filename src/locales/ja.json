@@ -10,6 +10,8 @@
     "buy_indie": "インディー開発者を雇う ({{price}}G) / 所持: {{count}}人",
     "buy_company": "{{grade}}企業を買収 ({{price}}G) / 所持: {{count}}社",
     "upgrade_company": "企業をアップグレード（{{price}}G）",
+    "unlock_ai": "個人開発者を全て売って、AI開発者をアンロックする",
+    "buy_ai": "AI開発者を雇う (価格: {{price}}, 人数: {{count}})",
     "save": "セーブする",
     "import": "ロード",
     "export":"セーブデータを書き出し",
@@ -46,6 +48,11 @@
     "100-company": "ブラック企業",
     "1000-company": "労働基準法を無視",
     "first-upgrade": "時は満ちた",
-    "last-upgrade": "マジで！？"
+    "last-upgrade": "マジで！？",
+    "10-indie-dev": "開発チーム",
+    "50-indie-dev": "巨大なオフィス",
+    "ai-unlocked": "シンギュラリティの幕開け",
+    "1-ai-dev": "デジタルの知能",
+    "10-ai-dev": "AIネットワーク"
   }
 }
