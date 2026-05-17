@@ -279,21 +279,21 @@ const achievementsList = [
     condition: (state) => state.indieDev >= 50,
   },
   { key: "1-company", icon: "💼", condition: (state) => state.company >= 1 },
-  { key: "10-company", icon: "", condition: (state) => state.company >= 10 },
-  { key: "100-company", icon: "", condition: (state) => state.company >= 100 },
+  { key: "10-company", icon: "🏪", condition: (state) => state.company >= 10 },
+  { key: "100-company", icon: "🏭", condition: (state) => state.company >= 100 },
   {
     key: "1000-company",
-    icon: "",
+    icon: "🏙️",
     condition: (state) => state.company >= 1000,
   },
   {
     key: "first-upgrade",
-    icon: "",
+    icon: "🆙",
     condition: (state) => state.currentCompanyGrade >= 2,
   },
   {
     key: "last-upgrade",
-    icon: "",
+    icon: "🎖️",
     condition: (state) => state.currentCompanyGrade >= 9,
   },
   { key: "ai-unlocked", icon: "⚡", condition: (state) => state.aiEnabled },
@@ -306,6 +306,106 @@ const achievementsList = [
     key: "10-ai-dev",
     icon: "🌐",
     condition: (state) => (state.aiDev || 0) >= 10,
+  },
+  {
+    key: "50-ai-dev",
+    icon: "🧠",
+    condition: (state) => (state.aiDev || 0) >= 50,
+  },
+  {
+    key: "100-ai-dev",
+    icon: "🧬",
+    condition: (state) => (state.aiDev || 0) >= 100,
+  },
+  {
+    key: "250-ai-dev",
+    icon: "🕸️",
+    condition: (state) => (state.aiDev || 0) >= 250,
+  },
+  {
+    key: "500-ai-dev",
+    icon: "💠",
+    condition: (state) => (state.aiDev || 0) >= 500,
+  },
+  {
+    key: "1000-ai-dev",
+    icon: "📡",
+    condition: (state) => (state.aiDev || 0) >= 1000,
+  },
+  {
+    key: "2500-ai-dev",
+    icon: "🛰️",
+    condition: (state) => (state.aiDev || 0) >= 2500,
+  },
+  {
+    key: "5000-ai-dev",
+    icon: "🌌",
+    condition: (state) => (state.aiDev || 0) >= 5000,
+  },
+  {
+    key: "10000-game",
+    icon: "🚀",
+    condition: (state) => state.games.gte(10000),
+  },
+  {
+    key: "100000-game",
+    icon: "🛰️",
+    condition: (state) => state.games.gte(100000),
+  },
+  {
+    key: "1000000-game",
+    icon: "🌌",
+    condition: (state) => state.games.gte(1000000),
+  },
+  {
+    key: "10000000-game",
+    icon: "☄️",
+    condition: (state) => state.games.gte(10000000),
+  },
+  {
+    key: "100000000-game",
+    icon: "🛸",
+    condition: (state) => state.games.gte(100000000),
+  },
+  {
+    key: "1000000000-game",
+    icon: "🔭",
+    condition: (state) => state.games.gte(1000000000),
+  },
+  {
+    key: "1000000-money",
+    icon: "🏦",
+    condition: (state) => state.money.gte(1000000),
+  },
+  {
+    key: "10000000-money",
+    icon: "💎",
+    condition: (state) => state.money.gte(10000000),
+  },
+  {
+    key: "100000000-money",
+    icon: "💹",
+    condition: (state) => state.money.gte(100000000),
+  },
+  {
+    key: "10000000000-money",
+    icon: "🏛️",
+    condition: (state) => state.money.gte(10000000000),
+  },
+  {
+    key: "100000000000-money",
+    icon: "🏰",
+    condition: (state) => state.money.gte(100000000000),
+  },
+  {
+    key: "1000000000000-money",
+    icon: "🌍",
+    condition: (state) => state.money.gte(1000000000000),
+  },
+  {
+    key: "1000000000000000-money",
+    icon: "🌌",
+    condition: (state) => state.money.gte(1000000000000000),
   },
 ];
 
