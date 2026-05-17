@@ -1074,18 +1074,26 @@ export default function App() {
               >
                 ?
               </button>
-              <div className="flex md:items-center gap-3 md:gap-4 w-full my-2 pr-10">
-                <h1 className="text-3xl md:text-5xl font-bold">
+              <div className="flex items-center gap-2 md:gap-4 w-full my-2 pr-2 md:pr-10 flex-nowrap">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold whitespace-nowrap shrink-0">
                   {t("ui.games", { count: format(gameState.games) })}
                 </h1>
-                <span>+{format(gps, 2)}/s</span>
-                <div className="w-[25%] md:w-[50%] bg-gray-200 rounded-full h-6 my-2 ml-auto shadow-inner overflow-hidden border border-gray-300 relative">
+                <span className="text-xs sm:text-base whitespace-nowrap shrink-0">
+                  +{format(gps, 2)}/s
+                </span>
+                <div
+                  className="bg-gray-200 rounded-full h-6 my-2 ml-auto shadow-inner overflow-hidden border border-gray-300 relative min-w-[40px]"
+                  style={{
+                    flex: "1 1 auto",
+                    maxWidth: `${Math.max(10, 60 - t("ui.games", { count: format(gameState.games) }).length * 1.5)}%`,
+                  }}
+                >
                   <div
                     className="bg-green-500 h-full transition-all duration-75 ease-linear"
                     style={{
                       width: `${gameState.games.minus(gameState.games.floor()).times(100).toNumber()}%`,
                     }}
-                  ></div>
+                  />
                   <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 drop-shadow-md">
                     {gameState.games
                       .minus(gameState.games.floor())
@@ -1096,11 +1104,13 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="flex w-full items-center">
-                <h1 className="text-2xl md:text-4xl font-bold mb-2">
+              <div className="flex w-full items-center gap-2 flex-nowrap">
+                <h1 className="text-xl sm:text-2xl md:text-4xl font-bold mb-2 whitespace-nowrap shrink-0">
                   {t("ui.money", { count: format(gameState.money) })}
                 </h1>
-                <span className="">+{format(mps, 2)}/s</span>
+                <span className="text-xs sm:text-base whitespace-nowrap shrink-0">
+                  +{format(mps, 2)}/s
+                </span>
               </div>
 
               <ActionButton
