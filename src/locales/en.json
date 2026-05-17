@@ -1,15 +1,25 @@
 {
   "ui": {
     "games": "Games: {{count}}",
-    "money": "Money: {{count}}"
+    "money": "Money: {{count}}G",
+    "company_upgraded": "Company upgraded to {{grade}}!",
+    "help": "Help",
+    "help_title": "How to play & Explanation",
+    "close": "Close"
+  },
+  "help": {
+    "basics_title": "Basic Rules",
+    "basics_text": "Press buttons to hire developers or establish companies. Your money increases periodically based on the number of 'games' you have created.",
+    "offline_title": "Offline Income",
+    "offline_text": "Games and money will accumulate based on your last saved production even while the game is closed. Offline income starts after 1 minute of being away and lasts for up to 3 hours at half the normal speed."
   },
   "messages": {
     "intro": "Use your starting funds to hire developers and create idle games. These games will generate a steady stream of income for you!"
   },
   "actions": {
-    "buy_indie": "Hire Indie Developer ({{price}} money) / Owned: {{count}}",
-    "buy_company": "Buy {{grade}} Company ({{price}} money) / Owned: {{count}}",
-    "upgrade_company": "Upgrade company ({{price}} money)",
+    "buy_indie": "Hire Indie Developer ({{price}}G) / Owned: {{count}}",
+    "buy_company": "Buy {{grade}} Company ({{price}}G) / Owned: {{count}}",
+    "upgrade_company": "Upgrade company ({{price}}G)",
     "unlock_ai": "Sell all indie devs to unlock AI Developer",
     "buy_ai": "Hire AI Dev (Price: {{price}}, Count: {{count}})",
     "save": "Save",
@@ -24,10 +34,10 @@
     "huge": "Huge",
     "legal": "Legal",
     "illegal": "Illegal",
-    "ultimet": "Ultimet",
+    "ultimet": "Ultimate",
     "extreme": "Extreme",
     "endless": "Endless",
-    "JIXG's": "JIXG's"
+    "JIXG": "JIXG"
   },
   "tabs": {
     "idle2": "idle²",

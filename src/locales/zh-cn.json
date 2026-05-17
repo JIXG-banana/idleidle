@@ -1,38 +1,68 @@
 {
   "ui": {
-    "games": "Games: {{count}}",
-    "money": "money: {{count}}"
+    "games": "游戏: {{count}}",
+    "money": "资金: {{count}}G",
+    "company_upgraded": "公司已升级为 {{grade}}！",
+    "help": "帮助",
+    "help_title": "玩法说明",
+    "close": "关闭"
+  },
+  "help": {
+    "basics_title": "基本规则",
+    "basics_text": "点击按钮雇佣开发者或成立公司。根据你制作的“游戏”数量，你的资金会定期增加。",
+    "offline_title": "离线收益",
+    "offline_text": "即使关闭游戏，也会根据最后保存的产量积累游戏和资金。离线收益在离开1分钟后开始生效，最多可累计3小时，速度为正常的一半。"
+  },
+  "messages": {
+    "intro": "使用初始资金雇佣开发者，生产放置游戏。放置游戏会为你带来收入。"
   },
   "actions": {
-    "buy_indie": "顾用个人开发者 ({{price}} money) / 所有: {{count}}",
-    "buy_company": "合并一个{{grade}}公司 ({{price}} money) / 所有: {{count}}",
+    "buy_indie": "雇佣独立开发者 ({{price}}G) / 持有: {{count}}人",
+    "buy_company": "收购{{grade}}企业 ({{price}}G) / 持有: {{count}}社",
+    "upgrade_company": "升级公司 ({{price}}G)",
     "unlock_ai": "出售所有独立开发者以解锁 AI 开发者",
     "buy_ai": "雇佣 AI 开发者 (价格: {{price}}, 数量: {{count}})",
-    "save": "保存",
-    "clear_save": "清零保存"
+    "save": "存档",
+    "import": "导入",
+    "export": "导出存档",
+    "clear_save": "删除存档"
   },
   "company_grades": {
-    "small": "小",
+    "small": "微型",
     "normal": "普通",
-    "big": "大",
+    "big": "大型",
     "huge": "巨大",
-    "legal": "合法的",
-    "JIXG's": "JIXG的"
+    "legal": "合法",
+    "illegal": "非法",
+    "ultimet": "终极",
+    "extreme": "极端",
+    "endless": "无尽",
+    "JIXG": "JIXG"
   },
   "tabs": {
     "idle2": "idle²",
     "achievements": "成就",
-    "setting": "設定"
+    "setting": "设置"
   },
   "achievements": {
     "first-game": "第一个游戏",
-    "100-game": "100!!",
-    "1000-game": "1000个游戏太厉害了!",
-    "100-money": "有钱",
-    "1000-money": "特别有钱",
-    "many-money": "马斯克",
-    "1-indie-dev": "团体结成",
-    "1-company": "企业",
-    "100000-money": "财富"
+    "100-game": "100个游戏！",
+    "1000-game": "制作了1000个游戏...",
+    "100-money": "有钱人",
+    "1000-money": "超级大富翁",
+    "100000-money": "闪闪发光！",
+    "many-money": "埃隆·马斯克",
+    "1-indie-dev": "团队成立",
+    "1-company": "公司",
+    "10-company": "上班时间到了",
+    "100-company": "黑心企业",
+    "1000-company": "无视劳动基准法",
+    "first-upgrade": "时机已到",
+    "last-upgrade": "真的吗！？",
+    "10-indie-dev": "开发团队",
+    "50-indie-dev": "巨大的办公室",
+    "ai-unlocked": "奇点降临",
+    "1-ai-dev": "数字智能",
+    "10-ai-dev": "AI 网络"
   }
 }
