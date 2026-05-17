@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, memo, useCallback, forwardRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  memo,
+  useCallback,
+  forwardRef,
+} from "react";
 import Decimal from "break_infinity.js";
 import CryptoJS from "crypto-js";
 // eslint-disable-next-line no-unused-vars
@@ -10,9 +17,55 @@ import AccessCounter from "./AccessCounter";
 const SECRET_KEY = "AgsqyqyY(bu7*7^2…7[bu&x#a@es729100qiYe29Bw3";
 
 // 巨大数字フォーマット
-const formatNumber = (val) => {
+const formatNumber = (
+  val,
+  useScientific = false,
+  lang = "en",
+  decimals = 0,
+) => {
   const dec = new Decimal(val);
-  if (dec.lt(1000)) return dec.floor().toNumber().toString();
+  const isJpOrZh = lang === "ja" || lang === "zh-CN";
+  const threshold = isJpOrZh ? 10000 : 1000;
+
+  if (dec.abs().lt(threshold)) {
+    const num = dec.toNumber();
+    return decimals === 0 ? Math.floor(num).toString() : num.toFixed(decimals);
+  }
+  if (useScientific) return dec.toExponential(2).replace("+", "");
+
+  if (isJpOrZh) {
+    const units =
+      lang === "ja"
+        ? ["", "万", "億", "兆", "京", "垓", "𥝱"]
+        : ["", "万", "亿", "兆", "京", "垓", "𥝱"];
+    const exp = dec.exponent;
+    const unitIdx = Math.floor(exp / 4);
+    if (unitIdx < units.length) {
+      const displayVal = dec.div(Decimal.pow(10000, unitIdx)).toNumber();
+      return displayVal.toFixed(2) + units[unitIdx];
+    }
+  } else {
+    const units = [
+      "",
+      "K",
+      "M",
+      "B",
+      "T",
+      "Qa",
+      "Qi",
+      "Sx",
+      "Sp",
+      "Oc",
+      "No",
+      "Dc",
+    ];
+    const exp = dec.exponent;
+    const unitIdx = Math.floor(exp / 3);
+    if (unitIdx < units.length) {
+      const displayVal = dec.div(Decimal.pow(1000, unitIdx)).toNumber();
+      return displayVal.toFixed(2) + units[unitIdx];
+    }
+  }
   return dec.toExponential(2).replace("+", "");
 };
 
@@ -25,15 +78,24 @@ const getFactorial = (n) => {
 */
 
 // ★ 最適化1: React.memo で包み、プロパティが変わらない限り再描画しないようにする
-const TabButton = memo(forwardRef(({ active, onClick, children }, ref) => {
-  const baseClass = "text-white font-bold py-2 px-4 rounded transition-colors";
-  const activeClass = active ? "bg-green-800" : "bg-gray-500 hover:bg-blue-600";
-  return (
-    <button ref={ref} onClick={onClick} className={`${baseClass} ${activeClass}`}>
-      {children}
-    </button>
-  );
-}));
+const TabButton = memo(
+  forwardRef(({ active, onClick, children }, ref) => {
+    const baseClass =
+      "text-white font-bold py-2 px-4 rounded transition-colors";
+    const activeClass = active
+      ? "bg-green-800"
+      : "bg-gray-500 hover:bg-blue-600";
+    return (
+      <button
+        ref={ref}
+        onClick={onClick}
+        className={`${baseClass} ${activeClass}`}
+      >
+        {children}
+      </button>
+    );
+  }),
+);
 
 const ActionButton = memo(
   ({
@@ -41,9 +103,10 @@ const ActionButton = memo(
     disabled,
     children,
     colorClass = "bg-blue-500 hover:bg-blue-600",
+    shadowClass = "shadow-[0_4px_0_0_theme(colors.blue.700)]",
   }) => {
     const activeStyle = !disabled
-      ? "active:translate-y-[2px] active:shadow-none shadow-[0_4px_0_0_rgba(0,0,200,0.8)]"
+      ? `active:translate-y-[2px] active:shadow-none ${shadowClass}`
       : "opacity-50 cursor-not-allowed translate-y-[2px]";
 
     return (
@@ -132,12 +195,12 @@ const AchievementToast = ({ achievement, onComplete, targetPos }) => {
         scale: 1,
         opacity: 1,
       }}
-      exit={{ 
-        x: targetPos.x, 
-        y: targetPos.y, 
-        scale: 0, 
-        opacity: 0, 
-        transition: { duration: 0.7, ease: "backIn" } 
+      exit={{
+        x: targetPos.x,
+        y: targetPos.y,
+        scale: 0,
+        opacity: 0,
+        transition: { duration: 0.7, ease: "backIn" },
       }}
       transition={{
         duration: 1.2,
@@ -210,6 +273,16 @@ const achievementsList = [
     condition: (state) => state.money.gte(1000000000),
   },
   { key: "1-indie-dev", icon: "🤝", condition: (state) => state.indieDev >= 1 },
+  {
+    key: "10-indie-dev",
+    icon: "👥",
+    condition: (state) => state.indieDev >= 10,
+  },
+  {
+    key: "50-indie-dev",
+    icon: "🏢",
+    condition: (state) => state.indieDev >= 50,
+  },
   { key: "1-company", icon: "💼", condition: (state) => state.company >= 1 },
   { key: "10-company", icon: "", condition: (state) => state.company >= 10 },
   { key: "100-company", icon: "", condition: (state) => state.company >= 100 },
@@ -227,6 +300,17 @@ const achievementsList = [
     key: "last-upgrade",
     icon: "",
     condition: (state) => state.currentCompanyGrade >= 9,
+  },
+  { key: "ai-unlocked", icon: "⚡", condition: (state) => state.aiEnabled },
+  {
+    key: "1-ai-dev",
+    icon: "🤖",
+    condition: (state) => (state.aiDev || 0) >= 1,
+  },
+  {
+    key: "10-ai-dev",
+    icon: "🌐",
+    condition: (state) => (state.aiDev || 0) >= 10,
   },
 ];
 
@@ -272,10 +356,13 @@ export default function App() {
       dp: 0,
       players: 0,
       indieDev: 0,
+      aiDev: 0,
+      aiEnabled: false,
       company: 0,
       currentCompanyGrade: 1,
       unlockedAchievements: [],
       languageSelected: false,
+      useScientific: false,
       lastTimestamp: Date.now(),
       language: "en",
     };
@@ -297,6 +384,7 @@ export default function App() {
           ...parsed,
           lastTimestamp: parsed.lastTimestamp ?? Date.now(),
           languageSelected: parsed.languageSelected ?? false,
+          useScientific: parsed.useScientific ?? false,
           money: new Decimal(parsed.money ?? parsed.gold ?? 20),
           games: new Decimal(parsed.games ?? 0),
         };
@@ -314,6 +402,13 @@ export default function App() {
   useEffect(() => {
     document.documentElement.lang = gameState.language;
   }, [gameState.language]);
+
+  // フォーマット用ショートカット
+  const format = useCallback(
+    (val, decimals = 0) =>
+      formatNumber(val, gameState.useScientific, gameState.language, decimals),
+    [gameState.useScientific, gameState.language],
+  );
 
   // 価格の計算
   const indieDevPrice = new Decimal(1.15)
@@ -343,6 +438,11 @@ export default function App() {
   const upgradeCompanyPrice = gameState.money
     .div(1.5)
     .times(new Decimal(gameState.currentCompanyGrade).pow(5))
+    .floor();
+
+  const aiDevPrice = new Decimal(1.5)
+    .pow(gameState.aiDev || 0)
+    .times(1000000)
     .floor();
 
   // ★ 最適化3: useCallbackを使って関数の再生成を防ぐ（子コンポーネントの再描画を抑えるため）
@@ -403,6 +503,31 @@ export default function App() {
     });
   }, []);
 
+  const unlockAI = useCallback(() => {
+    setGameState((prev) => ({
+      ...prev,
+      indieDev: 0,
+      aiEnabled: true,
+    }));
+  }, []);
+
+  const buyAiDev = useCallback(() => {
+    setGameState((prev) => {
+      const currentPrice = new Decimal(1.5)
+        .pow(prev.aiDev || 0)
+        .times(1000000)
+        .floor();
+      if (prev.money.gte(currentPrice)) {
+        return {
+          ...prev,
+          money: prev.money.minus(currentPrice),
+          aiDev: (prev.aiDev || 0) + 1,
+        };
+      }
+      return prev;
+    });
+  }, []);
+
   // オフライン収入の計算
   useEffect(() => {
     if (gameState.lastTimestamp) {
@@ -415,10 +540,11 @@ export default function App() {
       // 1分(60秒)以上離れていた場合に適用
       if (cappedSeconds >= 60) {
         const devProd = new Decimal(gameState.indieDev).div(6);
+        const aiProd = new Decimal(gameState.aiDev || 0).times(10000);
         const compProd = new Decimal(gameState.currentCompanyGrade)
           .pow(2.25)
           .times(gameState.company);
-        const gps = devProd.plus(compProd);
+        const gps = devProd.plus(aiProd).plus(compProd);
 
         // ゲームの増加量: 制限された秒数 * 秒間生産量
         const gamesGained = gps.times(cappedSeconds);
@@ -439,7 +565,7 @@ export default function App() {
               id: uniqueId,
               icon: "💤",
               type: "info",
-              title: `Welcome back! +${formatNumber(gamesGained)} games / +${formatNumber(moneyGained)} money (${cappedSeconds}s)`,
+              title: `Welcome back! +${format(gamesGained)} games / +${format(moneyGained)} money (${cappedSeconds}s)`,
             },
           ]);
         }
@@ -466,10 +592,11 @@ export default function App() {
 
           setGameState((prev) => {
             const devProd = new Decimal(prev.indieDev).div(6);
+            const aiProd = new Decimal(prev.aiDev || 0).times(10000);
             const compProd = new Decimal(prev.currentCompanyGrade)
               .pow(2.25)
               .times(prev.company);
-            const gamesPerSec = devProd.plus(compProd);
+            const gamesPerSec = devProd.plus(aiProd).plus(compProd);
 
             const newGames = prev.games.plus(gamesPerSec.times(deltaTime));
             const newMoney = prev.money.plus(
@@ -543,20 +670,34 @@ export default function App() {
   }, []);
 
   // タブ切り替え用のハンドラも useCallback で安定化
-  const handleTabIdle2 = useCallback(() => setActiveTab("idle2"), []);
-  const handleTabAchievements = useCallback(
-    () => setActiveTab("achievements"),
-    [],
-  );
-  const handleTabSetting = useCallback(() => setActiveTab("setting"), []);
+  const handleTabIdle2 = useCallback(() => {
+    setActiveTab("idle2");
+    setTimeout(updateTargetPos, 50); // タブ切り替え後のレイアウト確定を待って更新
+  }, [updateTargetPos]);
+
+  const handleTabAchievements = useCallback(() => {
+    setActiveTab("achievements");
+    setTimeout(updateTargetPos, 50);
+  }, [updateTargetPos]);
+
+  const handleTabSetting = useCallback(() => {
+    setActiveTab("setting");
+    setTimeout(updateTargetPos, 50);
+  }, [updateTargetPos]);
 
   const gps = React.useMemo(() => {
     const devProd = new Decimal(gameState.indieDev).div(6);
+    const aiProd = new Decimal(gameState.aiDev || 0).times(10000);
     const compProd = new Decimal(gameState.currentCompanyGrade)
       .pow(2.25)
       .times(gameState.company);
-    return devProd.plus(compProd);
-  }, [gameState.indieDev, gameState.currentCompanyGrade, gameState.company]);
+    return devProd.plus(aiProd).plus(compProd);
+  }, [
+    gameState.indieDev,
+    gameState.aiDev,
+    gameState.currentCompanyGrade,
+    gameState.company,
+  ]);
 
   const mps = React.useMemo(() => {
     return gameState.games.floor();
@@ -619,9 +760,9 @@ export default function App() {
             <div className="flex flex-col gap-2 break-words">
               <div className="flex md:items-center gap-3 md:gap-4 w-full my-2">
                 <h1 className="text-3xl md:text-5xl font-bold">
-                  {t("ui.games", { count: formatNumber(gameState.games) })}
+                  {t("ui.games", { count: format(gameState.games) })}
                 </h1>
-                <span>+{gps.toNumber().toFixed(2)}/s</span>
+                <span>+{format(gps, 2)}/s</span>
                 <div className="w-[25%] md:w-[50%] bg-gray-200 rounded-full h-6 my-2 ml-auto shadow-inner overflow-hidden border border-gray-300 relative">
                   <div
                     className="bg-green-500 h-full transition-all duration-75 ease-linear"
@@ -641,9 +782,9 @@ export default function App() {
               </div>
               <div className="flex w-full items-center">
                 <h1 className="text-2xl md:text-4xl font-bold mb-2">
-                  {t("ui.money", { count: formatNumber(gameState.money) })}
+                  {t("ui.money", { count: format(gameState.money) })}
                 </h1>
-                <span className="">+{formatNumber(mps)}/s</span>
+                <span className="">+{format(mps, 2)}/s</span>
               </div>
 
               <ActionButton
@@ -651,7 +792,7 @@ export default function App() {
                 disabled={gameState.money.lt(indieDevPrice)}
               >
                 {t("actions.buy_indie", {
-                  price: formatNumber(indieDevPrice),
+                  price: format(indieDevPrice),
                   count: gameState.indieDev,
                 })}
               </ActionButton>
@@ -661,24 +802,45 @@ export default function App() {
                 disabled={gameState.money.lt(companyPrice)}
               >
                 {t("actions.buy_company", {
-                  price: formatNumber(companyPrice),
+                  price: format(companyPrice),
                   count: gameState.company,
                   grade: companyGrades[gameState.currentCompanyGrade],
                 })}
               </ActionButton>
 
-              <ActionButton
-                onClick={upgradeCompany}
-                disabled={
-                  gameState.money.lt(upgradeCompanyPrice) ||
-                  gameState.company <= 0 ||
-                  gameState.currentCompanyGrade >= 9
-                }
-              >
-                {t("actions.upgrade_company", {
-                  price: formatNumber(upgradeCompanyPrice),
-                })}
-              </ActionButton>
+              {gameState.currentCompanyGrade < 9 ? (
+                <ActionButton
+                  onClick={upgradeCompany}
+                  disabled={
+                    gameState.money.lt(upgradeCompanyPrice) ||
+                    gameState.company <= 0
+                  }
+                >
+                  {t("actions.upgrade_company", {
+                    price: format(upgradeCompanyPrice),
+                  })}
+                </ActionButton>
+              ) : !gameState.aiEnabled ? (
+                <ActionButton
+                  onClick={unlockAI}
+                  colorClass="bg-purple-600 hover:bg-purple-700"
+                  shadowClass="shadow-[0_4px_0_0_theme(colors.purple.800)]"
+                >
+                  {t("actions.unlock_ai")}
+                </ActionButton>
+              ) : (
+                <ActionButton
+                  onClick={buyAiDev}
+                  disabled={gameState.money.lt(aiDevPrice)}
+                  colorClass="bg-indigo-600 hover:bg-indigo-700"
+                  shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
+                >
+                  {t("actions.buy_ai", {
+                    price: format(aiDevPrice),
+                    count: gameState.aiDev || 0,
+                  })}
+                </ActionButton>
+              )}
 
               <span>{t("messages.intro")}</span>
 
@@ -724,6 +886,22 @@ export default function App() {
                   <option value="zh-CN">简体中文</option>
                 </select>
               </div>
+              <div className="flex items-center gap-3 p-3 rounded">
+                <label className="font-bold flex items-center cursor-pointer gap-2">
+                  <input
+                    type="checkbox"
+                    checked={gameState.useScientific}
+                    onChange={(e) =>
+                      setGameState((prev) => ({
+                        ...prev,
+                        useScientific: e.target.checked,
+                      }))
+                    }
+                    className="w-5 h-5"
+                  />
+                  <span>Use Scientific Notation / 指数表記を使用</span>
+                </label>
+              </div>
               <a href="https://www.buymeacoffee.com/jiaxianglif">
                 <img
                   src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=jiaxianglif&button_colour=5F7FFF&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00"
@@ -744,7 +922,8 @@ export default function App() {
                   localStorage.setItem("save", encryptedText);
                   alert("セーブしました！");
                 }}
-                colorClass="bg-green-700"
+                colorClass="bg-green-700 hover:bg-green-800"
+                shadowClass="shadow-[0_4px_0_0_theme(colors.green.900)]"
               >
                 {t("actions.save")}
               </ActionButton>
@@ -766,7 +945,8 @@ export default function App() {
                     )
                     .catch(() => alert("コピーに失敗しました。"));
                 }}
-                colorClass="bg-blue-600"
+                colorClass="bg-blue-600 hover:bg-blue-700"
+                shadowClass="shadow-[0_4px_0_0_theme(colors.blue.800)]"
               >
                 {t("actions.export")}
               </ActionButton>
@@ -791,7 +971,8 @@ export default function App() {
                     }
                   }
                 }}
-                colorClass="bg-yellow-600"
+                colorClass="bg-yellow-600 hover:bg-yellow-700"
+                shadowClass="shadow-[0_4px_0_0_theme(colors.yellow.800)]"
               >
                 {t("actions.import")}
               </ActionButton>
@@ -801,7 +982,8 @@ export default function App() {
                   localStorage.clear();
                   window.location.reload();
                 }}
-                colorClass="bg-red-800"
+                colorClass="bg-red-800 hover:bg-red-900"
+                shadowClass="shadow-[0_4px_0_0_theme(colors.red.950)]"
               >
                 {t("actions.clear_save")}
               </ActionButton>
