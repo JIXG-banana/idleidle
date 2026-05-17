@@ -545,7 +545,7 @@ export default function App() {
           ...q,
           {
             id: `upgrade-${Date.now()}`,
-            icon: "🏢✨",
+            icon: "",
             type: "info",
             title: t("ui.company_upgraded", {
               grade: companyGrades[nextGrade],
