@@ -129,12 +129,12 @@ const ActionButton = memo(
   },
 );
 
-const AchievementCard = memo(({ number, title, icon, isLocked }) => {
+const AchievementCard = memo(({ number, title, icon, isLocked, description }) => {
   const baseStyles =
-    "w-32 h-32 relative rounded-xl border-2 flex flex-col justify-center items-center font-bold shadow-sm transition-all duration-200";
+    "group w-32 h-32 relative rounded-xl border-2 flex flex-col justify-center items-center font-bold shadow-sm transition-all duration-200 cursor-help";
   const stateStyles = isLocked
     ? "bg-gray-100 border-gray-300 text-gray-400 grayscale"
-    : "bg-white border-gray-200 text-gray-800 hover:-translate-y-1 hover:border-yellow-400 hover:shadow-md cursor-pointer";
+    : "bg-white border-gray-200 text-gray-800 hover:border-yellow-400 hover:shadow-md";
 
   return (
     <div className={`${baseStyles} ${stateStyles}`}>
@@ -145,6 +145,14 @@ const AchievementCard = memo(({ number, title, icon, isLocked }) => {
       <span className="text-[11px] px-2 text-center leading-tight">
         {isLocked ? "???" : title}
       </span>
+      
+      {/* Hover Overlay for Description */}
+      <div className="absolute inset-0 bg-white/95 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center shadow-inner border border-blue-200 z-10">
+        <span className="text-[10px] text-blue-600 mb-1 font-black uppercase tracking-tighter">Requirement</span>
+        <span className="text-[11px] text-gray-800 leading-tight">
+          {description}
+        </span>
+      </div>
     </div>
   );
 });
@@ -964,7 +972,7 @@ export default function App() {
       )}
 
       <div className="flex flex-col md:flex-row">
-        <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-hidden">
+        <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-y-auto">
           {activeTab === "idle2" && (
             <div className="flex flex-col gap-2 break-words relative">
               <button
@@ -1071,6 +1079,7 @@ export default function App() {
                   number={index}
                   icon={item.icon}
                   title={t(`achievements.${item.key}`)}
+                  description={t(`achievements.${item.key}_desc`)}
                   isLocked={!gameState.unlockedAchievements.includes(item.key)}
                 />
               ))}
