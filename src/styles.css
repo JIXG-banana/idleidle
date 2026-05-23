@@ -21,3 +21,23 @@
 :lang(ja) {
   font-family: 'ZenMaruGothic', sans-serif; /* 日本語用のフォントを指定 */
 }
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+}
+
+.floating-money {
+  animation: float-up 2s ease-out forwards;
+  pointer-events: none;
+  position: absolute;
+  font-weight: bold;
+  color: #fbbf24; /* yellow-400 */
+  z-index: 50;
+}

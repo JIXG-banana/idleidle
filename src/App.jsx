@@ -436,10 +436,17 @@ const achievementsList = [
     icon: "🌌",
     condition: (state) => state.money.gte(1000000000000000),
   },
+  {
+    key: "billing-received",
+    icon: "💸",
+    condition: (state) => (state.billingCount || 0) >= 1,
+  },
 ];
 
 export default function App() {
   const achievementTabRef = useRef(null);
+  const moneyRef = useRef(null);
+  const containerRef = useRef(null);
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
 
   // 実績タブの座標を計算する関数
@@ -467,6 +474,7 @@ export default function App() {
   }, [updateTargetPos]);
 
   const [toastQueue, setToastQueue] = useState([]);
+  const [moneyEffects, setMoneyEffects] = useState([]);
   const removeToast = useCallback((id) => {
     setToastQueue((prev) => prev.filter((item) => item.id !== id));
   }, []);
@@ -493,6 +501,7 @@ export default function App() {
       lastTimestamp: Date.now(),
       language: "en",
       usedLanguages: ["en"],
+      billingCount: 0,
     };
 
     try {
@@ -521,6 +530,7 @@ export default function App() {
           useScientific: parsed.useScientific ?? false,
           money: new Decimal(parsed.money ?? parsed.gold ?? 20),
           games: new Decimal(parsed.games ?? 0),
+          billingCount: parsed.billingCount ?? 0,
           usedLanguages,
         };
       }
@@ -544,6 +554,31 @@ export default function App() {
       formatNumber(val, gameState.useScientific, gameState.language, decimals),
     [gameState.useScientific, gameState.language],
   );
+
+  const triggerMoneyEffect = useCallback(
+    (amount) => {
+      if (!moneyRef.current || !containerRef.current) return;
+      const rect = moneyRef.current.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const id = Date.now() + Math.random();
+      const newEffect = {
+        id,
+        amount: `+${format(amount)}G`,
+        x: rect.left - containerRect.left + rect.width / 2 + (Math.random() - 0.5) * 40,
+        y: rect.top - containerRect.top,
+      };
+      setMoneyEffects((prev) => [...prev, newEffect]);
+      setTimeout(() => {
+        setMoneyEffects((prev) => prev.filter((e) => e.id !== id));
+      }, 2000);
+    },
+    [format],
+  );
+
+  const triggerRef = useRef(null);
+  useEffect(() => {
+    triggerRef.current = triggerMoneyEffect;
+  }, [triggerMoneyEffect]);
 
   // 価格の計算
   const indieDevPrice = new Decimal(1.15)
@@ -855,10 +890,56 @@ export default function App() {
               prev.games.floor().times(deltaTime),
             );
 
+            // Billing logic: Base 0.00008 per tick per game (approx 1 event per 10 mins per game)
+            // Gradually increases base probability with company grade
+            let billingEvents = 0;
+            const gamesNum = prev.games.floor().toNumber();
+            const baseProb = 0.00008;
+            const billingProbability = baseProb * (1 + (prev.currentCompanyGrade - 1) * 0.5);
+            if (gamesNum > 0) {
+              const expectedEvents = gamesNum * billingProbability;
+              // Performance optimization: use approximation if games count is high or expected events are many
+              if (gamesNum > 1000 || expectedEvents > 10) {
+                const stdDev = Math.sqrt(expectedEvents);
+                billingEvents = Math.max(0, Math.floor(
+                  expectedEvents + (Math.random() + Math.random() + Math.random() - 1.5) * stdDev,
+                ));
+              } else {
+                for (let i = 0; i < gamesNum; i++) {
+                  if (Math.random() < billingProbability) billingEvents++;
+                }
+              }
+            }
+
+            let billingMoneyGained = new Decimal(0);
+            if (billingEvents > 0) {
+              // Scale by progress: games, company size, and quantity
+              const companyScale = new Decimal(5).pow(prev.currentCompanyGrade - 1);
+              const quantityScale = new Decimal(prev.indieDev)
+                .plus(new Decimal(prev.company).times(10))
+                .plus(new Decimal(prev.aiDev || 0).times(100))
+                .plus(1);
+              const gamesScale = prev.games.div(1000).plus(1);
+
+              billingMoneyGained = new Decimal(billingEvents)
+                .times(Math.random() * 9 + 1)
+                .times(companyScale)
+                .times(quantityScale)
+                .times(gamesScale)
+                .floor();
+              
+              if (triggerRef.current) {
+                // Trigger visual effect (wrapped in setTimeout to avoid React warnings if needed)
+                const amountToDisplay = billingMoneyGained;
+                setTimeout(() => triggerRef.current(amountToDisplay), 0);
+              }
+            }
+
             return {
               ...prev,
               games: newGames,
-              money: newMoney,
+              money: newMoney.plus(billingMoneyGained),
+              billingCount: (prev.billingCount || 0) + billingEvents,
             };
           });
 
@@ -1066,7 +1147,10 @@ export default function App() {
       <div className="flex flex-col md:flex-row">
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-y-auto">
           {activeTab === "idle2" && (
-            <div className="flex flex-col gap-2 break-words relative">
+            <div
+              ref={containerRef}
+              className="flex flex-col gap-2 break-words relative"
+            >
               <button
                 onClick={() => setShowHelp(true)}
                 className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full text-gray-600 font-bold transition-all shadow-sm z-10 hover:scale-110 active:scale-95"
@@ -1105,13 +1189,30 @@ export default function App() {
                 </div>
               </div>
               <div className="flex w-full items-center gap-2 flex-nowrap">
-                <h1 className="text-xl sm:text-2xl md:text-4xl font-bold mb-2 whitespace-nowrap shrink-0">
+                <h1
+                  ref={moneyRef}
+                  className="text-xl sm:text-2xl md:text-4xl font-bold mb-2 whitespace-nowrap shrink-0 relative"
+                >
                   {t("ui.money", { count: format(gameState.money) })}
                 </h1>
                 <span className="text-xs sm:text-base whitespace-nowrap shrink-0">
                   +{format(mps, 2)}/s
                 </span>
               </div>
+
+              {/* Money Effects Overlay */}
+              {moneyEffects.map((effect) => (
+                <div
+                  key={effect.id}
+                  className="floating-money"
+                  style={{
+                    left: effect.x,
+                    top: effect.y,
+                  }}
+                >
+                  {effect.amount}
+                </div>
+              ))}
 
               <ActionButton
                 onClick={buyIndieDev}
@@ -1383,6 +1484,12 @@ export default function App() {
                       {t("help.offline_title")}
                     </h3>
                     <p>{t("help.offline_text")}</p>
+                  </section>
+                  <section>
+                    <h3 className="font-bold text-blue-600 mb-1">
+                      {t("help.billing_title")}
+                    </h3>
+                    <p>{t("help.billing_text")}</p>
                   </section>
                 </div>
                 <button

@@ -12,7 +12,9 @@
     "basics_title": "Basic Rules",
     "basics_text": "Press buttons to hire developers or establish companies. Your money increases periodically based on the number of 'games' you have created.",
     "offline_title": "Offline Income",
-    "offline_text": "Games and money will accumulate based on your last saved production even while the game is closed. Offline income starts after 1 minute of being away and lasts for up to 3 hours at half the normal speed."
+    "offline_text": "Games and money will accumulate based on your last saved production even while the game is closed. Offline income starts after 1 minute of being away and lasts for up to 3 hours at half the normal speed.",
+    "billing_title": "Donations & Purchases",
+    "billing_text": "As your produced games are played, players may occasionally make donations or in-game purchases. When this happens, you receive extra money directly, accompanied by a special visual effect."
   },
   "messages": {
     "intro": "Use your starting funds to hire developers and create idle games. These games will generate a steady stream of income for you!"
@@ -130,6 +132,8 @@
     "1000000000000-money": "Galactic Tycoon",
     "1000000000000-money_desc": "Have 1,000,000,000,000G",
     "1000000000000000-money": "Cosmic Privilege",
-    "1000000000000000-money_desc": "Have 1,000,000,000,000,000G"
+    "1000000000000000-money_desc": "Have 1,000,000,000,000,000G",
+    "billing-received": "First Billing!",
+    "billing-received_desc": "Receive a donation or in-game purchase from a player."
   }
 }
