@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Decimal from "break_infinity.js";
 import CryptoJS from "crypto-js";
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
