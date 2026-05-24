@@ -14,7 +14,9 @@
     "offline_title": "Mapato ya Nje ya Mtandao",
     "offline_text": "Michezo na pesa zitaongezeka kulingana na uzalishaji wako wa mwisho uliohifadhiwa hata wakati mchezo umefungwa. Mapato ya nje ya mtandao huanza baada ya dakika 1 ya kuwa mbali na hudumu hadi saa 3 kwa nusu ya kasi ya kawaida.",
     "billing_title": "Michango na Ununuzi",
-    "billing_text": "Kadiri michezo yako inavyochezwa, wachezaji wanaweza kutoa michango au kufanya ununuzi wa ndani ya mchezo. Hilo likitokea, utapokea pesa zaidi moja kwa moja, kukiwa na madoido maalum."
+    "billing_text": "Kadiri michezo yako inavyochezwa, wachezaji wanaweza kutoa michango au kufanya ununuzi wa ndani ya mchezo. Hilo likitokea, utapokea pesa zaidi moja kwa moja, kukiwa na madoido maalum.",
+    "automation_title": "Uotomatishaji",
+    "automation_text": "Katika kichupo cha Msaidizi wa AI, unaweza kutumia 'michezo' ili kuotomatisha ununuzi wa vifaa. Kila kifaa kina kiwango cha uotomatishaji kinachoamua kasi yake. Uotomatishaji unaendelea kufanya kazi wakati wa nje ya mtandao kwa nusu ya kasi."
   },
   "messages": {
     "intro": "Tumia fedha zako za kuanzia kuajiri watengenezaji na kutengeneza michezo ya idle. Michezo hii itakutengenezea mapato ya mara kwa mara!",
@@ -58,6 +60,13 @@
     "setting": "Mipangilio",
     "ai_assistant": "Msaidizi wa AI"
   },
+  "automation": {
+    "indieDev": "Auto Indie Dev",
+    "company": "Auto Kampuni",
+    "aiDev": "Auto AI Dev",
+    "speed": "Kasi ya Auto",
+    "upgrade": "Boresha Kasi ({{price}} Michezo)"
+  },
   "achievements": {
     "first-game": "Mchezo wa Kwanza",
     "first-game_desc": "Tengeneza mchezo 1",
@@ -99,7 +108,7 @@
     "1-ai-dev_desc": "Ajiri mtengenezaji wa AI 1",
     "10-ai-dev": "Mtandao wa AI wa Global",
     "10-ai-dev_desc": "Ajiri watengenezaji wa AI 10",
-    "50-ai-dev": "Mji wa Neural",
+    "50-ai-dev": "Akili ya Nyural",
     "50-ai-dev_desc": "Ajiri watengenezaji wa AI 50",
     "100-ai-dev": "Mashine ya Kufikiri",
     "100-ai-dev_desc": "Ajiri watengenezaji wa AI 100",

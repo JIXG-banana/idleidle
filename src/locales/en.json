@@ -14,7 +14,9 @@
     "offline_title": "Offline Income",
     "offline_text": "Games and money will accumulate based on your last saved production even while the game is closed. Offline income starts after 1 minute of being away and lasts for up to 3 hours at half the normal speed.",
     "billing_title": "Donations & Purchases",
-    "billing_text": "As your produced games are played, players may occasionally make donations or in-game purchases. When this happens, you receive extra money directly, accompanied by a special visual effect."
+    "billing_text": "As your produced games are played, players may occasionally make donations or in-game purchases. When this happens, you receive extra money directly, accompanied by a special visual effect.",
+    "automation_title": "Automation",
+    "automation_text": "In the AI Assistant tab, you can spend 'games' to automate the purchase of facilities. Each facility has an automation level that determines its speed. Automation continues to work during offline periods at a half rate."
   },
   "messages": {
     "intro": "Use your starting funds to hire developers and create idle games. These games will generate a steady stream of income for you!",
@@ -57,6 +59,13 @@
     "achievements": "Achievements",
     "setting": "Settings",
     "ai_assistant": "AI Assistant"
+  },
+  "automation": {
+    "indieDev": "Auto Indie Dev",
+    "company": "Auto Company",
+    "aiDev": "Auto AI Dev",
+    "speed": "Auto Speed",
+    "upgrade": "Upgrade Speed ({{price}} Games)"
   },
   "achievements": {
     "first-game": "First Game",

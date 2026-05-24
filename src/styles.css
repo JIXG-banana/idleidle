@@ -41,3 +41,13 @@
   color: #fbbf24; /* yellow-400 */
   z-index: 50;
 }
+
+@keyframes flash {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.8); }
+  100% { filter: brightness(1); }
+}
+
+.animate-flash {
+  animation: flash 0.3s ease-out;
+}
