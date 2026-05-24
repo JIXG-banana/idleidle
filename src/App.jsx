@@ -163,13 +163,20 @@ const AchievementCard = memo(
   },
 );
 
-const InfoToast = ({ toast, onComplete }) => {
+const InfoToast = memo(({ toast, onComplete }) => {
+  const onCompleteRef = useRef(onComplete);
+
   useEffect(() => {
-    const timer = setTimeout(onComplete, 3000); // 3秒で消去
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onCompleteRef.current();
+    }, 3000);
     return () => {
       clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -183,13 +190,20 @@ const InfoToast = ({ toast, onComplete }) => {
       <span className="font-bold text-sm tracking-tight">{toast.title}</span>
     </motion.div>
   );
-};
+});
 
-const AchievementToast = ({ achievement, onComplete, targetPos }) => {
+const AchievementToast = memo(({ achievement, onComplete, targetPos }) => {
+  const onCompleteRef = useRef(onComplete);
+
   useEffect(() => {
-    const timer = setTimeout(onComplete, 2500);
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onCompleteRef.current();
+    }, 2500);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -225,7 +239,7 @@ const AchievementToast = ({ achievement, onComplete, targetPos }) => {
       </div>
     </motion.div>
   );
-};
+});
 
 const StaticAdsAndForm = memo(() => (
   <>
@@ -469,6 +483,15 @@ export default function App() {
     company: false,
     aiDev: false,
   });
+  const [showResetPrompt, setShowResetPrompt] = useState(false);
+
+  useEffect(() => {
+    const hasSave = localStorage.getItem("save");
+    if (hasSave && !gameState.resetPromptShown) {
+      setShowResetPrompt(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   const flashTimers = useRef({});
 
@@ -509,6 +532,7 @@ export default function App() {
       language: "en",
       usedLanguages: ["en"],
       billingCount: 0,
+      resetPromptShown: false,
       automation: {
         indieDev: { level: 0, enabled: false, progress: 0 },
         company: { level: 0, enabled: false, progress: 0 },
@@ -547,7 +571,8 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
-    return defaultState;
+    // 新規プレイヤーの場合は、すでに最新バランスのためリセット推奨を表示しない
+    return { ...defaultState, resetPromptShown: true };
   });
 
   useEffect(() => {
@@ -606,7 +631,7 @@ export default function App() {
   }, []);
 
   const getUpgradeCompanyPrice = useCallback((grade) => {
-    return new Decimal(1000).times(new Decimal(5).pow(grade - 1)).floor();
+    return new Decimal(1000000).times(new Decimal(50).pow(grade - 1)).floor();
   }, []);
 
   const getAiDevPrice = useCallback((count) => {
@@ -870,7 +895,11 @@ export default function App() {
         ["indieDev", "company", "aiDev"].forEach((key) => {
           const auto = gameState.automation[key];
           if (auto.level > 0 && auto.enabled) {
-            const potentialBuys = Math.floor(cappedSeconds * auto.level * 0.05);
+            // 大量購入によるフリーズを防ぐため、1ループあたりの最大購入試行数を制限
+            const potentialBuys = Math.min(
+              Math.floor(cappedSeconds * auto.level * 0.05),
+              500,
+            );
             for (let i = 0; i < potentialBuys; i++) {
               let price;
               if (key === "indieDev") {
@@ -972,8 +1001,10 @@ export default function App() {
             const pendingFlashes = [];
 
             ["indieDev", "company", "aiDev"].forEach((key) => {
-              const auto = newAutomation[key];
-              if (auto.level > 0 && auto.enabled) {
+              if (newAutomation[key].level > 0 && newAutomation[key].enabled) {
+                // ネストされたオブジェクトをコピーして不変性を守る
+                newAutomation[key] = { ...newAutomation[key] };
+                const auto = newAutomation[key];
                 auto.progress += auto.level * 0.1 * deltaTime;
                 if (auto.progress >= 1) {
                   const buyCount = Math.floor(auto.progress);
@@ -1025,14 +1056,18 @@ export default function App() {
             const billingProbability =
               0.00008 * (1 + (prev.currentCompanyGrade - 1) * 0.5);
             if (gamesNum > 0) {
-              const expectedEvents = gamesNum * billingProbability;
-              if (gamesNum > 1000 || expectedEvents > 10) {
+              // gamesNum が非常に大きい場合に備え、Decimalで計算し、
+              // 100回以上の判定が必要な場合は近似値を使用する
+              const expectedEvents = prev.games
+                .times(billingProbability)
+                .toNumber();
+              if (gamesNum > 100 || expectedEvents > 10) {
                 billingEvents = Math.max(
                   0,
                   Math.floor(
                     expectedEvents +
                       (Math.random() + Math.random() + Math.random() - 1.5) *
-                        Math.sqrt(expectedEvents),
+                        Math.sqrt(Math.max(expectedEvents, 0)),
                   ),
                 );
               } else {
@@ -1095,29 +1130,40 @@ export default function App() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [getAiDevPrice, getCompanyPrice, getIndieDevPrice, triggerFlash]);
 
+  // 最新のgameStateをインターバル内で安全に参照するためのRef
+  const gameStateRef = useRef(gameState);
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
   useEffect(() => {
     const checkAchievements = setInterval(() => {
-      setGameState((prev) => {
-        const newlyUnlocked = achievementsList.filter(
-          (ach) =>
-            !prev.unlockedAchievements.includes(ach.key) && ach.condition(prev),
-        );
-        if (newlyUnlocked.length === 0) return prev;
-        const newToasts = newlyUnlocked.map((ach) => ({
-          id: `ach-${Date.now()}-${ach.key}`,
+      const currentState = gameStateRef.current;
+      // 現在のステートに基づいて未達成の実績を抽出
+      const newlyUnlocked = achievementsList.filter(
+        (ach) =>
+          !currentState.unlockedAchievements.includes(ach.key) &&
+          ach.condition(currentState),
+      );
+
+      if (newlyUnlocked.length > 0) {
+        const timestamp = Date.now();
+        const newToasts = newlyUnlocked.map((ach, idx) => ({
+          id: `ach-${timestamp}-${ach.key}-${idx}`,
           icon: ach.icon,
           type: "achievement",
           title: t(`achievements.${ach.key}`),
         }));
-        setToastQueue((q) => [...q, ...newToasts]);
-        return {
+
+        setGameState((prev) => ({
           ...prev,
           unlockedAchievements: [
             ...prev.unlockedAchievements,
             ...newlyUnlocked.map((a) => a.key),
           ],
-        };
-      });
+        }));
+        setToastQueue((q) => [...q, ...newToasts]);
+      }
     }, 1000);
     return () => clearInterval(checkAchievements);
   }, [t]);
@@ -1202,6 +1248,57 @@ export default function App() {
                             : "絵文字"}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetPrompt && (
+        <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 text-center">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-black mb-4 text-gray-800">
+              重要なお知らせ
+            </h2>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              すでに遊んでいる方へ：
+              <br />
+              アップデートによりゲームバランスが大幅に変わりました。
+              データをリセットして最初から遊ぶことをおすすめしますが、
+              このまま続きから始めますか？
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.reload();
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                最初からやる (推奨)
+              </button>
+              <button
+                onClick={() => {
+                  setGameState((prev) => {
+                    const newState = { ...prev, resetPromptShown: true };
+                    // 選択を即座に保存（オートセーブを待たずに反映させる）
+                    localStorage.setItem(
+                      "save",
+                      CryptoJS.AES.encrypt(
+                        JSON.stringify({
+                          ...newState,
+                          lastTimestamp: Date.now(),
+                        }),
+                        SECRET_KEY,
+                      ).toString(),
+                    );
+                    return newState;
+                  });
+                  setShowResetPrompt(false);
+                }}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                続きからやる
+              </button>
             </div>
           </div>
         </div>
