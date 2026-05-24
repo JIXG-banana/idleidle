@@ -12,10 +12,17 @@
     "basics_title": "📜",
     "basics_text": "🔘 ➡️ 👨‍💻 / 🏢. 💰 ⬆️ 📅 ⬅️ 🎮.",
     "offline_title": "💤 💰",
-    "offline_text": "🎮 & 💰 ⬆️ 💤. ⏳ 1m ➡️ 💤, ⏳ 3h max, 50% ⚡."
+    "offline_text": "🎮 & 💰 ⬆️ 💤. ⏳ 1m ➡️ 💤, ⏳ 3h max, 50% ⚡.",
+    "billing_title": "🎁 & 💳",
+    "billing_text": "🎮 ➡️ 👨‍💻 ➡️ 🎁 / 💳. 🎁 ➡️ 💰 🆙 + ✨."
   },
   "messages": {
-    "intro": "💰 ➡️ 👨‍💻 ➡️ 🎮. 🎮 ➡️ 💰 📈!"
+    "intro": "💰 ➡️ 👨‍💻 ➡️ 🎮. 🎮 ➡️ 💰 📈!",
+    "save_success": "💾 ✅!",
+    "export_success": "📤 📋 ✅",
+    "copy_fail": "📋 ❌",
+    "import_prompt": "📥 📋 ➡️ ⌨️",
+    "import_fail": "📥 ❌"
   },
   "actions": {
     "buy_indie": "👨‍💻 ({{price}}G) / 🎒: {{count}}",
@@ -48,7 +55,8 @@
   "tabs": {
     "idle2": "🎮²",
     "achievements": "🏆",
-    "setting": "⚙️"
+    "setting": "⚙️",
+    "ai_assistant": "🤖 💁‍♂️"
   },
   "achievements": {
     "first-game": "🐣",
@@ -130,6 +138,8 @@
     "1000000000000-money": "🌍",
     "1000000000000-money_desc": "💰 1,000,000,000,000G",
     "1000000000000000-money": "🌌",
-    "1000000000000000-money_desc": "💰 1,000,000,000,000,000G"
+    "1000000000000000-money_desc": "💰 1,000,000,000,000,000G",
+    "billing-received": "🎁!",
+    "billing-received_desc": "🎁 / 💳 ⬅️ 👨‍💻"
   }
 }

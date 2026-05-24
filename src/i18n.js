@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next';
 
 import ja from './locales/ja.json';
 import en from './locales/en.json';
+import ru from './locales/ru.json';
 import zhCN from './locales/zh-cn.json';
 import sw from './locales/sw.json';
 import emoji from './locales/emoji.json';
@@ -14,6 +15,9 @@ const resources = {
   },
   en: {
     translation: en
+  },
+  ru: {
+    translation: ru
   },
   'zh-CN': {
     translation: zhCN

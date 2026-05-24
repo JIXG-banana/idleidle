@@ -486,7 +486,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("idle2");
   const [gameState, setGameState] = useState(() => {
     const defaultState = {
-      money: new Decimal(20),
+      money: new Decimal(50),
       games: new Decimal(0),
       dp: 0,
       players: 0,
@@ -528,7 +528,7 @@ export default function App() {
           lastTimestamp: parsed.lastTimestamp ?? Date.now(),
           languageSelected: parsed.languageSelected ?? false,
           useScientific: parsed.useScientific ?? false,
-          money: new Decimal(parsed.money ?? parsed.gold ?? 20),
+          money: new Decimal(parsed.money ?? parsed.gold ?? 50),
           games: new Decimal(parsed.games ?? 0),
           billingCount: parsed.billingCount ?? 0,
           usedLanguages,
@@ -564,7 +564,11 @@ export default function App() {
       const newEffect = {
         id,
         amount: `+${format(amount)}G`,
-        x: rect.left - containerRect.left + rect.width / 2 + (Math.random() - 0.5) * 40,
+        x:
+          rect.left -
+          containerRect.left +
+          rect.width / 2 +
+          (Math.random() - 0.5) * 40,
         y: rect.top - containerRect.top,
       };
       setMoneyEffects((prev) => [...prev, newEffect]);
@@ -581,9 +585,9 @@ export default function App() {
   }, [triggerMoneyEffect]);
 
   // 価格の計算
-  const indieDevPrice = new Decimal(1.15)
+  const indieDevPrice = new Decimal(1.5)
     .pow(gameState.indieDev)
-    .times(10)
+    .times(50)
     .floor();
 
   const companyGrades = React.useMemo(
@@ -675,19 +679,19 @@ export default function App() {
     ];
   }, [gameState.currentCompanyGrade]);
 
-  const companyPrice = new Decimal(1.2)
+  const companyPrice = new Decimal(1.8)
     .pow(gameState.company || 0)
     .times(gameState.currentCompanyGrade + 2)
-    .times(25)
+    .times(500)
     .floor();
 
-  const upgradeCompanyPrice = new Decimal(1000)
-    .times(new Decimal(5).pow(gameState.currentCompanyGrade - 1))
+  const upgradeCompanyPrice = new Decimal(100000)
+    .times(new Decimal(20).pow(gameState.currentCompanyGrade - 1))
     .floor();
 
-  const aiDevPrice = new Decimal(1.5)
+  const aiDevPrice = new Decimal(3.0)
     .pow(gameState.aiDev || 0)
-    .times(1000000)
+    .times(100000000)
     .floor();
 
   // ★ 最適化3: useCallbackを使って関数の再生成を防ぐ（子コンポーネントの再描画を抑えるため）
@@ -889,21 +893,26 @@ export default function App() {
             const newMoney = prev.money.plus(
               prev.games.floor().times(deltaTime),
             );
-
             // Billing logic: Base 0.00008 per tick per game (approx 1 event per 10 mins per game)
             // Gradually increases base probability with company grade
             let billingEvents = 0;
             const gamesNum = prev.games.floor().toNumber();
             const baseProb = 0.00008;
-            const billingProbability = baseProb * (1 + (prev.currentCompanyGrade - 1) * 0.5);
+            const billingProbability =
+              baseProb * (1 + (prev.currentCompanyGrade - 1) * 0.5);
             if (gamesNum > 0) {
               const expectedEvents = gamesNum * billingProbability;
               // Performance optimization: use approximation if games count is high or expected events are many
               if (gamesNum > 1000 || expectedEvents > 10) {
                 const stdDev = Math.sqrt(expectedEvents);
-                billingEvents = Math.max(0, Math.floor(
-                  expectedEvents + (Math.random() + Math.random() + Math.random() - 1.5) * stdDev,
-                ));
+                billingEvents = Math.max(
+                  0,
+                  Math.floor(
+                    expectedEvents +
+                      (Math.random() + Math.random() + Math.random() - 1.5) *
+                        stdDev,
+                  ),
+                );
               } else {
                 for (let i = 0; i < gamesNum; i++) {
                   if (Math.random() < billingProbability) billingEvents++;
@@ -914,7 +923,9 @@ export default function App() {
             let billingMoneyGained = new Decimal(0);
             if (billingEvents > 0) {
               // Scale by progress: games, company size, and quantity
-              const companyScale = new Decimal(5).pow(prev.currentCompanyGrade - 1);
+              const companyScale = new Decimal(5).pow(
+                prev.currentCompanyGrade - 1,
+              );
               const quantityScale = new Decimal(prev.indieDev)
                 .plus(new Decimal(prev.company).times(10))
                 .plus(new Decimal(prev.aiDev || 0).times(100))
@@ -927,7 +938,7 @@ export default function App() {
                 .times(quantityScale)
                 .times(gamesScale)
                 .floor();
-              
+
               if (triggerRef.current) {
                 // Trigger visual effect (wrapped in setTimeout to avoid React warnings if needed)
                 const amountToDisplay = billingMoneyGained;
@@ -1084,6 +1095,24 @@ export default function App() {
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
               >
                 English
+              </button>
+              <button
+                onClick={() =>
+                  setGameState((prev) => {
+                    const usedLanguages = prev.usedLanguages ?? [];
+                    return {
+                      ...prev,
+                      language: "ru",
+                      languageSelected: true,
+                      usedLanguages: usedLanguages.includes("ru")
+                        ? usedLanguages
+                        : [...usedLanguages, "ru"],
+                    };
+                  })
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+              >
+                Русский (Russian)
               </button>
               <button
                 onClick={() =>
@@ -1357,7 +1386,7 @@ export default function App() {
                     SECRET_KEY,
                   ).toString();
                   localStorage.setItem("save", encryptedText);
-                  alert("セーブしました！");
+                  alert(t("messages.save_success"));
                 }}
                 colorClass="bg-green-700 hover:bg-green-800"
                 shadowClass="shadow-[0_4px_0_0_theme(colors.green.900)]"
@@ -1378,9 +1407,9 @@ export default function App() {
                   navigator.clipboard
                     .writeText(encryptedText)
                     .then(() =>
-                      alert("セーブデータをクリップボードにコピーしました"),
+                      alert(t("messages.export_success")),
                     )
-                    .catch(() => alert("コピーに失敗しました。"));
+                    .catch(() => alert(t("messages.copy_fail")));
                 }}
                 colorClass="bg-blue-600 hover:bg-blue-700"
                 shadowClass="shadow-[0_4px_0_0_theme(colors.blue.800)]"
@@ -1391,7 +1420,7 @@ export default function App() {
               <ActionButton
                 onClick={() => {
                   const importText = prompt(
-                    "セーブデータのテキストを貼り付けてください",
+                    t("messages.import_prompt"),
                   );
                   if (importText) {
                     try {
@@ -1405,7 +1434,7 @@ export default function App() {
                       localStorage.setItem("save", importText);
                       window.location.reload();
                     } catch {
-                      alert("無効なセーブデータです。");
+                      alert(t("messages.import_fail"));
                     }
                   }
                 }}

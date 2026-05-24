@@ -17,7 +17,12 @@
     "billing_text": "As your produced games are played, players may occasionally make donations or in-game purchases. When this happens, you receive extra money directly, accompanied by a special visual effect."
   },
   "messages": {
-    "intro": "Use your starting funds to hire developers and create idle games. These games will generate a steady stream of income for you!"
+    "intro": "Use your starting funds to hire developers and create idle games. These games will generate a steady stream of income for you!",
+    "save_success": "Save successful!",
+    "export_success": "Save data copied to clipboard",
+    "copy_fail": "Failed to copy.",
+    "import_prompt": "Please paste the save data text",
+    "import_fail": "Invalid save data."
   },
   "actions": {
     "buy_indie": "Hire Indie Developer ({{price}}G) / Owned: {{count}}",
@@ -50,7 +55,8 @@
   "tabs": {
     "idle2": "idle²",
     "achievements": "Achievements",
-    "setting": "Settings"
+    "setting": "Settings",
+    "ai_assistant": "AI Assistant"
   },
   "achievements": {
     "first-game": "First Game",

@@ -17,7 +17,12 @@
     "billing_text": "当你生产的游戏被玩家游玩时，偶尔会收到玩家的捐赠或课金。发生时你会直接获得额外资金，并看到特别的视觉效果。"
   },
   "messages": {
-    "intro": "使用初始资金雇佣开发者，生产放置游戏。放置游戏会为你带来收入。"
+    "intro": "使用初始资金雇佣开发者，生产放置游戏。放置游戏会为你带来收入。",
+    "save_success": "存档成功！",
+    "export_success": "存档数据已复制到剪贴板",
+    "copy_fail": "复制失败。",
+    "import_prompt": "请粘贴存档数据文本",
+    "import_fail": "存档数据无效。"
   },
   "actions": {
     "buy_indie": "雇佣独立开发者 ({{price}}G) / 持有: {{count}}人",
@@ -50,7 +55,8 @@
   "tabs": {
     "idle2": "idle²",
     "achievements": "成就",
-    "setting": "设置"
+    "setting": "设置",
+    "ai_assistant": "AI 助手"
   },
   "achievements": {
     "first-game": "第一个游戏",

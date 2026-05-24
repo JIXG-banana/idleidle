@@ -12,10 +12,17 @@
     "basics_title": "Sheria za Msingi",
     "basics_text": "Bonyeza vitufe ili kuajiri watengenezaji au kuanzisha kampuni. Pesa zako huongezeka mara kwa mara kulingana na idadi ya 'michezo' uliyotengeneza.",
     "offline_title": "Mapato ya Nje ya Mtandao",
-    "offline_text": "Michezo na pesa zitaongezeka kulingana na uzalishaji wako wa mwisho uliohifadhiwa hata wakati mchezo umefungwa. Mapato ya nje ya mtandao huanza baada ya dakika 1 ya kuwa mbali na hudumu hadi saa 3 kwa nusu ya kasi ya kawaida."
+    "offline_text": "Michezo na pesa zitaongezeka kulingana na uzalishaji wako wa mwisho uliohifadhiwa hata wakati mchezo umefungwa. Mapato ya nje ya mtandao huanza baada ya dakika 1 ya kuwa mbali na hudumu hadi saa 3 kwa nusu ya kasi ya kawaida.",
+    "billing_title": "Michango na Ununuzi",
+    "billing_text": "Kadiri michezo yako inavyochezwa, wachezaji wanaweza kutoa michango au kufanya ununuzi wa ndani ya mchezo. Hilo likitokea, utapokea pesa zaidi moja kwa moja, kukiwa na madoido maalum."
   },
   "messages": {
-    "intro": "Tumia fedha zako za kuanzia kuajiri watengenezaji na kutengeneza michezo ya idle. Michezo hii itakutengenezea mapato ya mara kwa mara!"
+    "intro": "Tumia fedha zako za kuanzia kuajiri watengenezaji na kutengeneza michezo ya idle. Michezo hii itakutengenezea mapato ya mara kwa mara!",
+    "save_success": "Hifadhi imefanikiwa!",
+    "export_success": "Data ya hifadhi imenakiliwa kwenye ubao wa kunakili",
+    "copy_fail": "Imeshindwa kunakili.",
+    "import_prompt": "Tafadhali bandika maandishi ya data ya hifadhi",
+    "import_fail": "Data ya hifadhi si sahihi."
   },
   "actions": {
     "buy_indie": "Ajiri Mtengenezaji Huru ({{price}}G) / Unayomiliki: {{count}}",
@@ -48,7 +55,8 @@
   "tabs": {
     "idle2": "idle²",
     "achievements": "Mafanikio",
-    "setting": "Mipangilio"
+    "setting": "Mipangilio",
+    "ai_assistant": "Msaidizi wa AI"
   },
   "achievements": {
     "first-game": "Mchezo wa Kwanza",
@@ -130,6 +138,8 @@
     "1000000000000-money": "Tycoon wa Galaksi",
     "1000000000000-money_desc": "Kuwa na 1,000,000,000,000G",
     "1000000000000000-money": "Haki ya Kosmiki",
-    "1000000000000000-money_desc": "Kuwa na 1,000,000,000,000,000G"
+    "1000000000000000-money_desc": "Kuwa na 1,000,000,000,000,000G",
+    "billing-received": "Malipo ya Kwanza!",
+    "billing-received_desc": "Pokea mchango au ununuzi wa ndani ya mchezo kutoka kwa mchezaji."
   }
 }
