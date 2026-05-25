@@ -845,7 +845,7 @@ export default function App() {
         <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
             <h2 className="text-3xl font-black mb-6 text-gray-800">
-              Select Language
+              {t("ui.select_language") || "Select Language"}
             </h2>
             <div className="flex flex-col gap-4">
               {["ja", "en", "ru", "zh-CN", "sw", "emoji"].map((lang) => (
@@ -885,14 +885,10 @@ export default function App() {
         <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 text-center">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
             <h2 className="text-2xl font-black mb-4 text-gray-800">
-              重要なお知らせ
+              {t("reset_prompt.title")}
             </h2>
             <p className="text-gray-600 mb-6 leading-relaxed">
-              すでに遊んでいる方へ：
-              <br />
-              アップデートによりゲームバランスが大幅に変わりました。
-              データをリセットして最初から遊ぶことをおすすめしますが、
-              このまま続きから始めますか？
+              {t("reset_prompt.message")}
             </p>
             <div className="flex flex-col gap-3">
               <button
@@ -902,7 +898,7 @@ export default function App() {
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
               >
-                最初からやる (推奨)
+                {t("reset_prompt.reset")}
               </button>
               <button
                 onClick={() => {
@@ -925,7 +921,7 @@ export default function App() {
                 }}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl transition-all active:scale-95"
               >
-                続きからやる
+                {t("reset_prompt.continue")}
               </button>
             </div>
           </div>
@@ -1036,7 +1032,7 @@ export default function App() {
           <Suspense
             fallback={
               <div className="p-10 text-center animate-pulse">
-                {t("ui.loading") || "Loading..."}
+                {t("ui.loading")}
               </div>
             }
           >

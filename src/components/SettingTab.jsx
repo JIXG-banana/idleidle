@@ -11,7 +11,7 @@ export default function SettingTab({ gameState, setGameState, i18n, t }) {
           htmlFor="language-select"
           className="font-bold whitespace-nowrap"
         >
-          Language / 言語:
+          {t("settings.language_label")}
         </label>
         <select
           id="language-select"
@@ -31,6 +31,7 @@ export default function SettingTab({ gameState, setGameState, i18n, t }) {
         >
           <option value="ja">日本語</option>
           <option value="en">English</option>
+          <option value="ru">Русский</option>
           <option value="zh-CN">简体中文</option>
           <option value="sw">Kiswahili</option>
           <option value="emoji">絵文字 (Emoji)</option>
@@ -49,7 +50,7 @@ export default function SettingTab({ gameState, setGameState, i18n, t }) {
             }
             className="w-5 h-5"
           />
-          <span>Use Scientific Notation / 指数表記を使用</span>
+          <span>{t("settings.use_scientific")}</span>
         </label>
       </div>
       <ActionButton
