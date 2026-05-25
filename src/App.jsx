@@ -31,7 +31,7 @@ export default function App() {
         y: centerY - window.innerHeight / 2,
       });
     }
-  }, []);
+  }, [achievementTabRef]);
 
   useEffect(() => {
     const timer = setTimeout(updateTargetPos, 500);
@@ -90,6 +90,7 @@ export default function App() {
       players: 0,
       indieDev: 0,
       aiDev: 0,
+      automationUnlocked: false,
       aiEnabled: false,
       company: 0,
       currentCompanyGrade: 1,
@@ -105,6 +106,7 @@ export default function App() {
         indieDev: { level: 0, enabled: false, progress: 0 },
         company: { level: 0, enabled: false, progress: 0 },
         aiDev: { level: 0, enabled: false, progress: 0 },
+        companyUpgrade: { level: 0, enabled: false, progress: 0 },
       },
     };
 
@@ -459,8 +461,10 @@ export default function App() {
         let offlineIndieDev = gameState.indieDev;
         let offlineCompany = gameState.company;
         let offlineAiDev = gameState.aiDev || 0;
+        let offlineGrade = gameState.currentCompanyGrade;
+        let offlineGames = gameState.games.plus(gamesGained);
 
-        ["indieDev", "company", "aiDev"].forEach((key) => {
+        ["indieDev", "company", "aiDev", "companyUpgrade"].forEach((key) => {
           const auto = gameState.automation[key];
           if (auto.level > 0 && auto.enabled) {
             // 大量購入によるフリーズを防ぐため、1ループあたりの最大購入試行数を制限
@@ -491,6 +495,17 @@ export default function App() {
                   offlineMoney = offlineMoney.minus(price);
                   offlineAiDev++;
                 }
+              } else if (key === "companyUpgrade") {
+                price = getUpgradeCompanyPrice(offlineGrade);
+                if (
+                  offlineMoney.gte(price) &&
+                  offlineCompany >= 1 &&
+                  offlineGrade < 15
+                ) {
+                  offlineMoney = offlineMoney.minus(price);
+                  offlineGrade++;
+                  offlineGames = new Decimal(0);
+                }
               }
             }
           }
@@ -499,11 +514,12 @@ export default function App() {
         if (gamesGained.gt(0) || moneyGained.gt(0)) {
           setGameState((prev) => ({
             ...prev,
-            games: prev.games.plus(gamesGained),
+            games: offlineGames,
             money: offlineMoney,
             indieDev: offlineIndieDev,
             company: offlineCompany,
             aiDev: offlineAiDev,
+            currentCompanyGrade: offlineGrade,
           }));
           setToastQueue((prev) => [
             ...prev,
@@ -523,6 +539,7 @@ export default function App() {
     }
   }, [
     getAiDevPrice,
+    getUpgradeCompanyPrice,
     getCompanyPrice,
     getIndieDevPrice,
     format,
@@ -554,6 +571,7 @@ export default function App() {
         const deltaMs = currentTime - lastTimeRef.current;
         accumulatedTime += deltaMs;
         if (accumulatedTime >= RENDER_INTERVAL) {
+          const automationThreshold = 5000000;
           const deltaTime = accumulatedTime / 1000;
           setGameState((prev) => {
             const newGames = prev.games.plus(gpsRef.current.times(deltaTime));
@@ -565,52 +583,71 @@ export default function App() {
             let updatedIndieDev = prev.indieDev;
             let updatedCompany = prev.company;
             let updatedAiDev = prev.aiDev || 0;
+            let updatedGrade = prev.currentCompanyGrade;
+            let updatedGames = newGames;
+            const newAutomationUnlocked =
+              prev.automationUnlocked || newGames.gte(automationThreshold);
 
             const pendingFlashes = [];
 
-            ["indieDev", "company", "aiDev"].forEach((key) => {
-              if (newAutomation[key].level > 0 && newAutomation[key].enabled) {
-                // ネストされたオブジェクトをコピーして不変性を守る
-                newAutomation[key] = { ...newAutomation[key] };
-                const auto = newAutomation[key];
-                auto.progress += auto.level * 0.1 * deltaTime;
-                if (auto.progress >= 1) {
-                  const buyCount = Math.floor(auto.progress);
-                  auto.progress -= buyCount;
-                  for (let i = 0; i < buyCount; i++) {
-                    let price;
-                    if (key === "indieDev") {
-                      price = getIndieDevPrice(updatedIndieDev);
-                      if (updatedMoney.gte(price)) {
-                        updatedMoney = updatedMoney.minus(price);
-                        updatedIndieDev++;
-                        if (!pendingFlashes.includes("indieDev"))
-                          pendingFlashes.push("indieDev");
-                      }
-                    } else if (key === "company") {
-                      price = getCompanyPrice(
-                        updatedCompany,
-                        prev.currentCompanyGrade,
-                      );
-                      if (updatedMoney.gte(price)) {
-                        updatedMoney = updatedMoney.minus(price);
-                        updatedCompany++;
-                        if (!pendingFlashes.includes("company"))
-                          pendingFlashes.push("company");
-                      }
-                    } else if (key === "aiDev") {
-                      price = getAiDevPrice(updatedAiDev);
-                      if (updatedMoney.gte(price)) {
-                        updatedMoney = updatedMoney.minus(price);
-                        updatedAiDev++;
-                        if (!pendingFlashes.includes("aiDev"))
-                          pendingFlashes.push("aiDev");
+            ["indieDev", "company", "aiDev", "companyUpgrade"].forEach(
+              (key) => {
+                if (
+                  newAutomation[key].level > 0 &&
+                  newAutomation[key].enabled
+                ) {
+                  // ネストされたオブジェクトをコピーして不変性を守る
+                  newAutomation[key] = { ...newAutomation[key] };
+                  const auto = newAutomation[key];
+                  auto.progress += auto.level * 0.1 * deltaTime;
+                  if (auto.progress >= 1) {
+                    const buyCount = Math.floor(auto.progress);
+                    auto.progress -= buyCount;
+                    for (let i = 0; i < buyCount; i++) {
+                      let price;
+                      if (key === "indieDev") {
+                        price = getIndieDevPrice(updatedIndieDev);
+                        if (updatedMoney.gte(price)) {
+                          updatedMoney = updatedMoney.minus(price);
+                          updatedIndieDev++;
+                          if (!pendingFlashes.includes("indieDev"))
+                            pendingFlashes.push("indieDev");
+                        }
+                      } else if (key === "company") {
+                        price = getCompanyPrice(
+                          updatedCompany,
+                          prev.currentCompanyGrade,
+                        );
+                        if (updatedMoney.gte(price)) {
+                          updatedMoney = updatedMoney.minus(price);
+                          updatedCompany++;
+                          if (!pendingFlashes.includes("company"))
+                            pendingFlashes.push("company");
+                        }
+                      } else if (key === "aiDev") {
+                        if (!prev.aiEnabled) continue;
+                        price = getAiDevPrice(updatedAiDev);
+                        if (updatedMoney.gte(price)) {
+                          updatedMoney = updatedMoney.minus(price);
+                          updatedAiDev++;
+                          if (!pendingFlashes.includes("aiDev"))
+                            pendingFlashes.push("aiDev");
+                        }
+                      } else if (key === "companyUpgrade") {
+                        if (updatedCompany >= 1 && updatedGrade < 15) {
+                          price = getUpgradeCompanyPrice(updatedGrade);
+                          if (updatedMoney.gte(price)) {
+                            updatedMoney = updatedMoney.minus(price);
+                            updatedGrade++;
+                            updatedGames = new Decimal(0);
+                          }
+                        }
                       }
                     }
                   }
                 }
-              }
-            });
+              },
+            );
 
             // 購入が発生した場合は、アニメーションをトリガー（非同期）
             if (pendingFlashes.length > 0) {
@@ -672,19 +709,23 @@ export default function App() {
               updatedIndieDev === prev.indieDev &&
               updatedCompany === prev.company &&
               updatedAiDev === (prev.aiDev || 0) &&
+              updatedGrade === prev.currentCompanyGrade &&
               billingEvents === 0 &&
-              newGames.equals(prev.games)
+              updatedGames.equals(prev.games) &&
+              newAutomationUnlocked === prev.automationUnlocked
             )
               return prev;
 
             return {
               ...prev,
-              games: newGames,
+              games: updatedGames,
               money: updatedMoney.plus(billingMoneyGained),
               billingCount: (prev.billingCount || 0) + billingEvents,
               indieDev: updatedIndieDev,
+              automationUnlocked: newAutomationUnlocked,
               company: updatedCompany,
               aiDev: updatedAiDev,
+              currentCompanyGrade: updatedGrade,
               automation: newAutomation,
             };
           });
@@ -696,7 +737,13 @@ export default function App() {
     };
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [getAiDevPrice, getCompanyPrice, getIndieDevPrice, triggerFlash]);
+  }, [
+    getAiDevPrice,
+    getCompanyPrice,
+    getIndieDevPrice,
+    getUpgradeCompanyPrice,
+    triggerFlash,
+  ]);
 
   // 最新のgameStateをインターバル内で安全に参照するためのRef
   const gameStateRef = useRef(gameState);
@@ -734,7 +781,7 @@ export default function App() {
       }
     }, 1000);
     return () => clearInterval(checkAchievements);
-  }, [t]);
+  }, [t, gameStateRef]);
 
   useEffect(() => {
     const enableTimer = setTimeout(() => {
@@ -979,61 +1026,68 @@ export default function App() {
                 {t("tabs.ai_assistant")}
               </h2>
               <div className="space-y-8">
-                {["indieDev", "company", "aiDev"].map((key) => {
-                  const auto = gameState.automation[key];
-                  const upgradeCost = getAutomationUpgradeCost(auto.level);
-                  return (
-                    <div
-                      key={key}
-                      className="p-4 border-2 border-gray-200 rounded-xl bg-gray-50 flex flex-col gap-3"
-                    >
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-bold uppercase">
-                          {t(`automation.${key}`)}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-gray-500">
-                            LV. {auto.level}
-                          </span>
-                          {auto.level > 0 && (
-                            <button
-                              onClick={() => toggleAutomation(key)}
-                              className={`w-12 h-6 rounded-full relative transition-colors ${auto.enabled ? "bg-green-500" : "bg-gray-400"}`}
-                            >
-                              <div
-                                className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${auto.enabled ? "left-7" : "left-1"}`}
-                              />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 text-sm text-gray-600">
-                        <p>
-                          {t("automation.speed")}:{" "}
-                          <span className="font-bold text-blue-600">
-                            {(auto.level * 0.1).toFixed(1)}/s
-                          </span>
-                        </p>
-                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-blue-400 h-full transition-all duration-75"
-                            style={{ width: `${auto.progress * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      <ActionButton
-                        onClick={() => upgradeAutomation(key)}
-                        disabled={gameState.games.lt(upgradeCost)}
-                        colorClass="bg-indigo-600 hover:bg-indigo-700"
-                        shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
+                {["indieDev", "company", "companyUpgrade", "aiDev"]
+                  .filter((key) => {
+                    if (key === "companyUpgrade")
+                      return gameState.currentCompanyGrade < 15;
+                    if (key === "aiDev") return gameState.aiEnabled;
+                    return true;
+                  })
+                  .map((key) => {
+                    const auto = gameState.automation[key];
+                    const upgradeCost = getAutomationUpgradeCost(auto.level);
+                    return (
+                      <div
+                        key={key}
+                        className="p-4 border-2 border-gray-200 rounded-xl bg-gray-50 flex flex-col gap-3"
                       >
-                        {t("automation.upgrade", {
-                          price: format(upgradeCost),
-                        })}
-                      </ActionButton>
-                    </div>
-                  );
-                })}
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-xl font-bold uppercase">
+                            {t(`automation.${key}`)}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-gray-500">
+                              LV. {auto.level}
+                            </span>
+                            {auto.level > 0 && (
+                              <button
+                                onClick={() => toggleAutomation(key)}
+                                className={`w-12 h-6 rounded-full relative transition-colors ${auto.enabled ? "bg-green-500" : "bg-gray-400"}`}
+                              >
+                                <div
+                                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${auto.enabled ? "left-7" : "left-1"}`}
+                                />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1 text-sm text-gray-600">
+                          <p>
+                            {t("automation.speed")}:{" "}
+                            <span className="font-bold text-blue-600">
+                              {(auto.level * 0.1).toFixed(1)}/s
+                            </span>
+                          </p>
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-blue-400 h-full transition-all duration-75"
+                              style={{ width: `${auto.progress * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                        <ActionButton
+                          onClick={() => upgradeAutomation(key)}
+                          disabled={gameState.games.lt(upgradeCost)}
+                          colorClass="bg-indigo-600 hover:bg-indigo-700"
+                          shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
+                        >
+                          {t("automation.upgrade", {
+                            price: format(upgradeCost),
+                          })}
+                        </ActionButton>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -1267,7 +1321,7 @@ export default function App() {
             <TabButton active={activeTab === "idle2"} onClick={handleTabIdle2}>
               {t("tabs.idle2")}
             </TabButton>
-            {gameState.aiEnabled && (
+            {gameState.automationUnlocked && (
               <TabButton
                 active={activeTab === "ai_assistant"}
                 onClick={handleTabAiAssistant}
