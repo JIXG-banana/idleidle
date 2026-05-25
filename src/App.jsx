@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  Suspense,
+} from "react";
 import Decimal from "break_infinity.js";
 import CryptoJS from "crypto-js";
 // eslint-disable-next-line no-unused-vars
@@ -14,6 +20,13 @@ import {
   StaticAdsAndForm,
   SideAds,
 } from "./components/GameUI";
+
+// Lazy load tab components
+const AiAssistantTab = React.lazy(() => import("./components/AiAssistantTab"));
+const AchievementsTab = React.lazy(
+  () => import("./components/AchievementsTab"),
+);
+const SettingTab = React.lazy(() => import("./components/SettingTab"));
 
 export default function App() {
   const achievementTabRef = useRef(null);
@@ -1020,212 +1033,35 @@ export default function App() {
               <StaticAdsAndForm />
             </div>
           )}
-          {activeTab === "ai_assistant" && (
-            <div className="flex flex-col gap-6">
-              <h2 className="text-2xl font-bold border-b pb-2">
-                {t("tabs.ai_assistant")}
-              </h2>
-              <div className="space-y-8">
-                {["indieDev", "company", "companyUpgrade", "aiDev"]
-                  .filter((key) => {
-                    if (key === "companyUpgrade")
-                      return gameState.currentCompanyGrade < 15;
-                    if (key === "aiDev") return gameState.aiEnabled;
-                    return true;
-                  })
-                  .map((key) => {
-                    const auto = gameState.automation[key];
-                    const upgradeCost = getAutomationUpgradeCost(auto.level);
-                    return (
-                      <div
-                        key={key}
-                        className="p-4 border-2 border-gray-200 rounded-xl bg-gray-50 flex flex-col gap-3"
-                      >
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-xl font-bold uppercase">
-                            {t(`automation.${key}`)}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-gray-500">
-                              LV. {auto.level}
-                            </span>
-                            {auto.level > 0 && (
-                              <button
-                                onClick={() => toggleAutomation(key)}
-                                className={`w-12 h-6 rounded-full relative transition-colors ${auto.enabled ? "bg-green-500" : "bg-gray-400"}`}
-                              >
-                                <div
-                                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${auto.enabled ? "left-7" : "left-1"}`}
-                                />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-1 text-sm text-gray-600">
-                          <p>
-                            {t("automation.speed")}:{" "}
-                            <span className="font-bold text-blue-600">
-                              {(auto.level * 0.1).toFixed(1)}/s
-                            </span>
-                          </p>
-                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div
-                              className="bg-blue-400 h-full transition-all duration-75"
-                              style={{ width: `${auto.progress * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                        <ActionButton
-                          onClick={() => upgradeAutomation(key)}
-                          disabled={gameState.games.lt(upgradeCost)}
-                          colorClass="bg-indigo-600 hover:bg-indigo-700"
-                          shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
-                        >
-                          {t("automation.upgrade", {
-                            price: format(upgradeCost),
-                          })}
-                        </ActionButton>
-                      </div>
-                    );
-                  })}
+          <Suspense
+            fallback={
+              <div className="p-10 text-center animate-pulse">
+                {t("ui.loading") || "Loading..."}
               </div>
-            </div>
-          )}
-          {activeTab === "achievements" && (
-            <div className="flex flex-wrap justify-center md:justify-start gap-4">
-              {achievementsList.map((item, index) => (
-                <AchievementCard
-                  key={item.key}
-                  number={index}
-                  icon={item.icon}
-                  title={t(`achievements.${item.key}`)}
-                  description={t(`achievements.${item.key}_desc`)}
-                  isLocked={!gameState.unlockedAchievements.includes(item.key)}
-                />
-              ))}
-            </div>
-          )}
-          {activeTab === "setting" && (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3 p-3 rounded">
-                <label
-                  htmlFor="language-select"
-                  className="font-bold whitespace-nowrap"
-                >
-                  Language / 言語:
-                </label>
-                <select
-                  id="language-select"
-                  value={i18n.language}
-                  onChange={(e) => {
-                    const newLang = e.target.value;
-                    i18n.changeLanguage(newLang);
-                    setGameState((prev) => ({
-                      ...prev,
-                      language: newLang,
-                      usedLanguages: prev.usedLanguages.includes(newLang)
-                        ? prev.usedLanguages
-                        : [...prev.usedLanguages, newLang],
-                    }));
-                  }}
-                  className="flex-1 p-2 border border-gray-400 rounded bg-white text-black font-bold"
-                >
-                  <option value="ja">日本語</option>
-                  <option value="en">English</option>
-                  <option value="zh-CN">简体中文</option>
-                  <option value="sw">Kiswahili</option>
-                  <option value="emoji">絵文字 (Emoji)</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded">
-                <label className="font-bold flex items-center cursor-pointer gap-2">
-                  <input
-                    type="checkbox"
-                    checked={gameState.useScientific}
-                    onChange={(e) =>
-                      setGameState((prev) => ({
-                        ...prev,
-                        useScientific: e.target.checked,
-                      }))
-                    }
-                    className="w-5 h-5"
-                  />
-                  <span>Use Scientific Notation / 指数表記を使用</span>
-                </label>
-              </div>
-              <ActionButton
-                onClick={() => {
-                  localStorage.setItem(
-                    "save",
-                    CryptoJS.AES.encrypt(
-                      JSON.stringify({
-                        ...gameState,
-                        lastTimestamp: Date.now(),
-                      }),
-                      SECRET_KEY,
-                    ).toString(),
-                  );
-                  alert(t("messages.save_success"));
-                }}
-                colorClass="bg-green-700 hover:bg-green-800"
-                shadowClass="shadow-[0_4px_0_0_theme(colors.green.900)]"
-              >
-                {t("actions.save")}
-              </ActionButton>
-              <ActionButton
-                onClick={() => {
-                  navigator.clipboard
-                    .writeText(
-                      CryptoJS.AES.encrypt(
-                        JSON.stringify({
-                          ...gameState,
-                          lastTimestamp: Date.now(),
-                        }),
-                        SECRET_KEY,
-                      ).toString(),
-                    )
-                    .then(() => alert(t("messages.export_success")))
-                    .catch(() => alert(t("messages.copy_fail")));
-                }}
-                colorClass="bg-blue-600 hover:bg-blue-700"
-                shadowClass="shadow-[0_4px_0_0_theme(colors.blue.800)]"
-              >
-                {t("actions.export")}
-              </ActionButton>
-              <ActionButton
-                onClick={() => {
-                  const importText = prompt(t("messages.import_prompt"));
-                  if (importText) {
-                    try {
-                      const decrypted = CryptoJS.AES.decrypt(
-                        importText,
-                        SECRET_KEY,
-                      ).toString(CryptoJS.enc.Utf8);
-                      if (!decrypted) throw new Error();
-                      localStorage.setItem("save", importText);
-                      window.location.reload();
-                    } catch {
-                      alert(t("messages.import_fail"));
-                    }
-                  }
-                }}
-                colorClass="bg-yellow-600 hover:bg-yellow-700"
-                shadowClass="shadow-[0_4px_0_0_theme(colors.yellow.800)]"
-              >
-                {t("actions.import")}
-              </ActionButton>
-              <ActionButton
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.reload();
-                }}
-                colorClass="bg-red-800 hover:bg-red-900"
-                shadowClass="shadow-[0_4px_0_0_theme(colors.red.950)]"
-              >
-                {t("actions.clear_save")}
-              </ActionButton>
-            </div>
-          )}
+            }
+          >
+            {activeTab === "ai_assistant" && (
+              <AiAssistantTab
+                gameState={gameState}
+                t={t}
+                format={format}
+                getAutomationUpgradeCost={getAutomationUpgradeCost}
+                upgradeAutomation={upgradeAutomation}
+                toggleAutomation={toggleAutomation}
+              />
+            )}
+            {activeTab === "achievements" && (
+              <AchievementsTab gameState={gameState} t={t} />
+            )}
+            {activeTab === "setting" && (
+              <SettingTab
+                gameState={gameState}
+                setGameState={setGameState}
+                i18n={i18n}
+                t={t}
+              />
+            )}
+          </Suspense>
         </div>
 
         <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 z-[110] flex flex-col-reverse gap-2 items-center pointer-events-none">
