@@ -214,7 +214,15 @@ export default function App() {
   }, []);
 
   const getUpgradeCompanyPrice = useCallback((grade) => {
-    return new Decimal(1000000).times(new Decimal(50).pow(grade - 1)).floor();
+    // 指数の減衰（0.85乗）により後半の上昇を緩やかにしつつ、JIXG以降で単位を大きく跳ね上げます。
+    const adjustedExponent = Math.pow(grade - 1, 0.85);
+    let basePrice = new Decimal(1000000);
+    // JIXG (Grade 10) 以降は希少性を出すため、コストを1万倍（4桁増）に設定
+    const multiplier = grade >= 10 ? 10000 : 1;
+    return basePrice
+      .times(multiplier)
+      .times(new Decimal(50).pow(adjustedExponent))
+      .floor();
   }, []);
 
   const getAiDevPrice = useCallback((count) => {
