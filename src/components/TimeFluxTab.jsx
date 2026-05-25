@@ -6,21 +6,10 @@ import { formatTime } from "../utils/format";
 export default function TimeFluxTab({
   gameState,
   setGameState,
+  toggleTimeFlux,
   t,
 }) {
   const multipliers = [2, 5, 10, 50, 100];
-
-  const toggleFlux = () => {
-    setGameState((prev) => {
-      const activating = !prev.isTimeFluxActive;
-      return {
-        ...prev,
-        isTimeFluxActive: activating,
-        // 発動時の蓄積時間を100%の基準として保存する
-        timeFluxReferenceTime: activating ? prev.storedTime : prev.timeFluxReferenceTime,
-      };
-    });
-  };
 
   const setMultiplier = (m) => {
     setGameState((prev) => ({
@@ -109,26 +98,34 @@ export default function TimeFluxTab({
       </div>
 
       <div className="mt-4">
-        <ActionButton
-          onClick={toggleFlux}
-          disabled={currentStoredTime <= 0 && !gameState.isTimeFluxActive}
-          colorClass={
-            gameState.isTimeFluxActive
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-green-600 hover:bg-green-700"
-          }
-          shadowClass={
-            gameState.isTimeFluxActive
-              ? "shadow-[0_4px_0_0_theme(colors.red.800)]"
-              : "shadow-[0_4px_0_0_theme(colors.green.800)]"
-          }
-        >
-          <span className="text-lg uppercase tracking-widest">
-            {gameState.isTimeFluxActive
-              ? t("time_flux.deactivate")
-              : t("time_flux.activate")}
-          </span>
-        </ActionButton>
+        {gameState.isTimeFluxActive ? (
+          <button
+            onClick={toggleTimeFlux}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-[0_4px_0_0_#991b1b] active:translate-y-[2px] active:shadow-none transition-all relative overflow-hidden group"
+          >
+            {/* Synchronized Progress Bar */}
+            <motion.div
+              className="absolute bottom-0 left-0 h-full bg-blue-500/40 pointer-events-none"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+            />
+            <span className="relative z-10 text-lg uppercase tracking-widest">
+              {t("time_flux.deactivate")}
+            </span>
+          </button>
+        ) : (
+          <ActionButton
+            onClick={toggleTimeFlux}
+            disabled={currentStoredTime <= 0}
+            colorClass="bg-green-600 hover:bg-green-700"
+            shadowClass="shadow-[0_4px_0_0_theme(colors.green.800)]"
+          >
+            <span className="text-lg uppercase tracking-widest">
+              {t("time_flux.activate")}
+            </span>
+          </ActionButton>
+        )}
       </div>
 
       {gameState.isTimeFluxActive && (

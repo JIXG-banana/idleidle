@@ -67,7 +67,7 @@ export const achievementsList = [
     icon: "💯",
     condition: (state) => state.games.gte(1e100),
   },
-  { key: "100-money", icon: "�", condition: (state) => state.money.gt(100) },
+  { key: "100-money", icon: "^_^", condition: (state) => state.money.gt(100) },
   {
     key: "1000-money",
     icon: "💰",
@@ -143,7 +143,11 @@ export const achievementsList = [
     icon: "🔱",
     condition: (state) => state.money.gte(1e20),
   },
-  { key: "1e21-money", icon: "�", condition: (state) => state.money.gte(1e21) },
+  {
+    key: "1e21-money",
+    icon: "^_^",
+    condition: (state) => state.money.gte(1e21),
+  },
   {
     key: "1e22-money",
     icon: "💹",
@@ -164,7 +168,11 @@ export const achievementsList = [
     icon: "✨",
     condition: (state) => state.money.gte(1e25),
   },
-  { key: "1e26-money", icon: "�", condition: (state) => state.money.gte(1e26) },
+  {
+    key: "1e26-money",
+    icon: "^_^",
+    condition: (state) => state.money.gte(1e26),
+  },
   {
     key: "1e27-money",
     icon: "💴",

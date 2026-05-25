@@ -480,8 +480,8 @@ export default function App() {
     if (gameState.lastTimestamp) {
       const now = Date.now();
       const diffMs = now - gameState.lastTimestamp;
-      // 1分以上経過していたら蓄積
-      if (diffMs >= 60000) {
+      // 1分以上経過していたら蓄積 (アンロック後のみ)
+      if (diffMs >= 60000 && gameState.currentCompanyGrade > 1) {
         setGameState((prev) => ({
           ...prev,
           storedTime: (prev.storedTime || 0) + diffMs,
@@ -519,8 +519,8 @@ export default function App() {
         let deltaMs = currentTime - lastTimeRef.current;
 
         // タブがバックグラウンドになった際などの巨大なデルタ時間を防ぐ
-        // 1秒以上の差がある場合は、その分をタイムフラックスとして蓄積する
-        if (deltaMs > 1000) {
+        // 1秒以上の差がある場合は、その分をタイムフラックスとして蓄積する (アンロック後のみ)
+        if (deltaMs > 1000 && gameStateRef.current.currentCompanyGrade > 1) {
           const excessMs = deltaMs - 1000;
           deltaMs = 1000;
           setGameState((prev) => ({
@@ -846,6 +846,19 @@ export default function App() {
     setTimeout(updateTargetPos, 50);
   }, [updateTargetPos]);
 
+  const toggleTimeFlux = useCallback(() => {
+    setGameState((prev) => {
+      const activating = !prev.isTimeFluxActive;
+      return {
+        ...prev,
+        isTimeFluxActive: activating,
+        timeFluxReferenceTime: activating
+          ? prev.storedTime
+          : prev.timeFluxReferenceTime,
+      };
+    });
+  }, []);
+
   const mps = React.useMemo(() => gameState.games.floor(), [gameState.games]);
 
   return (
@@ -978,6 +991,49 @@ export default function App() {
                   {e.amount}
                 </div>
               ))}
+
+              {gameState.isTimeFluxActive && gameState.currentCompanyGrade > 1 && (
+                <div className="mb-4">
+                  <button
+                    onClick={toggleTimeFlux}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl shadow-[0_4px_0_0_#991b1b] active:translate-y-[2px] active:shadow-none transition-all relative overflow-hidden group"
+                  >
+                    {/* Pulsing Decoration */}
+                    <motion.div
+                      className="absolute inset-0 bg-white/10 pointer-events-none"
+                      animate={{ opacity: [0, 0.2, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                    
+                    {/* Synchronized Progress Bar */}
+                    <motion.div
+                      className="absolute bottom-0 left-0 h-full bg-blue-500/40 pointer-events-none"
+                      initial={{ width: 0 }}
+                      animate={{
+                        width: `${Math.min(
+                          Math.max(
+                            ((gameState.storedTime || 0) /
+                              (gameState.timeFluxReferenceTime ||
+                                gameState.storedTime ||
+                                1)) *
+                              100,
+                            0,
+                          ),
+                          100,
+                        )}%`,
+                      }}
+                      transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+                    />
+                    <div className="relative z-10 flex items-center justify-center gap-2">
+                      <span>{t("time_flux.deactivate")}</span>
+                      <span className="text-xs opacity-80 bg-black/20 px-2 py-0.5 rounded-full">
+                        {gameState.timeFluxMultiplier}x
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              )}
+
               <ActionButton
                 onClick={buyIndieDev}
                 disabled={gameState.money.lt(indieDevPrice)}
@@ -1055,10 +1111,11 @@ export default function App() {
                 toggleAutomation={toggleAutomation}
               />
             )}
-            {activeTab === "time_flux" && (
+            {activeTab === "time_flux" && gameState.currentCompanyGrade > 1 && (
               <TimeFluxTab
                 gameState={gameState}
                 setGameState={setGameState}
+                toggleTimeFlux={toggleTimeFlux}
                 t={t}
               />
             )}
@@ -1180,12 +1237,14 @@ export default function App() {
                 {t("tabs.ai_assistant")}
               </TabButton>
             )}
-            <TabButton
-              active={activeTab === "time_flux"}
-              onClick={handleTabTimeFlux}
-            >
-              {t("tabs.time_flux")}
-            </TabButton>
+            {gameState.currentCompanyGrade > 1 && (
+              <TabButton
+                active={activeTab === "time_flux"}
+                onClick={handleTabTimeFlux}
+              >
+                {t("tabs.time_flux")}
+              </TabButton>
+            )}
             <TabButton active={activeTab === "graph"} onClick={handleTabGraph}>
               {t("tabs.graph") || "Graph"}
             </TabButton>
