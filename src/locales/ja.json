@@ -64,7 +64,7 @@
     "indieDev": "個人開発者の自動雇用",
     "company": "企業の自動買収",
     "aiDev": "AI開発者の自動雇用",
-    "companyupgrade": "会社のアップグレード",
+    "companyUpgrade": "会社のアップグレード",
     "speed": "自動購入速度",
     "upgrade": "速度をアップグレード ({{price}} ゲーム)"
   },
