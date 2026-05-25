@@ -11,7 +11,7 @@ import CryptoJS from "crypto-js";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
-import { formatNumber } from "./utils/format";
+import { formatNumber, formatTime } from "./utils/format";
 import { SECRET_KEY, achievementsList } from "./constants/gameData";
 import { TabButton, ActionButton } from "./components/Buttons";
 import { InfoToast, AchievementToast } from "./components/Toasts";
@@ -23,6 +23,7 @@ import {
 
 // Lazy load tab components
 const AiAssistantTab = React.lazy(() => import("./components/AiAssistantTab"));
+const TimeFluxTab = React.lazy(() => import("./components/TimeFluxTab"));
 const AchievementsTab = React.lazy(
   () => import("./components/AchievementsTab"),
 );
@@ -117,6 +118,10 @@ export default function App() {
       usedLanguages: ["en"],
       billingCount: 0,
       resetPromptShown: false,
+      storedTime: 0,
+      isTimeFluxActive: false,
+      timeFluxMultiplier: 2,
+      timeFluxReferenceTime: 0,
       automation: {
         indieDev: { level: 0, enabled: false, progress: 0 },
         company: { level: 0, enabled: false, progress: 0 },
@@ -474,109 +479,29 @@ export default function App() {
     offlineProcessedRef.current = true;
     if (gameState.lastTimestamp) {
       const now = Date.now();
-      const diffInSeconds = Math.floor((now - gameState.lastTimestamp) / 1000);
-      const cappedSeconds = Math.min(diffInSeconds, 10800);
-      if (cappedSeconds >= 60) {
-        const gamesGained = gps.times(cappedSeconds).div(2);
-        const moneyGained = gameState.games.times(cappedSeconds).div(2);
+      const diffMs = now - gameState.lastTimestamp;
+      // 1分以上経過していたら蓄積
+      if (diffMs >= 60000) {
+        setGameState((prev) => ({
+          ...prev,
+          storedTime: (prev.storedTime || 0) + diffMs,
+          lastTimestamp: now,
+        }));
 
-        let offlineMoney = gameState.money.plus(moneyGained);
-        let offlineIndieDev = gameState.indieDev;
-        let offlineCompany = gameState.company;
-        let offlineAiDev = gameState.aiDev || 0;
-        let offlineGrade = gameState.currentCompanyGrade;
-        let offlineGames = gameState.games.plus(gamesGained);
-
-        ["indieDev", "company", "aiDev", "companyUpgrade"].forEach((key) => {
-          const auto = gameState.automation[key];
-          if (auto.level > 0 && auto.enabled) {
-            // 大量購入によるフリーズを防ぐため、1ループあたりの最大購入試行数を制限
-            const potentialBuys = Math.min(
-              Math.floor(cappedSeconds * auto.level * 0.05),
-              500,
-            );
-            for (let i = 0; i < potentialBuys; i++) {
-              let price;
-              if (key === "indieDev") {
-                price = getIndieDevPrice(offlineIndieDev);
-                if (offlineMoney.gte(price)) {
-                  offlineMoney = offlineMoney.minus(price);
-                  offlineIndieDev++;
-                }
-              } else if (key === "company") {
-                price = getCompanyPrice(
-                  offlineCompany,
-                  gameState.currentCompanyGrade,
-                );
-                if (offlineMoney.gte(price)) {
-                  offlineMoney = offlineMoney.minus(price);
-                  offlineCompany++;
-                }
-              } else if (key === "aiDev") {
-                price = getAiDevPrice(offlineAiDev);
-                if (offlineMoney.gte(price)) {
-                  offlineMoney = offlineMoney.minus(price);
-                  offlineAiDev++;
-                }
-              } else if (key === "companyUpgrade") {
-                price = getUpgradeCompanyPrice(offlineGrade);
-                if (
-                  offlineMoney.gte(price) &&
-                  offlineCompany >= 1 &&
-                  offlineGrade < 15
-                ) {
-                  offlineMoney = offlineMoney.minus(price);
-                  offlineGrade++;
-                  offlineGames = new Decimal(0);
-                }
-              }
-            }
-          }
-        });
-
-        if (gamesGained.gt(0) || moneyGained.gt(0)) {
-          setGameState((prev) => ({
-            ...prev,
-            games: offlineGames,
-            money: offlineMoney,
-            indieDev: offlineIndieDev,
-            company: offlineCompany,
-            aiDev: offlineAiDev,
-            currentCompanyGrade: offlineGrade,
-          }));
-          setToastQueue((prev) => [
-            ...prev,
-            {
-              id: `offline-${now}`,
-              icon: "💤",
-              type: "info",
-              title: t("ui.offline_income_toast", {
-                games: format(gamesGained),
-                money: format(moneyGained),
-                seconds: cappedSeconds,
-              }),
-            },
-          ]);
-        }
+        setToastQueue((prev) => [
+          ...prev,
+          {
+            id: `offline-${now}`,
+            icon: "⏳",
+            type: "info",
+            title: t("ui.offline_stored_time_toast", {
+              time: formatTime(diffMs),
+            }),
+          },
+        ]);
       }
     }
-  }, [
-    getAiDevPrice,
-    getUpgradeCompanyPrice,
-    getCompanyPrice,
-    getIndieDevPrice,
-    format,
-    t,
-    gps,
-    gameState.money,
-    gameState.games,
-    gameState.indieDev,
-    gameState.company,
-    gameState.aiDev,
-    gameState.currentCompanyGrade,
-    gameState.automation,
-    gameState.lastTimestamp,
-  ]);
+  }, [gameState.lastTimestamp, t]);
 
   const lastTimeRef = useRef(null);
   const gpsRef = useRef(gps);
@@ -591,12 +516,53 @@ export default function App() {
 
     const gameLoop = (currentTime) => {
       if (lastTimeRef.current !== null) {
-        const deltaMs = currentTime - lastTimeRef.current;
+        let deltaMs = currentTime - lastTimeRef.current;
+
+        // タブがバックグラウンドになった際などの巨大なデルタ時間を防ぐ
+        // 1秒以上の差がある場合は、その分をタイムフラックスとして蓄積する
+        if (deltaMs > 1000) {
+          const excessMs = deltaMs - 1000;
+          deltaMs = 1000;
+          setGameState((prev) => ({
+            ...prev,
+            storedTime: (prev.storedTime || 0) + excessMs,
+          }));
+        }
+
         accumulatedTime += deltaMs;
         if (accumulatedTime >= RENDER_INTERVAL) {
           const automationThreshold = 5000000;
-          const deltaTime = accumulatedTime / 1000;
           setGameState((prev) => {
+            let deltaTime = accumulatedTime / 1000;
+            let newStoredTime = prev.storedTime || 0;
+            let newIsTimeFluxActive = prev.isTimeFluxActive;
+
+            if (newIsTimeFluxActive && newStoredTime > 0) {
+              const multiplier = prev.timeFluxMultiplier || 2;
+              const speedupFactor = multiplier - 1;
+              const costFactor = Math.pow(multiplier, 1.35) - 1;
+              
+              const speedupMs = accumulatedTime * speedupFactor;
+              const costMs = accumulatedTime * costFactor;
+
+              let actualSpeedupMs;
+              let actualCostMs;
+
+              if (newStoredTime >= costMs) {
+                actualSpeedupMs = speedupMs;
+                actualCostMs = costMs;
+              } else {
+                // 残り時間で可能な加速分を比例計算
+                const ratio = costFactor / speedupFactor;
+                actualSpeedupMs = newStoredTime / ratio;
+                actualCostMs = newStoredTime;
+                newIsTimeFluxActive = false;
+              }
+
+              deltaTime = (accumulatedTime + actualSpeedupMs) / 1000;
+              newStoredTime -= actualCostMs;
+            }
+
             const newGames = prev.games.plus(gpsRef.current.times(deltaTime));
             const newMoney = prev.money.plus(
               prev.games.floor().times(deltaTime),
@@ -735,7 +701,9 @@ export default function App() {
               updatedGrade === prev.currentCompanyGrade &&
               billingEvents === 0 &&
               updatedGames.equals(prev.games) &&
-              newAutomationUnlocked === prev.automationUnlocked
+              newAutomationUnlocked === prev.automationUnlocked &&
+              newStoredTime === prev.storedTime &&
+              newIsTimeFluxActive === prev.isTimeFluxActive
             )
               return prev;
 
@@ -750,6 +718,8 @@ export default function App() {
               aiDev: updatedAiDev,
               currentCompanyGrade: updatedGrade,
               automation: newAutomation,
+              storedTime: newStoredTime,
+              isTimeFluxActive: newIsTimeFluxActive,
             };
           });
           accumulatedTime %= RENDER_INTERVAL;
@@ -853,6 +823,10 @@ export default function App() {
 
   const handleTabIdle2 = useCallback(() => {
     setActiveTab("idle2");
+    setTimeout(updateTargetPos, 50);
+  }, [updateTargetPos]);
+  const handleTabTimeFlux = useCallback(() => {
+    setActiveTab("time_flux");
     setTimeout(updateTargetPos, 50);
   }, [updateTargetPos]);
   const handleTabAchievements = useCallback(() => {
@@ -1081,6 +1055,13 @@ export default function App() {
                 toggleAutomation={toggleAutomation}
               />
             )}
+            {activeTab === "time_flux" && (
+              <TimeFluxTab
+                gameState={gameState}
+                setGameState={setGameState}
+                t={t}
+              />
+            )}
             {activeTab === "graph" && (
               <GraphTab history={history} t={t} format={format} />
             )}
@@ -1199,6 +1180,12 @@ export default function App() {
                 {t("tabs.ai_assistant")}
               </TabButton>
             )}
+            <TabButton
+              active={activeTab === "time_flux"}
+              onClick={handleTabTimeFlux}
+            >
+              {t("tabs.time_flux")}
+            </TabButton>
             <TabButton active={activeTab === "graph"} onClick={handleTabGraph}>
               {t("tabs.graph") || "Graph"}
             </TabButton>

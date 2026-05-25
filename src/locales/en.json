@@ -6,13 +6,13 @@
     "help": "Help",
     "help_title": "How to play & Explanation",
     "close": "Close",
-    "offline_income_toast": "Welcome back! +{{games}} games / +{{money}} money ({{seconds}}s, 50% rate)"
+    "offline_stored_time_toast": "Welcome back! +{{time}} of Time Flux stored."
   },
   "help": {
     "basics_title": "Basic Rules",
     "basics_text": "Press buttons to hire developers or establish companies. Your money increases periodically based on the number of 'games' you have created.",
-    "offline_title": "Offline Income",
-    "offline_text": "Games and money will accumulate based on your last saved production even while the game is closed. Offline income starts after 1 minute of being away and lasts for up to 3 hours at half the normal speed.",
+    "offline_title": "Time Flux (Offline Accumulation)",
+    "offline_text": "While the game is closed or in the background, you accumulate 'Time Flux'. This stored time can be used in the 'Time Flux' tab to speed up the game's clock.",
     "billing_title": "Donations & Purchases",
     "billing_text": "As your produced games are played, players may occasionally make donations or in-game purchases. When this happens, you receive extra money directly, accompanied by a special visual effect.",
     "automation_title": "Automation",
@@ -55,10 +55,20 @@
     "transcendent": "Transcendent"
   },
   "tabs": {
-    "idle2": "idle²",
-    "achievements": "Achievements",
-    "setting": "Settings",
-    "ai_assistant": "AI Assistant"
+    "idle2": "🎮",
+    "time_flux": "⏳",
+    "graph": "📊",
+    "achievements": "🏆",
+    "setting": "⚙️",
+    "ai_assistant": "🤖"
+  },
+  "time_flux": {
+    "title": "Time Flux",
+    "description": "Consume stored time to speed up the game's internal clock. Higher multipliers consume time MUCH faster (less efficient)!",
+    "stored_time": "Stored Time: {{time}}",
+    "activate": "Activate Speedup",
+    "deactivate": "Deactivate Speedup",
+    "speed": "Speed Multiplier: {{multiplier}}x"
   },
   "automation": {
     "indieDev": "Auto Indie Dev",
@@ -182,8 +192,6 @@
     "10000000-money_desc": "Have 10,000,000G",
     "100000000-money": "Non-stop Profit",
     "100000000-money_desc": "Have 100,000,000G",
-    "many-money": "Elon Musk",
-    "many-money_desc": "Have 1,000,000,000G",
     "10000000000-money": "National Budget",
     "10000000000-money_desc": "Have 10,000,000,000G",
     "100000000000-money": "Planetary Ruler",
@@ -287,7 +295,7 @@
     "250000-company": "Organization Beyond Nations",
     "250000-company_desc": "Have 250,000 companies",
     "500000-company": "Planetary Alliance",
-    "500000-company_desc": "Have 500,000 companies",
+    "500000-company_desc": "Have 50,000 companies",
     "1000000-company": "Intergalactic",
     "1000000-company_desc": "Have 1,000,000 companies",
     "5000000-company": "Multidimensional Corp",
