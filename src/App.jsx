@@ -27,6 +27,7 @@ const AchievementsTab = React.lazy(
   () => import("./components/AchievementsTab"),
 );
 const SettingTab = React.lazy(() => import("./components/SettingTab"));
+const GraphTab = React.lazy(() => import("./components/GraphTab"));
 
 export default function App() {
   const achievementTabRef = useRef(null);
@@ -58,6 +59,7 @@ export default function App() {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
   const [toastQueue, setToastQueue] = useState([]);
+  const [history, setHistory] = useState([]);
   const [moneyEffects, setMoneyEffects] = useState([]);
   const [flashes, setFlashes] = useState({
     indieDev: false,
@@ -804,6 +806,27 @@ export default function App() {
     return () => clearInterval(checkAchievements);
   }, [t, gameStateRef]);
 
+  // 1秒おきに統計データを記録する
+  useEffect(() => {
+    const recordInterval = setInterval(() => {
+      const state = gameStateRef.current;
+      setHistory((prev) => {
+        const newData = {
+          time: Date.now(),
+          games: state.games.toNumber(),
+          money: state.money.toNumber(),
+          indieDev: state.indieDev,
+          company: state.company,
+          aiDev: state.aiDev || 0,
+        };
+        // 最大100件まで保持
+        const next = [...prev, newData];
+        return next.slice(-100);
+      });
+    }, 1000);
+    return () => clearInterval(recordInterval);
+  }, []);
+
   useEffect(() => {
     const enableTimer = setTimeout(() => {
       preventAutoSave.current = false;
@@ -842,6 +865,10 @@ export default function App() {
   }, [updateTargetPos]);
   const handleTabAiAssistant = useCallback(() => {
     setActiveTab("ai_assistant");
+    setTimeout(updateTargetPos, 50);
+  }, [updateTargetPos]);
+  const handleTabGraph = useCallback(() => {
+    setActiveTab("graph");
     setTimeout(updateTargetPos, 50);
   }, [updateTargetPos]);
 
@@ -1054,6 +1081,9 @@ export default function App() {
                 toggleAutomation={toggleAutomation}
               />
             )}
+            {activeTab === "graph" && (
+              <GraphTab history={history} t={t} format={format} />
+            )}
             {activeTab === "achievements" && (
               <AchievementsTab gameState={gameState} t={t} />
             )}
@@ -1169,6 +1199,9 @@ export default function App() {
                 {t("tabs.ai_assistant")}
               </TabButton>
             )}
+            <TabButton active={activeTab === "graph"} onClick={handleTabGraph}>
+              {t("tabs.graph") || "Graph"}
+            </TabButton>
             <TabButton
               ref={achievementTabRef}
               active={activeTab === "achievements"}

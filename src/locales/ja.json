@@ -6,7 +6,10 @@
     "help": "ヘルプ",
     "help_title": "遊び方と解説",
     "close": "閉じる",
-    "offline_income_toast": "おかえりなさい！ +{{games}} ゲーム / +{{money}} 資金 ({{seconds}}秒間, 50% の効率)"
+    "offline_income_toast": "おかえりなさい！ +{{games}} ゲーム / +{{money}} 資金 ({{seconds}}秒間, 50% の効率)",
+    "view_stats": "統計表示:",
+    "collecting_data": "データ収集中のため少々お待ちください...",
+    "graph_desc": "データは1秒ごとに記録されます。リロードするとリセットされます。"
   },
   "help": {
     "basics_title": "基本ルール",
@@ -56,6 +59,7 @@
   },
   "tabs": {
     "idle2": "idle²",
+    "graph": "グラフ",
     "achievements": "実績",
     "setting": "設定",
     "ai_assistant": "AIアシスタント"
