@@ -1078,6 +1078,9 @@ export default function App() {
                 onClick={buyIndieDev}
                 disabled={gameState.money.lt(indieDevPrice)}
                 flashing={flashes.indieDev}
+                currentValue={gameState.money}
+                targetValue={indieDevPrice}
+                progressColorClass="bg-yellow-400/30"
               >
                 {t("actions.buy_indie", {
                   price: format(indieDevPrice),
@@ -1090,6 +1093,13 @@ export default function App() {
                 colorClass={companyButtonColors.color}
                 shadowClass={companyButtonColors.shadow}
                 flashing={flashes.company}
+                currentValue={gameState.money}
+                targetValue={companyPrice}
+                progressColorClass={
+                  gameState.currentCompanyGrade % 2 === 0
+                    ? "bg-orange-400/30"
+                    : "bg-fuchsia-400/30"
+                }
               >
                 {t("actions.buy_company", {
                   price: format(companyPrice),
@@ -1104,6 +1114,9 @@ export default function App() {
                     gameState.money.lt(upgradeCompanyPrice) ||
                     gameState.company <= 0
                   }
+                  currentValue={gameState.money}
+                  targetValue={upgradeCompanyPrice}
+                  progressColorClass="bg-cyan-400/30"
                 >
                   {t("actions.upgrade_company", {
                     price: format(upgradeCompanyPrice),
@@ -1114,6 +1127,7 @@ export default function App() {
                   onClick={unlockAI}
                   colorClass="bg-purple-600 hover:bg-purple-700"
                   shadowClass="shadow-[0_4px_0_0_theme(colors.purple.800)]"
+                  progressColorClass="bg-lime-400/30"
                 >
                   {t("actions.unlock_ai")}
                 </ActionButton>
@@ -1124,6 +1138,9 @@ export default function App() {
                   colorClass="bg-indigo-600 hover:bg-indigo-700"
                   shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
                   flashing={flashes.aiDev}
+                  currentValue={gameState.money}
+                  targetValue={aiDevPrice}
+                  progressColorClass="bg-orange-400/30"
                 >
                   {t("actions.buy_ai", {
                     price: format(aiDevPrice),

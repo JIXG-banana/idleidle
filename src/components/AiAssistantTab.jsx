@@ -69,6 +69,9 @@ export default function AiAssistantTab({
                   disabled={gameState.games.lt(upgradeCost)}
                   colorClass="bg-indigo-600 hover:bg-indigo-700"
                   shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
+                  currentValue={gameState.games}
+                  targetValue={upgradeCost}
+                  progressColorClass="bg-yellow-400/30"
                 >
                   {t("automation.upgrade", {
                     price: format(upgradeCost),
