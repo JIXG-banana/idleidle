@@ -6,13 +6,13 @@
     "help": "Msaada",
     "help_title": "Jinsi ya kucheza & Maelezo",
     "close": "Funga",
-    "offline_income_toast": "Karibu tena! +{{games}} michezo / +{{money}} pesa ({{seconds}}s, kiwango cha 50%)"
+    "offline_stored_time_toast": "Karibu tena! +{{time}} ya Dopamini imehifadhiwa."
   },
   "help": {
     "basics_title": "Sheria za Msingi",
     "basics_text": "Bonyeza vitufe ili kuajiri watengenezaji au kuanzisha kampuni. Pesa zako huongezeka mara kwa mara kulingana na idadi ya 'michezo' uliyotengeneza.",
-    "offline_title": "Mapato ya Nje ya Mtandao",
-    "offline_text": "Michezo na pesa zitaongezeka kulingana na uzalishaji wako wa mwisho uliohifadhiwa hata wakati mchezo umefungwa. Mapato ya nje ya mtandao huanza baada ya dakika 1 ya kuwa mbali na hudumu hadi saa 3 kwa nusu ya kasi ya kawaida.",
+    "offline_title": "Dopamini (Mkusanyiko wa Nje ya Mtandao)",
+    "offline_text": "Wakati umefunga skrini, dopamini hukusanyika kutoka kwa watu wanaocheza mchezo wa kutofanya kazi ulioutengeneza. Unaporudi, unaweza kutumia dopamini kuharakisha kasi ya utengenezaji na uchezaji wa mchezo, huku vizidishio vya juu vikitumia dopamini kwa kasi zaidi.",
     "billing_title": "Michango na Ununuzi",
     "billing_text": "Kadiri michezo yako inavyochezwa, wachezaji wanaweza kutoa michango au kufanya ununuzi wa ndani ya mchezo. Hilo likitokea, utapokea pesa zaidi moja kwa moja, kukiwa na madoido maalum.",
     "automation_title": "Uotomatishaji",
@@ -55,10 +55,20 @@
     "transcendent": "Iliyotukuka"
   },
   "tabs": {
-    "idle2": "idle²",
-    "achievements": "Mafanikio",
-    "setting": "Mipangilio",
-    "ai_assistant": "Msaidizi wa AI"
+    "idle2": "🎮",
+    "time_flux": "⏳",
+    "graph": "📊",
+    "achievements": "🏆",
+    "setting": "⚙️",
+    "ai_assistant": "🤖"
+  },
+  "time_flux": {
+    "title": "Dopamini",
+    "description": "Wakati umefunga skrini, dopamini hukusanyika kutoka kwa watu wanaocheza mchezo wa kutofanya kazi ulioutengeneza. Unaporudi, unaweza kutumia dopamini kuharakisha kasi ya utengenezaji na uchezaji wa mchezo, huku vizidishio vya juu vikitumia dopamini kwa kasi zaidi.",
+    "stored_time": "Dopamini Iliyohifadhiwa: {{time}}",
+    "activate": "Toa Dopamini",
+    "deactivate": "Acha Kutoa Dopamini",
+    "speed": "Kiwango cha Kutolewa (Kizidishio): {{multiplier}}x"
   },
   "automation": {
     "indieDev": "Auto Indie Dev",

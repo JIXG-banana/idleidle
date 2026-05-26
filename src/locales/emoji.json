@@ -6,13 +6,13 @@
     "help": "❓",
     "help_title": "📖 & 💡",
     "close": "❌",
-    "offline_income_toast": "👋! +{{games}} 🎮 / +{{money}} 💰 ({{seconds}}s, 50% ⚡)"
+    "offline_stored_time_toast": "👋! +{{time}} 🧠 💾"
   },
   "help": {
     "basics_title": "📜",
     "basics_text": "🔘 ➡️ 👨‍💻 / 🏢. 💰 ⬆️ 📅 ⬅️ 🎮.",
-    "offline_title": "💤 💰",
-    "offline_text": "🎮 & 💰 ⬆️ 💤. ⏳ 1m ➡️ 💤, ⏳ 3h max, 50% ⚡.",
+    "offline_title": "🧠 💤",
+    "offline_text": "💤 ➡️ 🧠 🆙. 👋 ➡️ 🧠 ⏩ 🎮. 📈 ➡️ 🧠 📉 ⏩.",
     "billing_title": "🎁 & 💳",
     "billing_text": "🎮 ➡️ 👨‍💻 ➡️ 🎁 / 💳. 🎁 ➡️ 💰 🆙 + ✨.",
     "automation_title": "🤖",
@@ -56,9 +56,20 @@
   },
   "tabs": {
     "idle2": "🎮²",
+    "time_flux": "🧠",
     "achievements": "🏆",
     "setting": "⚙️",
     "ai_assistant": "🤖 💁‍♂️"
+  },
+  "time_flux": {
+    "title": "🧠",
+    "description": "💤 ➡️ 🧠 🆙. 👋 ➡️ 🧠 ⏩ 🎮. 📈 ➡️ 🧠 📉 ⏩.",
+    "stored_time": "🧠: {{time}}",
+    "activate": "🧠 ⏩",
+    "deactivate": "🧠 🛑",
+    "speed": "⏩: {{multiplier}}x",
+    "speed_multiplier": "⏩",
+    "drain": "🧠 📉: {{rate}}s / s"
   },
   "automation": {
     "indieDev": "🤖 👨‍💻",

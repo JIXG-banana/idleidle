@@ -9,8 +9,6 @@ export default function TimeFluxTab({
   toggleTimeFlux,
   t,
 }) {
-  const multipliers = [2, 5, 10, 50, 100];
-
   const setMultiplier = (m) => {
     setGameState((prev) => ({
       ...prev,
@@ -38,7 +36,7 @@ export default function TimeFluxTab({
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden">
         <div className="relative z-10">
           <p className="text-sm text-blue-600 font-bold uppercase tracking-wider mb-1">
-            {t("time_flux.title")}
+            {t("time_flux.stored_time")}
           </p>
           <p className="text-3xl md:text-4xl font-black text-blue-900">
             {formatTime(currentStoredTime)}
@@ -74,7 +72,7 @@ export default function TimeFluxTab({
       <div className="space-y-4">
         <div className="flex justify-between items-center ml-1">
           <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-            Speed Multiplier
+            {t("time_flux.speed_multiplier")}
           </p>
           <p className="text-xl font-black text-blue-600">
             {currentMultiplier}x
@@ -138,7 +136,7 @@ export default function TimeFluxTab({
             <div className="w-2 h-2 bg-red-500 rounded-full" />
           </div>
           <p className="text-red-500 text-xs font-bold uppercase tracking-widest">
-            Flux Drain: {consumptionRate}s / sec
+            {t("time_flux.drain", { rate: consumptionRate })}
           </p>
         </div>
       )}

@@ -519,7 +519,7 @@ export default function App() {
         let deltaMs = currentTime - lastTimeRef.current;
 
         // タブがバックグラウンドになった際などの巨大なデルタ時間を防ぐ
-        // 1秒以上の差がある場合は、その分をタイムフラックスとして蓄積する (アンロック後のみ)
+        // 1秒以上の差がある場合は、その分をドーパミンとして蓄積する (アンロック後のみ)
         if (deltaMs > 1000 && gameStateRef.current.currentCompanyGrade > 1) {
           const excessMs = deltaMs - 1000;
           deltaMs = 1000;
