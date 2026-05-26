@@ -861,6 +861,46 @@ export default function App() {
 
   const mps = React.useMemo(() => gameState.games.floor(), [gameState.games]);
 
+  // Debug Console API
+  useEffect(() => {
+    window.game = {
+      setMoney: (val) => {
+        setGameState((prev) => ({ ...prev, money: new Decimal(val) }));
+      },
+      addMoney: (val) => {
+        setGameState((prev) => ({ ...prev, money: prev.money.plus(new Decimal(val)) }));
+      },
+      setGames: (val) => {
+        setGameState((prev) => ({ ...prev, games: new Decimal(val) }));
+      },
+      addGames: (val) => {
+        setGameState((prev) => ({ ...prev, games: prev.games.plus(new Decimal(val)) }));
+      },
+      setStoredTime: (ms) => {
+        setGameState((prev) => ({ ...prev, storedTime: ms }));
+      },
+      addStoredTime: (ms) => {
+        setGameState((prev) => ({ ...prev, storedTime: (prev.storedTime || 0) + ms }));
+      },
+      setGrade: (grade) => {
+        setGameState((prev) => ({ ...prev, currentCompanyGrade: Math.max(1, Math.min(15, grade)) }));
+      },
+      setIndieDev: (count) => {
+        setGameState((prev) => ({ ...prev, indieDev: count }));
+      },
+      setAiDev: (count) => {
+        setGameState((prev) => ({ ...prev, aiDev: count }));
+      },
+      reset: () => {
+        localStorage.clear();
+        window.location.reload();
+      }
+    };
+    return () => {
+      delete window.game;
+    };
+  }, []);
+
   return (
     <div className="p-3 md:p-5 pb-24 md:pb-5">
       {!gameState.languageSelected && (
