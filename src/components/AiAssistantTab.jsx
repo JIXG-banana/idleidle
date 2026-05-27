@@ -23,7 +23,7 @@ export default function AiAssistantTab({
             return true;
           })
           .map((key) => {
-            const auto = gameState.automation[key];
+            const auto = gameState.automation?.[key] || { level: 0, enabled: false, progress: 0 };
             const upgradeCost = getAutomationUpgradeCost(auto.level);
             return (
               <div
@@ -60,7 +60,7 @@ export default function AiAssistantTab({
                   <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-blue-400 h-full transition-all duration-75"
-                      style={{ width: `${auto.progress * 100}%` }}
+                      style={{ width: `${(auto.progress || 0) * 100}%` }}
                     />
                   </div>
                 </div>

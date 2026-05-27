@@ -30,6 +30,38 @@ const AchievementsTab = React.lazy(
 const SettingTab = React.lazy(() => import("./components/SettingTab"));
 const GraphTab = React.lazy(() => import("./components/GraphTab"));
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-10 text-center flex flex-col gap-4 bg-red-50 rounded-2xl border-2 border-red-200">
+          <h2 className="text-xl font-bold text-red-600">Something went wrong.</h2>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false });
+              window.location.reload();
+            }}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold"
+          >
+            Reload Game
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const achievementTabRef = useRef(null);
   const moneyRef = useRef(null);
@@ -223,7 +255,7 @@ export default function App() {
   const getUpgradeCompanyPrice = useCallback((grade) => {
     // 指数の減衰（0.85乗）により後半の上昇を緩やかにしつつ、JIXG以降で単位を大きく跳ね上げます。
     const adjustedExponent = Math.pow(grade - 1, 0.85);
-    let basePrice = new Decimal(10000);
+    let basePrice = new Decimal(1000);
     // JIXG (Grade 10) 以降は希少性を出すため、コストを1万倍（4桁増）に設定
     const multiplier = grade >= 10 ? 10000 : 1;
     return basePrice
@@ -501,7 +533,7 @@ export default function App() {
         ]);
       }
     }
-  }, [gameState.lastTimestamp, t]);
+  }, [gameState.lastTimestamp, t, gameState]);
 
   const lastTimeRef = useRef(null);
   const gpsRef = useRef(gps);
@@ -509,9 +541,10 @@ export default function App() {
     gpsRef.current = gps;
   }, [gps]);
 
+  const accumulatedTimeRef = useRef(0);
+
   useEffect(() => {
     let animationFrameId;
-    let accumulatedTime = 0;
     const RENDER_INTERVAL = 50;
 
     const gameLoop = (currentTime) => {
@@ -529,11 +562,15 @@ export default function App() {
           }));
         }
 
-        accumulatedTime += deltaMs;
-        if (accumulatedTime >= RENDER_INTERVAL) {
+        accumulatedTimeRef.current += deltaMs;
+
+        if (accumulatedTimeRef.current >= RENDER_INTERVAL) {
           const automationThreshold = 5000000;
+          const currentAccumulated = accumulatedTimeRef.current;
+          accumulatedTimeRef.current = 0;
+
           setGameState((prev) => {
-            let deltaTime = accumulatedTime / 1000;
+            let deltaTime = currentAccumulated / 1000;
             let newStoredTime = prev.storedTime || 0;
             let newIsTimeFluxActive = prev.isTimeFluxActive;
 
@@ -542,8 +579,8 @@ export default function App() {
               const speedupFactor = multiplier - 1;
               const costFactor = Math.pow(multiplier, 1.35) - 1;
               
-              const speedupMs = accumulatedTime * speedupFactor;
-              const costMs = accumulatedTime * costFactor;
+              const speedupMs = currentAccumulated * speedupFactor;
+              const costMs = currentAccumulated * costFactor;
 
               let actualSpeedupMs;
               let actualCostMs;
@@ -559,7 +596,7 @@ export default function App() {
                 newIsTimeFluxActive = false;
               }
 
-              deltaTime = (accumulatedTime + actualSpeedupMs) / 1000;
+              deltaTime = (currentAccumulated + actualSpeedupMs) / 1000;
               newStoredTime -= actualCostMs;
             }
 
@@ -638,23 +675,24 @@ export default function App() {
               },
             );
 
-            // 購入が発生した場合は、アニメーションをトリガー（非同期）
+            // 購入が発生した場合は、アニメーションをトリガー
             if (pendingFlashes.length > 0) {
-              setTimeout(() => {
-                pendingFlashes.forEach((key) => triggerFlash(key));
-              }, 0);
+              pendingFlashes.forEach((key) => triggerFlash(key));
             }
 
             let billingEvents = 0;
             const gamesNum = prev.games.floor().toNumber();
+            // deltaTime (s) を考慮して確率をスケーリングする
+            // 本来 0.05s (RENDER_INTERVAL) ごとの判定確率なので、その比率で掛ける
+            const timeScale = deltaTime / (RENDER_INTERVAL / 1000);
             const billingProbability =
-              0.00008 * (1 + (prev.currentCompanyGrade - 1) * 0.5);
+              0.00008 * (1 + (prev.currentCompanyGrade - 1) * 0.5) * timeScale;
+
             if (gamesNum > 0) {
-              // gamesNum が非常に大きい場合に備え、Decimalで計算し、
-              // 100回以上の判定が必要な場合は近似値を使用する
               const expectedEvents = prev.games
                 .times(billingProbability)
                 .toNumber();
+              
               if (gamesNum > 100 || expectedEvents > 10) {
                 billingEvents = Math.max(
                   0,
@@ -685,11 +723,10 @@ export default function App() {
                 .times(quantityScale)
                 .times(prev.games.div(1000).plus(1))
                 .floor();
-              if (triggerRef.current)
-                // エフェクトが多すぎると重いため、描画タイミングをずらす
-                requestAnimationFrame(() =>
-                  triggerRef.current(billingMoneyGained),
-                );
+              
+              if (triggerRef.current) {
+                triggerRef.current(billingMoneyGained);
+              }
             }
 
             // 変更がない場合は参照を維持して再レンダリングを抑制
@@ -722,7 +759,6 @@ export default function App() {
               isTimeFluxActive: newIsTimeFluxActive,
             };
           });
-          accumulatedTime %= RENDER_INTERVAL;
         }
       }
       lastTimeRef.current = currentTime;
@@ -736,6 +772,7 @@ export default function App() {
     getIndieDevPrice,
     getUpgradeCompanyPrice,
     triggerFlash,
+    gameState.currentCompanyGrade,
   ]);
 
   // 最新のgameStateをインターバル内で安全に参照するためのRef
@@ -802,18 +839,23 @@ export default function App() {
       preventAutoSave.current = false;
     }, 2000);
     const autoSaveInterval = setInterval(() => {
-      setGameState((currentState) => {
-        if (preventAutoSave.current) return currentState;
-        const stateToSave = { ...currentState, lastTimestamp: Date.now() };
-        localStorage.setItem(
-          "save",
-          CryptoJS.AES.encrypt(
+      if (preventAutoSave.current) return;
+      
+      const currentState = gameStateRef.current;
+      const stateToSave = { ...currentState, lastTimestamp: Date.now() };
+      
+      // 非同期的に暗号化と保存を行う（少しでもメインスレッドへの影響を抑える）
+      setTimeout(() => {
+        try {
+          const encrypted = CryptoJS.AES.encrypt(
             JSON.stringify(stateToSave),
             SECRET_KEY,
-          ).toString(),
-        );
-        return currentState;
-      });
+          ).toString();
+          localStorage.setItem("save", encrypted);
+        } catch (e) {
+          console.error("Auto-save failed:", e);
+        }
+      }, 0);
     }, 20000);
     return () => {
       clearTimeout(enableTimer);
@@ -1151,46 +1193,48 @@ export default function App() {
               <StaticAdsAndForm />
             </div>
           )}
-          <Suspense
-            fallback={
-              <div className="p-10 text-center animate-pulse">
-                {t("ui.loading")}
-              </div>
-            }
-          >
-            {activeTab === "ai_assistant" && (
-              <AiAssistantTab
-                gameState={gameState}
-                t={t}
-                format={format}
-                getAutomationUpgradeCost={getAutomationUpgradeCost}
-                upgradeAutomation={upgradeAutomation}
-                toggleAutomation={toggleAutomation}
-              />
-            )}
-            {activeTab === "time_flux" && gameState.currentCompanyGrade > 1 && (
-              <TimeFluxTab
-                gameState={gameState}
-                setGameState={setGameState}
-                toggleTimeFlux={toggleTimeFlux}
-                t={t}
-              />
-            )}
-            {activeTab === "graph" && (
-              <GraphTab history={history} t={t} format={format} />
-            )}
-            {activeTab === "achievements" && (
-              <AchievementsTab gameState={gameState} t={t} />
-            )}
-            {activeTab === "setting" && (
-              <SettingTab
-                gameState={gameState}
-                setGameState={setGameState}
-                i18n={i18n}
-                t={t}
-              />
-            )}
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="p-10 text-center animate-pulse">
+                  {t("ui.loading")}
+                </div>
+              }
+            >
+              {activeTab === "ai_assistant" && (
+                <AiAssistantTab
+                  gameState={gameState}
+                  t={t}
+                  format={format}
+                  getAutomationUpgradeCost={getAutomationUpgradeCost}
+                  upgradeAutomation={upgradeAutomation}
+                  toggleAutomation={toggleAutomation}
+                />
+              )}
+              {activeTab === "time_flux" && gameState.currentCompanyGrade > 1 && (
+                <TimeFluxTab
+                  gameState={gameState}
+                  setGameState={setGameState}
+                  toggleTimeFlux={toggleTimeFlux}
+                  t={t}
+                />
+              )}
+              {activeTab === "graph" && (
+                <GraphTab history={history} t={t} format={format} />
+              )}
+              {activeTab === "achievements" && (
+                <AchievementsTab gameState={gameState} t={t} />
+              )}
+              {activeTab === "setting" && (
+                <SettingTab
+                  gameState={gameState}
+                  setGameState={setGameState}
+                  i18n={i18n}
+                  t={t}
+                />
+              )}
+            </Suspense>
+          </ErrorBoundary>
         </div>
 
         <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 z-[110] flex flex-col-reverse gap-2 items-center pointer-events-none">
