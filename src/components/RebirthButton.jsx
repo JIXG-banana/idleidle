@@ -2,16 +2,18 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 
+import RebirthConfirmModal from "./RebirthConfirmModal"; // Import the new modal component
 /**
  * 転生（世界を再コーディング）ボタンコンポーネント
  * @param {Object} props
  * @param {number|Object} props.production - 現在の生産量（数値またはDecimalオブジェクト）
  */
-const RebirthButton = ({ production }) => {
+const RebirthButton = ({ production, setIsRebirthing }) => {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false); // State for the custom confirmation modal
 
-  // 100億 (10^10) の閾値
-  const THRESHOLD = 1e10;
+  // 50億 (5e9) の閾値
+  const THRESHOLD = 5e9;
 
   // productionが数値の場合と、break_infinity.jsのDecimalオブジェクトの場合の両方に対応
   const canRebirth =
@@ -19,21 +21,35 @@ const RebirthButton = ({ production }) => {
       ? production.gte(THRESHOLD)
       : Number(production) >= THRESHOLD;
 
-  const handleRebirth = () => {
-    // 警告ポップアップの表示
-    const confirmed = window.confirm(
-      "【警告: 世界の再コーディング】\n本当に実行しますか？現在の進行状況はすべて消去され、新たな宇宙が構築されます。\n(※現時点では演出のみが実行されます)",
-    );
+  const handleConfirm = () => {
+    setIsConfirming(false); // Close the modal
+    setIsRebirthing(true);  // メイン画面の吸い込み開始
 
-    if (confirmed) {
-      setIsAnimating(true);
-    }
+    // 9秒後にUIを元の状態に戻す（黒い円が完全に覆っている最中）
+    setTimeout(() => {
+      setIsRebirthing(false);
+    }, 9000);
+
+    setIsAnimating(true); // アニメーション開始
   };
 
-  if (!canRebirth && !isAnimating) return null;
+  const handleCancel = () => {
+    setIsConfirming(false); // Close the modal
+  };
+
+  const handleRebirth = () => {
+    setIsConfirming(true); // Show the custom confirmation modal
+  };
+
+  // Only render the button if conditions are met AND not currently confirming or animating
+  if (!canRebirth && !isAnimating && !isConfirming) return null;
 
   return (
     <>
+      {/* Custom Confirmation Modal */}
+      {isConfirming && (
+        <RebirthConfirmModal onConfirm={handleConfirm} onCancel={handleCancel} />
+      )}
       {/* ボタン本体 */}
       {canRebirth && (
         <button
@@ -51,35 +67,20 @@ const RebirthButton = ({ production }) => {
             <AnimatePresence>
               {isAnimating && (
                 <>
-                  {/* 1. 画面全体が吸い込まれる渦巻きレイヤー */}
-                  <motion.div
-                    className="absolute inset-0 bg-white/30 backdrop-blur-md"
-                    initial={{ scale: 1.5, rotate: 0, opacity: 0 }}
-                    animate={{
-                      scale: [1.5, 1, 0],
-                      rotate: [0, 360, 1080],
-                      opacity: [0, 1, 1, 0],
-                    }}
-                    transition={{
-                      duration: 2.5,
-                      times: [0, 0.2, 0.8, 1],
-                      ease: "easeInOut",
-                    }}
-                  />
-
-                  {/* 2. 中心から広がる黒い円 */}
+                  {/* 中心から広がる黒い円 (画面全体を覆い尽くす) */}
                   <motion.div
                     className="absolute bg-black rounded-full"
                     initial={{ width: 0, height: 0 }}
                     animate={{
-                      width: ["0vmax", "0vmax", "300vmax", "300vmax"],
-                      height: ["0vmax", "0vmax", "300vmax", "300vmax"],
-                      opacity: [1, 1, 1, 0],
+                      // 0s-4.8s: 待機, 4.8s-7.2s: 拡大(全画面覆う), 7.2s-9.6s: 維持, 9.6s-12s: 透明化
+                      width: ["0vmax", "0vmax", "300vmax", "300vmax", "300vmax"],
+                      height: ["0vmax", "0vmax", "300vmax", "300vmax", "300vmax"],
+                      opacity: [1, 1, 1, 1, 0],
                     }}
                     transition={{
-                      duration: 4,
-                      times: [0, 0.4, 0.7, 1],
-                      ease: "easeIn",
+                      duration: 12.0,
+                      times: [0, 0.4, 0.6, 0.8, 1], // 0.4*12=4.8s, 0.6*12=7.2s, 0.8*12=9.6s
+                      ease: "easeInOut",
                     }}
                     onAnimationComplete={() => setIsAnimating(false)}
                   />

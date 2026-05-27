@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import Decimal from "break_infinity.js";
 import CryptoJS from "crypto-js";
-// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
@@ -20,6 +19,7 @@ import {
   StaticAdsAndForm,
   SideAds,
 } from "./components/GameUI";
+import RebirthButton from "./components/RebirthButton";
 
 // Lazy load tab components
 const AiAssistantTab = React.lazy(() => import("./components/AiAssistantTab"));
@@ -100,6 +100,7 @@ export default function App() {
     aiDev: false,
   });
   const [showResetPrompt, setShowResetPrompt] = useState(false);
+  const [isRebirthing, setIsRebirthing] = useState(false);
 
   useEffect(() => {
     const hasSave = localStorage.getItem("save");
@@ -956,7 +957,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="p-3 md:p-5 pb-24 md:pb-5">
+    <div className="p-3 md:p-5 pb-24 md:pb-5" style={{ perspective: "1500px" }}>
       {!gameState.languageSelected && (
         <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
@@ -1044,7 +1045,21 @@ export default function App() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row">
+      <motion.div 
+        className="flex flex-col md:flex-row"
+        animate={isRebirthing ? {
+          scale: [1, 0.8, 0],
+          rotate: [0, -360, -1440],
+          rotateX: [0, 45, 90],
+          rotateY: [0, -45, -90],
+          z: [0, -500, -2000],
+          opacity: [1, 1, 0],
+        } : { scale: 1, rotate: 0, rotateX: 0, rotateY: 0, z: 0, opacity: 1 }}
+        transition={{ 
+          duration: isRebirthing ? 8.0 : 0.1, 
+          ease: isRebirthing ? "easeInOut" : "linear" 
+        }}
+      >
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-y-auto">
           {activeTab === "idle2" && (
             <div
@@ -1205,6 +1220,7 @@ export default function App() {
                   })}
                 </ActionButton>
               )}
+              <RebirthButton production={gameState.games} setIsRebirthing={setIsRebirthing} />
               <StaticAdsAndForm />
             </div>
           )}
@@ -1383,7 +1399,7 @@ export default function App() {
           </div>
           <SideAds />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
