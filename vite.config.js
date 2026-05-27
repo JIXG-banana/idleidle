@@ -1,13 +1,16 @@
 import { defineConfig } from "vite";
+//import { viteSingleFile } from "vite-plugin-singlefile";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
 export default defineConfig({
   base: "/",
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss()/*, viteSingleFile()*/],
   build: {
+    assetsInlineLimit: 100000000,
     chunkSizeWarningLimit: 1000,
+    /*
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -25,6 +28,6 @@ export default defineConfig({
           }
         },
       },
-    },
+    },*/
   },
 });
