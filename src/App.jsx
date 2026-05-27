@@ -514,11 +514,14 @@ export default function App() {
       const diffMs = now - gameState.lastTimestamp;
       // 1分以上経過していたら蓄積 (アンロック後のみ)
       if (diffMs >= 60000 && gameState.currentCompanyGrade > 1) {
-        setGameState((prev) => ({
-          ...prev,
-          storedTime: (prev.storedTime || 0) + diffMs,
-          lastTimestamp: now,
-        }));
+        setGameState((prev) => {
+          const MAX_STORED = 10 * 60 * 60 * 1000;
+          return {
+            ...prev,
+            storedTime: Math.min(MAX_STORED, (prev.storedTime || 0) + diffMs),
+            lastTimestamp: now,
+          };
+        });
 
         setToastQueue((prev) => [
           ...prev,
@@ -553,13 +556,22 @@ export default function App() {
 
         // タブがバックグラウンドになった際などの巨大なデルタ時間を防ぐ
         // 1秒以上の差がある場合は、その分をドーパミンとして蓄積する (アンロック後のみ)
+        // 上限は10時間 (36,000,000ms)
         if (deltaMs > 1000 && gameStateRef.current.currentCompanyGrade > 1) {
           const excessMs = deltaMs - 1000;
           deltaMs = 1000;
-          setGameState((prev) => ({
-            ...prev,
-            storedTime: (prev.storedTime || 0) + excessMs,
-          }));
+          setGameState((prev) => {
+            const MAX_STORED = 10 * 60 * 60 * 1000; // 10 hours in ms
+            const currentStored = prev.storedTime || 0;
+            const newStored = Math.min(MAX_STORED, currentStored + excessMs);
+            
+            if (newStored === currentStored) return prev;
+
+            return {
+              ...prev,
+              storedTime: newStored,
+            };
+          });
         }
 
         accumulatedTimeRef.current += deltaMs;
@@ -1087,7 +1099,7 @@ export default function App() {
                       transition={{ duration: 1.5, repeat: Infinity }}
                     />
                     
-                    {/* Synchronized Progress Bar */}
+                    {/* Synchronized Progress Bar - Fixed 10 hour limit */}
                     <motion.div
                       className="absolute bottom-0 left-0 h-full bg-blue-500/40 pointer-events-none"
                       initial={{ width: 0 }}
@@ -1095,9 +1107,7 @@ export default function App() {
                         width: `${Math.min(
                           Math.max(
                             ((gameState.storedTime || 0) /
-                              (gameState.timeFluxReferenceTime ||
-                                gameState.storedTime ||
-                                1)) *
+                              (10 * 60 * 60 * 1000)) *
                               100,
                             0,
                           ),
@@ -1106,10 +1116,15 @@ export default function App() {
                       }}
                       transition={{ type: "spring", bounce: 0, duration: 0.5 }}
                     />
-                    <div className="relative z-10 flex items-center justify-center gap-2">
-                      <span>{t("time_flux.deactivate")}</span>
-                      <span className="text-xs opacity-80 bg-black/20 px-2 py-0.5 rounded-full">
-                        {gameState.timeFluxMultiplier}x
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                      <div className="flex items-center gap-2">
+                        <span>{t("time_flux.deactivate")}</span>
+                        <span className="text-xs opacity-80 bg-black/20 px-2 py-0.5 rounded-full">
+                          {gameState.timeFluxMultiplier}x
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold opacity-80 tracking-tighter">
+                        {formatTime(gameState.storedTime)} REMAINING
                       </span>
                     </div>
                   </button>
