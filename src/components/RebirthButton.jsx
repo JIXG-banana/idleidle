@@ -25,10 +25,10 @@ const RebirthButton = ({ production, setIsRebirthing }) => {
     setIsConfirming(false); // Close the modal
     setIsRebirthing(true);  // メイン画面の吸い込み開始
 
-    // 9秒後にUIを元の状態に戻す（黒い円が完全に覆っている最中）
+    // 4.5秒後にUIを元の状態に戻す（黒い円が完全に覆っている最中）
     setTimeout(() => {
       setIsRebirthing(false);
-    }, 9000);
+    }, 4500);
 
     setIsAnimating(true); // アニメーション開始
   };
@@ -72,14 +72,14 @@ const RebirthButton = ({ production, setIsRebirthing }) => {
                     className="absolute bg-black rounded-full"
                     initial={{ width: 0, height: 0 }}
                     animate={{
-                      // 0s-4.8s: 待機, 4.8s-7.2s: 拡大(全画面覆う), 7.2s-9.6s: 維持, 9.6s-12s: 透明化
+                      // 0s-1s: 待機, 1s-3s: 拡大(全画面覆う), 3s-6s: 維持, 6s-8s: 透明化
                       width: ["0vmax", "0vmax", "300vmax", "300vmax", "300vmax"],
                       height: ["0vmax", "0vmax", "300vmax", "300vmax", "300vmax"],
                       opacity: [1, 1, 1, 1, 0],
                     }}
                     transition={{
-                      duration: 12.0,
-                      times: [0, 0.4, 0.6, 0.8, 1], // 0.4*12=4.8s, 0.6*12=7.2s, 0.8*12=9.6s
+                      duration: 8.0,
+                      times: [0, 0.125, 0.375, 0.75, 1], // 0.125*8=1s, 0.375*8=3s, 0.75*8=6s
                       ease: "easeInOut",
                     }}
                     onAnimationComplete={() => setIsAnimating(false)}

@@ -155,6 +155,7 @@ export default function App() {
       isTimeFluxActive: false,
       timeFluxMultiplier: 2,
       timeFluxReferenceTime: 0,
+      buyAmountIndex: 0,
       automation: {
         indieDev: { level: 0, enabled: false, progress: 0 },
         company: { level: 0, enabled: false, progress: 0 },
@@ -276,15 +277,25 @@ export default function App() {
     return new Decimal(100).times(new Decimal(5).pow(level)).floor();
   }, []);
 
-  const indieDevPrice = getIndieDevPrice(gameState.indieDev);
-  const companyPrice = getCompanyPrice(
+  const indieDevPrice = getBulkPrice(
+    getIndieDevPrice,
+    gameState.indieDev,
+    currentBuyAmount,
+  );
+  const companyPrice = getBulkPrice(
+    getCompanyPrice,
     gameState.company,
+    currentBuyAmount,
     gameState.currentCompanyGrade,
   );
   const upgradeCompanyPrice = getUpgradeCompanyPrice(
     gameState.currentCompanyGrade,
   );
-  const aiDevPrice = getAiDevPrice(gameState.aiDev);
+  const aiDevPrice = getBulkPrice(
+    getAiDevPrice,
+    gameState.aiDev || 0,
+    currentBuyAmount,
+  );
 
   const companyGrades = React.useMemo(
     () => ({
@@ -375,36 +386,61 @@ export default function App() {
     ];
   }, [gameState.currentCompanyGrade]);
 
+  const buyAmounts = React.useMemo(() => [1, 2, 5, 10, 50, 100, 200], []);
+  const currentBuyAmount = buyAmounts[gameState.buyAmountIndex || 0];
+
+  const cycleBuyAmount = useCallback(() => {
+    setGameState((prev) => ({
+      ...prev,
+      buyAmountIndex: ((prev.buyAmountIndex || 0) + 1) % buyAmounts.length,
+    }));
+  }, [buyAmounts.length]);
+
+  const getBulkPrice = useCallback(
+    (priceFunc, currentCount, amount, ...extraArgs) => {
+      let total = new Decimal(0);
+      for (let i = 0; i < amount; i++) {
+        total = total.plus(priceFunc(currentCount + i, ...extraArgs));
+      }
+      return total;
+    },
+    [],
+  );
+
   const buyIndieDev = useCallback(() => {
     setGameState((prev) => {
-      const currentPrice = getIndieDevPrice(prev.indieDev);
-      if (prev.money.gte(currentPrice)) {
+      const amount = buyAmounts[prev.buyAmountIndex || 0];
+      const totalCost = getBulkPrice(getIndieDevPrice, prev.indieDev, amount);
+      if (prev.money.gte(totalCost)) {
         return {
           ...prev,
-          money: prev.money.minus(currentPrice),
-          indieDev: prev.indieDev + 1,
+          money: prev.money.minus(totalCost),
+          indieDev: prev.indieDev + amount,
         };
       }
       return prev;
     });
-  }, [getIndieDevPrice]);
+  }, [getIndieDevPrice, getBulkPrice, buyAmounts]);
 
   const buyCompany = useCallback(() => {
     setGameState((prev) => {
-      const currentPrice = getCompanyPrice(
+      const amount = buyAmounts[prev.buyAmountIndex || 0];
+      const totalCost = getBulkPrice(
+        getCompanyPrice,
         prev.company,
+        amount,
         prev.currentCompanyGrade,
       );
-      if (prev.money.gte(currentPrice)) {
+      if (prev.money.gte(totalCost)) {
         return {
           ...prev,
-          money: prev.money.minus(currentPrice),
-          company: prev.company + 1,
+          money: prev.money.minus(totalCost),
+          company: prev.company + amount,
         };
       }
       return prev;
     });
-  }, [getCompanyPrice]);
+  }, [getCompanyPrice, getBulkPrice, buyAmounts]);
 
   const upgradeCompany = useCallback(() => {
     setGameState((prev) => {
@@ -443,17 +479,18 @@ export default function App() {
 
   const buyAiDev = useCallback(() => {
     setGameState((prev) => {
-      const currentPrice = getAiDevPrice(prev.aiDev);
-      if (prev.money.gte(currentPrice)) {
+      const amount = buyAmounts[prev.buyAmountIndex || 0];
+      const totalCost = getBulkPrice(getAiDevPrice, prev.aiDev || 0, amount);
+      if (prev.money.gte(totalCost)) {
         return {
           ...prev,
-          money: prev.money.minus(currentPrice),
-          aiDev: (prev.aiDev || 0) + 1,
+          money: prev.money.minus(totalCost),
+          aiDev: (prev.aiDev || 0) + amount,
         };
       }
       return prev;
     });
-  }, [getAiDevPrice]);
+  }, [getAiDevPrice, getBulkPrice, buyAmounts]);
 
   const upgradeAutomation = useCallback(
     (key) => {
@@ -1047,6 +1084,7 @@ export default function App() {
 
       <motion.div 
         className="flex flex-col md:flex-row"
+        style={{ transformOrigin: "center center" }}
         animate={isRebirthing ? {
           scale: [1, 0.8, 0],
           rotate: [0, -360, -1440],
@@ -1091,7 +1129,7 @@ export default function App() {
                   +{format(mps, 2)}/s
                 </span>
               </div>
-              {moneyEffects.map((e) => (
+              {!isRebirthing && moneyEffects.map((e) => (
                 <div
                   key={e.id}
                   className="floating-money"
@@ -1146,6 +1184,17 @@ export default function App() {
                 </div>
               )}
 
+              {gameState.unlockedAchievements.includes("1000-game") && (
+                <div className="flex justify-end mb-2">
+                  <button
+                    onClick={cycleBuyAmount}
+                    className="bg-white text-gray-800 font-bold py-1 px-3 rounded border border-gray-300 shadow-sm text-sm hover:bg-gray-100 transition-colors"
+                  >
+                    Buy: {currentBuyAmount}
+                  </button>
+                </div>
+              )}
+
               <ActionButton
                 onClick={buyIndieDev}
                 disabled={gameState.money.lt(indieDevPrice)}
@@ -1154,6 +1203,7 @@ export default function App() {
                 targetValue={indieDevPrice}
                 progressColorClass="bg-yellow-400/30"
               >
+                {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
                 {t("actions.buy_indie", {
                   price: format(indieDevPrice),
                   count: gameState.indieDev,
@@ -1173,6 +1223,7 @@ export default function App() {
                     : "bg-fuchsia-400/30"
                 }
               >
+                {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
                 {t("actions.buy_company", {
                   price: format(companyPrice),
                   count: gameState.company,
@@ -1214,6 +1265,7 @@ export default function App() {
                   targetValue={aiDevPrice}
                   progressColorClass="bg-orange-400/30"
                 >
+                  {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
                   {t("actions.buy_ai", {
                     price: format(aiDevPrice),
                     count: gameState.aiDev || 0,

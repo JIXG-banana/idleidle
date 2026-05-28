@@ -51,6 +51,7 @@ export const StaticAdsAndForm = memo(() => (
         <AdMax url="/ad.html" width="300" height="250" />
       </div>
     </div>
+    {/*
     <div className="w-full mt-4 rounded-md overflow-hidden bg-gray-50">
       <iframe
         title="Google Form"
@@ -61,6 +62,7 @@ export const StaticAdsAndForm = memo(() => (
         読み込んでいます…
       </iframe>
     </div>
+    */}
   </>
 ));
 
