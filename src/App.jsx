@@ -277,6 +277,27 @@ export default function App() {
     return new Decimal(100).times(new Decimal(5).pow(level)).floor();
   }, []);
 
+  const buyAmounts = React.useMemo(() => [1, 2, 5, 10, 50, 100, 200], []);
+  const currentBuyAmount = buyAmounts[gameState.buyAmountIndex || 0];
+
+  const cycleBuyAmount = useCallback(() => {
+    setGameState((prev) => ({
+      ...prev,
+      buyAmountIndex: ((prev.buyAmountIndex || 0) + 1) % buyAmounts.length,
+    }));
+  }, [buyAmounts.length]);
+
+  const getBulkPrice = useCallback(
+    (priceFunc, currentCount, amount, ...extraArgs) => {
+      let total = new Decimal(0);
+      for (let i = 0; i < amount; i++) {
+        total = total.plus(priceFunc(currentCount + i, ...extraArgs));
+      }
+      return total;
+    },
+    [],
+  );
+
   const indieDevPrice = getBulkPrice(
     getIndieDevPrice,
     gameState.indieDev,
@@ -385,27 +406,6 @@ export default function App() {
       Math.min(gameState.currentCompanyGrade - 1, colors.length - 1)
     ];
   }, [gameState.currentCompanyGrade]);
-
-  const buyAmounts = React.useMemo(() => [1, 2, 5, 10, 50, 100, 200], []);
-  const currentBuyAmount = buyAmounts[gameState.buyAmountIndex || 0];
-
-  const cycleBuyAmount = useCallback(() => {
-    setGameState((prev) => ({
-      ...prev,
-      buyAmountIndex: ((prev.buyAmountIndex || 0) + 1) % buyAmounts.length,
-    }));
-  }, [buyAmounts.length]);
-
-  const getBulkPrice = useCallback(
-    (priceFunc, currentCount, amount, ...extraArgs) => {
-      let total = new Decimal(0);
-      for (let i = 0; i < amount; i++) {
-        total = total.plus(priceFunc(currentCount + i, ...extraArgs));
-      }
-      return total;
-    },
-    [],
-  );
 
   const buyIndieDev = useCallback(() => {
     setGameState((prev) => {
