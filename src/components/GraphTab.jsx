@@ -12,7 +12,7 @@ export default function GraphTab({ history, t, format }) {
       key: "money",
       label: t("ui.money", { count: "" }).replace(":", "").trim(),
     },
-    { key: "indieDev", label: t("automation.indieDev") },
+    { key: "developer", label: t("automation.developer") },
     { key: "company", label: t("automation.company") },
     { key: "aiDev", label: t("automation.aiDev") },
   ];
@@ -116,7 +116,7 @@ export default function GraphTab({ history, t, format }) {
         )}
       </div>
       <p className="text-xs text-gray-400 text-center italic">
-z        {t("ui.graph_desc") || "Data recorded every second. Reset on reload."}
+        {t("ui.graph_desc") || "Data recorded every second. Reset on reload."}
       </p>
     </div>
   );

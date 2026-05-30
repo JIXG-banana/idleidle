@@ -45,7 +45,9 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="p-10 text-center flex flex-col gap-4 bg-red-50 rounded-2xl border-2 border-red-200">
-          <h2 className="text-xl font-bold text-red-600">Something went wrong.</h2>
+          <h2 className="text-xl font-bold text-red-600">
+            Something went wrong.
+          </h2>
           <button
             onClick={() => {
               this.setState({ hasError: false });
@@ -95,7 +97,7 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [moneyEffects, setMoneyEffects] = useState([]);
   const [flashes, setFlashes] = useState({
-    indieDev: false,
+    developer: false,
     company: false,
     aiDev: false,
   });
@@ -137,7 +139,7 @@ export default function App() {
       games: new Decimal(0),
       dp: 0,
       players: 0,
-      indieDev: 0,
+      developer: 0,
       aiDev: 0,
       automationUnlocked: false,
       aiEnabled: false,
@@ -157,7 +159,7 @@ export default function App() {
       timeFluxReferenceTime: 0,
       buyAmountIndex: 0,
       automation: {
-        indieDev: { level: 0, enabled: false, progress: 0 },
+        developer: { level: 0, enabled: false, progress: 0 },
         company: { level: 0, enabled: false, progress: 0 },
         aiDev: { level: 0, enabled: false, progress: 0 },
         companyUpgrade: { level: 0, enabled: false, progress: 0 },
@@ -183,12 +185,19 @@ export default function App() {
         return {
           ...defaultState,
           ...parsed,
-          money: new Decimal(parsed.money ?? parsed.gold ?? 50),
+          money: new Decimal(
+            parsed.money ?? parsed.developers ?? parsed.gold ?? 50,
+          ),
+          developer: parsed.developer ?? parsed.indieDev ?? 0,
           games: new Decimal(parsed.games ?? 0),
           usedLanguages,
           automation: {
             ...defaultState.automation,
             ...(parsed.automation ?? {}),
+            developer:
+              parsed.automation?.developer ??
+              parsed.automation?.indieDev ??
+              defaultState.automation.developer,
           },
         };
       }
@@ -221,7 +230,7 @@ export default function App() {
       const id = Date.now() + Math.random();
       const newEffect = {
         id,
-        amount: `+${format(amount)}G`,
+        amount: `+${format(amount)}`,
         x:
           rect.left -
           containerRect.left +
@@ -242,7 +251,7 @@ export default function App() {
     triggerRef.current = triggerMoneyEffect;
   }, [triggerMoneyEffect]);
 
-  const getIndieDevPrice = useCallback((count) => {
+  const getDeveloperPrice = useCallback((count) => {
     return new Decimal(1.15).pow(count).times(10).floor();
   }, []);
 
@@ -278,7 +287,11 @@ export default function App() {
   }, []);
 
   const buyAmounts = React.useMemo(() => [1, 2, 5, 10, 50, 100, 200], []);
-  const currentBuyAmount = buyAmounts[gameState.buyAmountIndex || 0];
+  const currentBuyAmount = React.useMemo(() => {
+    // まとめ買い（1000-game実績）が未開放なら強制的に1個ずつ
+    if (!gameState.unlockedAchievements.includes("1000-game")) return 1;
+    return buyAmounts[gameState.buyAmountIndex || 0] || 1;
+  }, [gameState.unlockedAchievements, gameState.buyAmountIndex, buyAmounts]);
 
   const cycleBuyAmount = useCallback(() => {
     setGameState((prev) => ({
@@ -298,9 +311,9 @@ export default function App() {
     [],
   );
 
-  const indieDevPrice = getBulkPrice(
-    getIndieDevPrice,
-    gameState.indieDev,
+  const developerPrice = getBulkPrice(
+    getDeveloperPrice,
+    gameState.developer,
     currentBuyAmount,
   );
   const companyPrice = getBulkPrice(
@@ -407,24 +420,24 @@ export default function App() {
     ];
   }, [gameState.currentCompanyGrade]);
 
-  const buyIndieDev = useCallback(() => {
+  const buyDeveloper = useCallback(() => {
     setGameState((prev) => {
-      const amount = buyAmounts[prev.buyAmountIndex || 0];
-      const totalCost = getBulkPrice(getIndieDevPrice, prev.indieDev, amount);
+      const amount = currentBuyAmount;
+      const totalCost = getBulkPrice(getDeveloperPrice, prev.developer, amount);
       if (prev.money.gte(totalCost)) {
         return {
           ...prev,
           money: prev.money.minus(totalCost),
-          indieDev: prev.indieDev + amount,
+          developer: prev.developer + amount,
         };
       }
       return prev;
     });
-  }, [getIndieDevPrice, getBulkPrice, buyAmounts]);
+  }, [getDeveloperPrice, getBulkPrice, currentBuyAmount]);
 
   const buyCompany = useCallback(() => {
     setGameState((prev) => {
-      const amount = buyAmounts[prev.buyAmountIndex || 0];
+      const amount = currentBuyAmount;
       const totalCost = getBulkPrice(
         getCompanyPrice,
         prev.company,
@@ -440,7 +453,7 @@ export default function App() {
       }
       return prev;
     });
-  }, [getCompanyPrice, getBulkPrice, buyAmounts]);
+  }, [getCompanyPrice, getBulkPrice, currentBuyAmount]);
 
   const upgradeCompany = useCallback(() => {
     setGameState((prev) => {
@@ -474,12 +487,12 @@ export default function App() {
   }, [getUpgradeCompanyPrice, t, companyGrades]);
 
   const unlockAI = useCallback(() => {
-    setGameState((prev) => ({ ...prev, indieDev: 0, aiEnabled: true }));
+    setGameState((prev) => ({ ...prev, developer: 0, aiEnabled: true }));
   }, []);
 
   const buyAiDev = useCallback(() => {
     setGameState((prev) => {
-      const amount = buyAmounts[prev.buyAmountIndex || 0];
+      const amount = currentBuyAmount;
       const totalCost = getBulkPrice(getAiDevPrice, prev.aiDev || 0, amount);
       if (prev.money.gte(totalCost)) {
         return {
@@ -490,7 +503,7 @@ export default function App() {
       }
       return prev;
     });
-  }, [getAiDevPrice, getBulkPrice, buyAmounts]);
+  }, [getAiDevPrice, getBulkPrice, currentBuyAmount]);
 
   const upgradeAutomation = useCallback(
     (key) => {
@@ -531,18 +544,10 @@ export default function App() {
   }, []);
 
   const gps = React.useMemo(() => {
-    const devProd = new Decimal(gameState.indieDev).div(6);
+    const devProd = new Decimal(gameState.developer).div(6);
     const aiProd = new Decimal(gameState.aiDev || 0).times(10000);
-    const compProd = new Decimal(gameState.currentCompanyGrade)
-      .pow(2.25)
-      .times(gameState.company);
-    return devProd.plus(aiProd).plus(compProd);
-  }, [
-    gameState.indieDev,
-    gameState.aiDev,
-    gameState.currentCompanyGrade,
-    gameState.company,
-  ]);
+    return devProd.plus(aiProd);
+  }, [gameState.developer, gameState.aiDev]);
 
   useEffect(() => {
     if (offlineProcessedRef.current) return;
@@ -602,7 +607,7 @@ export default function App() {
             const MAX_STORED = 10 * 60 * 60 * 1000; // 10 hours in ms
             const currentStored = prev.storedTime || 0;
             const newStored = Math.min(MAX_STORED, currentStored + excessMs);
-            
+
             if (newStored === currentStored) return prev;
 
             return {
@@ -628,7 +633,7 @@ export default function App() {
               const multiplier = prev.timeFluxMultiplier || 2;
               const speedupFactor = multiplier - 1;
               const costFactor = Math.pow(multiplier, 1.35) - 1;
-              
+
               const speedupMs = currentAccumulated * speedupFactor;
               const costMs = currentAccumulated * costFactor;
 
@@ -650,13 +655,19 @@ export default function App() {
               newStoredTime -= actualCostMs;
             }
 
+            const developerRate = new Decimal(prev.currentCompanyGrade)
+              .pow(2.25)
+              .times(prev.company)
+              .div(10)
+              .toNumber();
+            let updatedDeveloper = prev.developer + developerRate * deltaTime;
+
             const newGames = prev.games.plus(gpsRef.current.times(deltaTime));
             const newMoney = prev.money.plus(
               prev.games.floor().times(deltaTime),
             );
             const newAutomation = { ...prev.automation };
             let updatedMoney = newMoney;
-            let updatedIndieDev = prev.indieDev;
             let updatedCompany = prev.company;
             let updatedAiDev = prev.aiDev || 0;
             let updatedGrade = prev.currentCompanyGrade;
@@ -666,7 +677,7 @@ export default function App() {
 
             const pendingFlashes = [];
 
-            ["indieDev", "company", "aiDev", "companyUpgrade"].forEach(
+            ["developer", "company", "aiDev", "companyUpgrade"].forEach(
               (key) => {
                 if (
                   newAutomation[key].level > 0 &&
@@ -681,13 +692,13 @@ export default function App() {
                     auto.progress -= buyCount;
                     for (let i = 0; i < buyCount; i++) {
                       let price;
-                      if (key === "indieDev") {
-                        price = getIndieDevPrice(updatedIndieDev);
+                      if (key === "developer") {
+                        price = getDeveloperPrice(Math.floor(updatedDeveloper));
                         if (updatedMoney.gte(price)) {
                           updatedMoney = updatedMoney.minus(price);
-                          updatedIndieDev++;
-                          if (!pendingFlashes.includes("indieDev"))
-                            pendingFlashes.push("indieDev");
+                          updatedDeveloper++;
+                          if (!pendingFlashes.includes("developer"))
+                            pendingFlashes.push("developer");
                         }
                       } else if (key === "company") {
                         price = getCompanyPrice(
@@ -742,7 +753,7 @@ export default function App() {
               const expectedEvents = prev.games
                 .times(billingProbability)
                 .toNumber();
-              
+
               if (gamesNum > 100 || expectedEvents > 10) {
                 billingEvents = Math.max(
                   0,
@@ -763,7 +774,7 @@ export default function App() {
               const companyScale = new Decimal(5).pow(
                 prev.currentCompanyGrade - 1,
               );
-              const quantityScale = new Decimal(prev.indieDev)
+              const quantityScale = new Decimal(updatedDeveloper)
                 .plus(new Decimal(prev.company).times(10))
                 .plus(new Decimal(prev.aiDev || 0).times(100))
                 .plus(1);
@@ -773,7 +784,7 @@ export default function App() {
                 .times(quantityScale)
                 .times(prev.games.div(1000).plus(1))
                 .floor();
-              
+
               if (triggerRef.current) {
                 triggerRef.current(billingMoneyGained);
               }
@@ -782,7 +793,7 @@ export default function App() {
             // 変更がない場合は参照を維持して再レンダリングを抑制
             if (
               updatedMoney.equals(prev.money) &&
-              updatedIndieDev === prev.indieDev &&
+              updatedDeveloper === prev.developer &&
               updatedCompany === prev.company &&
               updatedAiDev === (prev.aiDev || 0) &&
               updatedGrade === prev.currentCompanyGrade &&
@@ -799,7 +810,7 @@ export default function App() {
               games: updatedGames,
               money: updatedMoney.plus(billingMoneyGained),
               billingCount: (prev.billingCount || 0) + billingEvents,
-              indieDev: updatedIndieDev,
+              developer: updatedDeveloper,
               automationUnlocked: newAutomationUnlocked,
               company: updatedCompany,
               aiDev: updatedAiDev,
@@ -819,7 +830,7 @@ export default function App() {
   }, [
     getAiDevPrice,
     getCompanyPrice,
-    getIndieDevPrice,
+    getDeveloperPrice,
     getUpgradeCompanyPrice,
     triggerFlash,
     gameState.currentCompanyGrade,
@@ -872,7 +883,7 @@ export default function App() {
           time: Date.now(),
           games: state.games.toNumber(),
           money: state.money.toNumber(),
-          indieDev: state.indieDev,
+          developer: state.developer,
           company: state.company,
           aiDev: state.aiDev || 0,
         };
@@ -890,10 +901,10 @@ export default function App() {
     }, 2000);
     const autoSaveInterval = setInterval(() => {
       if (preventAutoSave.current) return;
-      
+
       const currentState = gameStateRef.current;
       const stateToSave = { ...currentState, lastTimestamp: Date.now() };
-      
+
       // 非同期的に暗号化と保存を行う（少しでもメインスレッドへの影響を抑える）
       setTimeout(() => {
         try {
@@ -960,25 +971,37 @@ export default function App() {
         setGameState((prev) => ({ ...prev, money: new Decimal(val) }));
       },
       addMoney: (val) => {
-        setGameState((prev) => ({ ...prev, money: prev.money.plus(new Decimal(val)) }));
+        setGameState((prev) => ({
+          ...prev,
+          money: prev.money.plus(new Decimal(val)),
+        }));
       },
       setGames: (val) => {
         setGameState((prev) => ({ ...prev, games: new Decimal(val) }));
       },
       addGames: (val) => {
-        setGameState((prev) => ({ ...prev, games: prev.games.plus(new Decimal(val)) }));
+        setGameState((prev) => ({
+          ...prev,
+          games: prev.games.plus(new Decimal(val)),
+        }));
       },
       setStoredTime: (ms) => {
         setGameState((prev) => ({ ...prev, storedTime: ms }));
       },
       addStoredTime: (ms) => {
-        setGameState((prev) => ({ ...prev, storedTime: (prev.storedTime || 0) + ms }));
+        setGameState((prev) => ({
+          ...prev,
+          storedTime: (prev.storedTime || 0) + ms,
+        }));
       },
       setGrade: (grade) => {
-        setGameState((prev) => ({ ...prev, currentCompanyGrade: Math.max(1, Math.min(15, grade)) }));
+        setGameState((prev) => ({
+          ...prev,
+          currentCompanyGrade: Math.max(1, Math.min(15, grade)),
+        }));
       },
-      setIndieDev: (count) => {
-        setGameState((prev) => ({ ...prev, indieDev: count }));
+      setDeveloper: (count) => {
+        setGameState((prev) => ({ ...prev, developer: count }));
       },
       setAiDev: (count) => {
         setGameState((prev) => ({ ...prev, aiDev: count }));
@@ -986,7 +1009,7 @@ export default function App() {
       reset: () => {
         localStorage.clear();
         window.location.reload();
-      }
+      },
     };
     return () => {
       delete window.game;
@@ -1082,20 +1105,24 @@ export default function App() {
         </div>
       )}
 
-      <motion.div 
+      <motion.div
         className="flex flex-col md:flex-row"
         style={{ transformOrigin: "center center" }}
-        animate={isRebirthing ? {
-          scale: [1, 0.8, 0],
-          rotate: [0, -360, -1440],
-          rotateX: [0, 45, 90],
-          rotateY: [0, -45, -90],
-          z: [0, -500, -2000],
-          opacity: [1, 1, 0],
-        } : { scale: 1, rotate: 0, rotateX: 0, rotateY: 0, z: 0, opacity: 1 }}
-        transition={{ 
-          duration: isRebirthing ? 8.0 : 0.1, 
-          ease: isRebirthing ? "easeInOut" : "linear" 
+        animate={
+          isRebirthing
+            ? {
+                scale: [1, 0.8, 0],
+                rotate: [0, -360, -1440],
+                rotateX: [0, 45, 90],
+                rotateY: [0, -45, -90],
+                z: [0, -500, -2000],
+                opacity: [1, 1, 0],
+              }
+            : { scale: 1, rotate: 0, rotateX: 0, rotateY: 0, z: 0, opacity: 1 }
+        }
+        transition={{
+          duration: isRebirthing ? 8.0 : 0.1,
+          ease: isRebirthing ? "easeInOut" : "linear",
         }}
       >
         <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-y-auto">
@@ -1129,60 +1156,66 @@ export default function App() {
                   +{format(mps, 2)}/s
                 </span>
               </div>
-              {!isRebirthing && moneyEffects.map((e) => (
-                <div
-                  key={e.id}
-                  className="floating-money"
-                  style={{ left: e.x, top: e.y }}
-                >
-                  {e.amount}
-                </div>
-              ))}
-
-              {gameState.isTimeFluxActive && gameState.currentCompanyGrade > 1 && (
-                <div className="mb-4">
-                  <button
-                    onClick={toggleTimeFlux}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl shadow-[0_4px_0_0_#991b1b] active:translate-y-[2px] active:shadow-none transition-all relative overflow-hidden group"
+              {!isRebirthing &&
+                moneyEffects.map((e) => (
+                  <div
+                    key={e.id}
+                    className="floating-money"
+                    style={{ left: e.x, top: e.y }}
                   >
-                    {/* Pulsing Decoration */}
-                    <motion.div
-                      className="absolute inset-0 bg-white/10 pointer-events-none"
-                      animate={{ opacity: [0, 0.2, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    />
-                    
-                    {/* Synchronized Progress Bar - Fixed 10 hour limit */}
-                    <motion.div
-                      className="absolute bottom-0 left-0 h-full bg-blue-500/40 pointer-events-none"
-                      initial={{ width: 0 }}
-                      animate={{
-                        width: `${Math.min(
-                          Math.max(
-                            ((gameState.storedTime || 0) /
-                              (10 * 60 * 60 * 1000)) *
-                              100,
-                            0,
-                          ),
-                          100,
-                        )}%`,
-                      }}
-                      transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-                    />
-                    <div className="relative z-10 flex flex-col items-center justify-center">
-                      <div className="flex items-center gap-2">
-                        <span>{t("time_flux.deactivate")}</span>
-                        <span className="text-xs opacity-80 bg-black/20 px-2 py-0.5 rounded-full">
-                          {gameState.timeFluxMultiplier}x
+                    {e.amount}
+                  </div>
+                ))}
+
+              {gameState.isTimeFluxActive &&
+                gameState.currentCompanyGrade > 1 && (
+                  <div className="mb-4">
+                    <button
+                      onClick={toggleTimeFlux}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl shadow-[0_4px_0_0_#991b1b] active:translate-y-[2px] active:shadow-none transition-all relative overflow-hidden group"
+                    >
+                      {/* Pulsing Decoration */}
+                      <motion.div
+                        className="absolute inset-0 bg-white/10 pointer-events-none"
+                        animate={{ opacity: [0, 0.2, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      />
+
+                      {/* Synchronized Progress Bar - Fixed 10 hour limit */}
+                      <motion.div
+                        className="absolute bottom-0 left-0 h-full bg-blue-500/40 pointer-events-none"
+                        initial={{ width: 0 }}
+                        animate={{
+                          width: `${Math.min(
+                            Math.max(
+                              ((gameState.storedTime || 0) /
+                                (10 * 60 * 60 * 1000)) *
+                                100,
+                              0,
+                            ),
+                            100,
+                          )}%`,
+                        }}
+                        transition={{
+                          type: "spring",
+                          bounce: 0,
+                          duration: 0.5,
+                        }}
+                      />
+                      <div className="relative z-10 flex flex-col items-center justify-center">
+                        <div className="flex items-center gap-2">
+                          <span>{t("time_flux.deactivate")}</span>
+                          <span className="text-xs opacity-80 bg-black/20 px-2 py-0.5 rounded-full">
+                            {gameState.timeFluxMultiplier}x
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold opacity-80 tracking-tighter">
+                          {formatTime(gameState.storedTime)} REMAINING
                         </span>
                       </div>
-                      <span className="text-[10px] font-bold opacity-80 tracking-tighter">
-                        {formatTime(gameState.storedTime)} REMAINING
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              )}
+                    </button>
+                  </div>
+                )}
 
               {gameState.unlockedAchievements.includes("1000-game") && (
                 <div className="flex justify-end mb-2">
@@ -1195,41 +1228,70 @@ export default function App() {
                 </div>
               )}
 
-              <ActionButton
-                onClick={buyIndieDev}
-                disabled={gameState.money.lt(indieDevPrice)}
-                flashing={flashes.indieDev}
-                currentValue={gameState.money}
-                targetValue={indieDevPrice}
-                progressColorClass="bg-yellow-400/30"
-              >
-                {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
-                {t("actions.buy_indie", {
-                  price: format(indieDevPrice),
-                  count: gameState.indieDev,
-                })}
-              </ActionButton>
-              <ActionButton
-                onClick={buyCompany}
-                disabled={gameState.money.lt(companyPrice)}
-                colorClass={companyButtonColors.color}
-                shadowClass={companyButtonColors.shadow}
-                flashing={flashes.company}
-                currentValue={gameState.money}
-                targetValue={companyPrice}
-                progressColorClass={
-                  gameState.currentCompanyGrade % 2 === 0
-                    ? "bg-orange-400/30"
-                    : "bg-fuchsia-400/30"
-                }
-              >
-                {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
-                {t("actions.buy_company", {
-                  price: format(companyPrice),
-                  count: gameState.company,
-                  grade: companyGrades[gameState.currentCompanyGrade],
-                })}
-              </ActionButton>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
+                <div className="flex-1 text-sm font-bold text-gray-700">
+                  {t("automation.developer")}: {format(gameState.developer)}
+                  {gameState.language === "ja" ? "人所有" : " owned"}
+                </div>
+                <div className="flex items-center gap-3">
+                  <ActionButton
+                    onClick={buyDeveloper}
+                    disabled={gameState.money.lt(developerPrice)}
+                    flashing={flashes.developer}
+                    currentValue={gameState.money}
+                    targetValue={developerPrice}
+                    progressColorClass="bg-yellow-400/30"
+                  >
+                    {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
+                    {gameState.language === "ja"
+                      ? "開発者を雇う"
+                      : "Hire Dev"}{" "}
+                    ({format(developerPrice)}G)
+                  </ActionButton>
+                  <div className="w-20 text-right text-xs font-mono text-blue-600">
+                    +{format(1 / 6, 2)} G/s
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
+                <div className="flex-1 text-sm font-bold text-gray-700">
+                  {companyGrades[gameState.currentCompanyGrade]}
+                  {t("automation.company")}: {format(gameState.company)}
+                  {gameState.language === "ja" ? "社所有" : " owned"}
+                </div>
+                <div className="flex items-center gap-3">
+                  <ActionButton
+                    onClick={buyCompany}
+                    disabled={gameState.money.lt(companyPrice)}
+                    colorClass={companyButtonColors.color}
+                    shadowClass={companyButtonColors.shadow}
+                    flashing={flashes.company}
+                    currentValue={gameState.money}
+                    targetValue={companyPrice}
+                    progressColorClass={
+                      gameState.currentCompanyGrade % 2 === 0
+                        ? "bg-orange-400/30"
+                        : "bg-fuchsia-400/30"
+                    }
+                  >
+                    {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
+                    {gameState.language === "ja" ? "企業を買う" : "Buy Co."} (
+                    {format(companyPrice)}G)
+                  </ActionButton>
+                  <div className="w-20 text-right text-xs font-mono text-emerald-600">
+                    +
+                    {format(
+                      new Decimal(gameState.currentCompanyGrade)
+                        .pow(2.25)
+                        .div(10),
+                      2,
+                    )}{" "}
+                    dev/s
+                  </div>
+                </div>
+              </div>
+
               {gameState.currentCompanyGrade < 15 ? (
                 <ActionButton
                   onClick={upgradeCompany}
@@ -1255,24 +1317,38 @@ export default function App() {
                   {t("actions.unlock_ai")}
                 </ActionButton>
               ) : (
-                <ActionButton
-                  onClick={buyAiDev}
-                  disabled={gameState.money.lt(aiDevPrice)}
-                  colorClass="bg-indigo-600 hover:bg-indigo-700"
-                  shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
-                  flashing={flashes.aiDev}
-                  currentValue={gameState.money}
-                  targetValue={aiDevPrice}
-                  progressColorClass="bg-orange-400/30"
-                >
-                  {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
-                  {t("actions.buy_ai", {
-                    price: format(aiDevPrice),
-                    count: gameState.aiDev || 0,
-                  })}
-                </ActionButton>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
+                  <div className="flex-1 text-sm font-bold text-gray-700">
+                    {t("automation.aiDev")}: {format(gameState.aiDev || 0)}
+                    {gameState.language === "ja" ? "体所有" : " owned"}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <ActionButton
+                      onClick={buyAiDev}
+                      disabled={gameState.money.lt(aiDevPrice)}
+                      colorClass="bg-indigo-600 hover:bg-indigo-700"
+                      shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
+                      flashing={flashes.aiDev}
+                      currentValue={gameState.money}
+                      targetValue={aiDevPrice}
+                      progressColorClass="bg-orange-400/30"
+                    >
+                      {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
+                      {gameState.language === "ja"
+                        ? "AI開発者を起動"
+                        : "Boot AI"}{" "}
+                      ({format(aiDevPrice)})
+                    </ActionButton>
+                    <div className="w-20 text-right text-xs font-mono text-indigo-600">
+                      +{format(10000)} G/s
+                    </div>
+                  </div>
+                </div>
               )}
-              <RebirthButton production={gameState.games} setIsRebirthing={setIsRebirthing} />
+              <RebirthButton
+                production={gameState.games}
+                setIsRebirthing={setIsRebirthing}
+              />
               <StaticAdsAndForm />
             </div>
           )}
@@ -1294,14 +1370,15 @@ export default function App() {
                   toggleAutomation={toggleAutomation}
                 />
               )}
-              {activeTab === "time_flux" && gameState.currentCompanyGrade > 1 && (
-                <TimeFluxTab
-                  gameState={gameState}
-                  setGameState={setGameState}
-                  toggleTimeFlux={toggleTimeFlux}
-                  t={t}
-                />
-              )}
+              {activeTab === "time_flux" &&
+                gameState.currentCompanyGrade > 1 && (
+                  <TimeFluxTab
+                    gameState={gameState}
+                    setGameState={setGameState}
+                    toggleTimeFlux={toggleTimeFlux}
+                    t={t}
+                  />
+                )}
               {activeTab === "graph" && (
                 <GraphTab history={history} t={t} format={format} />
               )}

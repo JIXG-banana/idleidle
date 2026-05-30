@@ -15,7 +15,7 @@ export default function AiAssistantTab({
         {t("tabs.ai_assistant")}
       </h2>
       <div className="space-y-8">
-        {["indieDev", "company", "companyUpgrade", "aiDev"]
+        {["developer", "company", "companyUpgrade", "aiDev"]
           .filter((key) => {
             if (key === "companyUpgrade")
               return gameState.currentCompanyGrade < 15;
