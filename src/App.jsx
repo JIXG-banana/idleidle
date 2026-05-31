@@ -103,6 +103,7 @@ export default function App() {
   });
   const [showResetPrompt, setShowResetPrompt] = useState(false);
   const [isRebirthing, setIsRebirthing] = useState(false);
+  const [offlinePopupData, setOfflinePopupData] = useState(null);
 
   useEffect(() => {
     const hasSave = localStorage.getItem("save");
@@ -291,7 +292,8 @@ export default function App() {
   }, []);
 
   const getAutomationUpgradeCost = useCallback((level) => {
-    return new Decimal(100).times(new Decimal(5).pow(level)).floor();
+    // レベル制を撤去し、未開放なら高額、開放済みなら購入不可(Infinity)を返す
+    return level >= 50 ? new Decimal(Infinity) : new Decimal(1e12);
   }, []);
 
   const buyAmounts = React.useMemo(() => [1, 2, 5, 10, 50, 100, 200], []);
@@ -542,7 +544,7 @@ export default function App() {
       setGameState((prev) => {
         const currentLevel = prev.automation[key].level;
         const cost = getAutomationUpgradeCost(currentLevel);
-        if (prev.games.gte(cost)) {
+        if (prev.games.gte(cost) && currentLevel < 50) {
           return {
             ...prev,
             games: prev.games.minus(cost),
@@ -550,7 +552,7 @@ export default function App() {
               ...prev.automation,
               [key]: {
                 ...prev.automation[key],
-                level: currentLevel + 1,
+                level: 50, // 初動でレベル50相当の性能
                 enabled: true,
               },
             },
@@ -590,25 +592,14 @@ export default function App() {
       // 1分以上経過していたら蓄積 (アンロック後のみ)
       if (diffMs >= 60000 && gameState.currentCompanyGrade > 1) {
         setGameState((prev) => {
-          const MAX_STORED = 10 * 60 * 60 * 1000;
+          const MAX_STORED = 50 * 60 * 60 * 1000;
           return {
             ...prev,
             storedTime: Math.min(MAX_STORED, (prev.storedTime || 0) + diffMs),
             lastTimestamp: now,
           };
         });
-
-        setToastQueue((prev) => [
-          ...prev,
-          {
-            id: `offline-${now}`,
-            icon: "⏳",
-            type: "info",
-            title: t("ui.offline_stored_time_toast", {
-              time: formatTime(diffMs),
-            }),
-          },
-        ]);
+        setOfflinePopupData({ time: diffMs });
       }
     }
   }, [gameState.lastTimestamp, t, gameState]);
@@ -636,7 +627,7 @@ export default function App() {
           const excessMs = deltaMs - 1000;
           deltaMs = 1000;
           setGameState((prev) => {
-            const MAX_STORED = 10 * 60 * 60 * 1000; // 10 hours in ms
+            const MAX_STORED = 50 * 60 * 60 * 1000; // 50 hours in ms
             const currentStored = prev.storedTime || 0;
             const newStored = Math.min(MAX_STORED, currentStored + excessMs);
 
@@ -662,7 +653,7 @@ export default function App() {
             let newIsTimeFluxActive = prev.isTimeFluxActive;
 
             if (newIsTimeFluxActive && newStoredTime > 0) {
-              const multiplier = prev.timeFluxMultiplier || 2;
+              const multiplier = Math.min(50, prev.timeFluxMultiplier || 2);
               const speedupFactor = multiplier - 1;
               const costFactor = Math.pow(multiplier, 1.35) - 1;
 
@@ -977,8 +968,8 @@ export default function App() {
     setActiveTab("setting");
     setTimeout(updateTargetPos, 50);
   }, [updateTargetPos]);
-  const handleTabAiAssistant = useCallback(() => {
-    setActiveTab("ai_assistant");
+  const handleTabUpgrade = useCallback(() => {
+    setActiveTab("upgrade");
     setTimeout(updateTargetPos, 50);
   }, [updateTargetPos]);
   const handleTabGraph = useCallback(() => {
@@ -1145,6 +1136,28 @@ export default function App() {
         </div>
       )}
 
+      {offlinePopupData && (
+        <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 text-center">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <div className="text-4xl mb-4">⏳</div>
+            <h2 className="text-2xl font-black mb-4 text-gray-800">
+              {t("help.offline_title") || "Offline Stored Time"}
+            </h2>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              {t("ui.offline_stored_time_toast", {
+                time: formatTime(offlinePopupData.time),
+              })}
+            </p>
+            <button
+              onClick={() => setOfflinePopupData(null)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
+            >
+              {t("ui.close")}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row">
         <div className="flex-1 flex flex-col" style={{ perspective: "1500px" }}>
           <motion.div
@@ -1230,7 +1243,7 @@ export default function App() {
                             transition={{ duration: 1.5, repeat: Infinity }}
                           />
 
-                          {/* Synchronized Progress Bar - Fixed 10 hour limit */}
+                          {/* Synchronized Progress Bar - Fixed 50 hour limit */}
                           <motion.div
                             className="absolute bottom-0 left-0 h-full bg-blue-500/40 pointer-events-none"
                             initial={{ width: 0 }}
@@ -1238,7 +1251,7 @@ export default function App() {
                               width: `${Math.min(
                                 Math.max(
                                   ((gameState.storedTime || 0) /
-                                    (10 * 60 * 60 * 1000)) *
+                                    (50 * 60 * 60 * 1000)) *
                                     100,
                                   0,
                                 ),
@@ -1343,23 +1356,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {gameState.currentCompanyGrade < 15 && (
-                    <ActionButton
-                      onClick={upgradeCompany}
-                      disabled={
-                        gameState.money.lt(upgradeCompanyPrice) ||
-                        gameState.company <= 0
-                      }
-                      currentValue={gameState.money}
-                      targetValue={upgradeCompanyPrice}
-                      progressColorClass="bg-cyan-400/30"
-                    >
-                      {t("actions.upgrade_company", {
-                        price: format(upgradeCompanyPrice),
-                      })}
-                    </ActionButton>
-                  )}
-
                   {gameState.currentCompanyGrade >= 10 && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
                       <div className="flex-1 text-sm font-bold text-gray-700">
@@ -1405,15 +1401,54 @@ export default function App() {
                     </div>
                   }
                 >
-                  {activeTab === "ai_assistant" && (
-                    <AiAssistantTab
-                      gameState={gameState}
-                      t={t}
-                      format={format}
-                      getAutomationUpgradeCost={getAutomationUpgradeCost}
-                      upgradeAutomation={upgradeAutomation}
-                      toggleAutomation={toggleAutomation}
-                    />
+                  {activeTab === "upgrade" && (
+                    <div className="flex flex-col gap-6">
+                      {/* Company Expansion Section */}
+                      <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                          🏢{" "}
+                          {t("company_grades.upgrade_title") ||
+                            "Company Expansion"}
+                        </h2>
+                        {gameState.currentCompanyGrade < 15 ? (
+                          <ActionButton
+                            onClick={upgradeCompany}
+                            disabled={
+                              gameState.money.lt(upgradeCompanyPrice) ||
+                              gameState.company <= 0
+                            }
+                            currentValue={gameState.money}
+                            targetValue={upgradeCompanyPrice}
+                            progressColorClass="bg-cyan-400/30"
+                          >
+                            {t("actions.upgrade_company", {
+                              price: format(upgradeCompanyPrice),
+                            })}
+                          </ActionButton>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic text-center">
+                            Maximum Grade Reached
+                          </p>
+                        )}
+                      </section>
+
+                      {/* Automation Section (Moved from AiAssistantTab) */}
+                      {gameState.automationUnlocked && (
+                        <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
+                          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            🤖 {t("tabs.automation") || "Automation"}
+                          </h2>
+                          <AiAssistantTab
+                            gameState={gameState}
+                            t={t}
+                            format={format}
+                            getAutomationUpgradeCost={getAutomationUpgradeCost}
+                            upgradeAutomation={upgradeAutomation}
+                            toggleAutomation={toggleAutomation}
+                          />
+                        </section>
+                      )}
+                    </div>
                   )}
                   {activeTab === "time_flux" &&
                     gameState.currentCompanyGrade > 1 && (
@@ -1422,6 +1457,7 @@ export default function App() {
                         setGameState={setGameState}
                         toggleTimeFlux={toggleTimeFlux}
                         t={t}
+                        maxMultiplier={50}
                       />
                     )}
                   {activeTab === "graph" && (
@@ -1537,14 +1573,12 @@ export default function App() {
             <TabButton active={activeTab === "idle2"} onClick={handleTabIdle2}>
               {t("tabs.idle2")}
             </TabButton>
-            {gameState.automationUnlocked && (
-              <TabButton
-                active={activeTab === "ai_assistant"}
-                onClick={handleTabAiAssistant}
-              >
-                {t("tabs.ai_assistant")}
-              </TabButton>
-            )}
+            <TabButton
+              active={activeTab === "upgrade"}
+              onClick={handleTabUpgrade}
+            >
+              {t("tabs.upgrade") || "Upgrade ⤴️"}
+            </TabButton>
             {gameState.currentCompanyGrade > 1 && (
               <TabButton
                 active={activeTab === "time_flux"}

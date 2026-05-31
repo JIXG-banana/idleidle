@@ -19,7 +19,7 @@ export default function TimeFluxTab({
 
   const currentStoredTime = gameState.storedTime || 0;
   const currentMultiplier = gameState.timeFluxMultiplier || 2;
-  const MAX_STORED = 10 * 60 * 60 * 1000; // 10 hours
+  const MAX_STORED = 50 * 60 * 60 * 1000; // 10 hours
   
   // 進捗率の計算 (0% - 100%) - 常に上限10時間を基準にする
   const progress = Math.min(Math.max((currentStoredTime / MAX_STORED) * 100, 0), 100);
@@ -85,7 +85,7 @@ export default function TimeFluxTab({
           <input
             type="range"
             min="2"
-            max="100"
+            max="50"
             step="1"
             value={currentMultiplier}
             onChange={(e) => setMultiplier(parseInt(e.target.value))}
@@ -93,7 +93,7 @@ export default function TimeFluxTab({
           />
           <div className="flex justify-between mt-2 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
             <span>Min (2x)</span>
-            <span>Max (100x)</span>
+            <span>Max (50x)</span>
           </div>
         </div>
       </div>
