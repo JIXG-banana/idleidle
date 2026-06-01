@@ -248,163 +248,185 @@ export const achievementsList = [
     icon: "💵",
     condition: (state) => state.money.gte(1e150),
   },
-  { key: "1-developer", icon: "🤝", condition: (state) => state.developer >= 1 },
+  {
+    key: "1-developer",
+    icon: "🤝",
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 1,
+  },
   {
     key: "10-developer",
     icon: "👥",
-    condition: (state) => state.developer >= 10,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 10,
   },
   {
     key: "50-developer",
     icon: "🏢",
-    condition: (state) => state.developer >= 50,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 50,
   },
   {
     key: "100-developer",
     icon: "🏢",
-    condition: (state) => state.developer >= 100,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 100,
   },
   {
     key: "250-developer",
     icon: "🏙️",
-    condition: (state) => state.developer >= 250,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 250,
   },
   {
     key: "500-developer",
     icon: "🏙️",
-    condition: (state) => state.developer >= 500,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 500,
   },
   {
     key: "1000-developer",
     icon: "🌍",
-    condition: (state) => state.developer >= 1000,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 1000,
   },
   {
     key: "2500-developer",
     icon: "🗺️",
-    condition: (state) => state.developer >= 2500,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 2500,
   },
   {
     key: "5000-developer",
     icon: "🌐",
-    condition: (state) => state.developer >= 5000,
+    condition: (state) => (state.developer + (state.autoDeveloper || 0)) >= 5000,
   },
   {
     key: "10000-developer",
     icon: "🪐",
-    condition: (state) => state.developer >= 10000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 10000,
   },
   {
     key: "25000-developer",
     icon: "🧑‍💻",
-    condition: (state) => state.developer >= 25000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 25000,
   },
   {
     key: "50000-developer",
     icon: "👨‍💻",
-    condition: (state) => state.developer >= 50000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 50000,
   },
   {
     key: "100000-developer",
     icon: "👩‍💻",
-    condition: (state) => state.developer >= 100000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 100000,
   },
   {
     key: "250000-developer",
     icon: "🧑‍💼",
-    condition: (state) => state.developer >= 250000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 250000,
   },
   {
     key: "500000-developer",
     icon: "👨‍💼",
-    condition: (state) => state.developer >= 500000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 500000,
   },
   {
     key: "1000000-developer",
     icon: "👩‍💼",
-    condition: (state) => state.developer >= 1000000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 1000000,
   },
   {
     key: "10000000-developer",
     icon: "🧑‍🔬",
-    condition: (state) => state.developer >= 10000000,
+    condition: (state) =>
+      (state.developer + (state.autoDeveloper || 0)) >= 10000000,
   },
-  { key: "1-company", icon: "💼", condition: (state) => state.company >= 1 },
-  { key: "10-company", icon: "🏪", condition: (state) => state.company >= 10 },
+  {
+    key: "1-company",
+    icon: "💼",
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 1,
+  },
+  {
+    key: "10-company",
+    icon: "🏪",
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 10,
+  },
   {
     key: "100-company",
     icon: "🏭",
-    condition: (state) => state.company >= 100,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 100,
   },
   {
     key: "1000-company",
     icon: "🏙️",
-    condition: (state) => state.company >= 1000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 1000,
   },
   {
     key: "2500-company",
     icon: "🏢",
-    condition: (state) => state.company >= 2500,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 2500,
   },
   {
     key: "5000-company",
     icon: "🏙️",
-    condition: (state) => state.company >= 5000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 5000,
   },
   {
     key: "10000-company",
     icon: "🌃",
-    condition: (state) => state.company >= 10000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 10000,
   },
   {
     key: "25000-company",
     icon: "🌆",
-    condition: (state) => state.company >= 25000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 25000,
   },
   {
     key: "50000-company",
     icon: "🛰️",
-    condition: (state) => state.company >= 50000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 50000,
   },
   {
     key: "100000-company",
     icon: "🌌",
-    condition: (state) => state.company >= 100000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 100000,
   },
   {
     key: "250000-company",
     icon: "🌃",
-    condition: (state) => state.company >= 250000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 250000,
   },
   {
     key: "500000-company",
     icon: "🏙️",
-    condition: (state) => state.company >= 500000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 500000,
   },
   {
     key: "1000000-company",
     icon: "🌍",
-    condition: (state) => state.company >= 1000000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 1000000,
   },
   {
     key: "5000000-company",
     icon: "🌐",
-    condition: (state) => state.company >= 5000000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 5000000,
   },
   {
     key: "10000000-company",
     icon: "🪐",
-    condition: (state) => state.company >= 10000000,
+    condition: (state) => (state.company + (state.autoCompany || 0)) >= 10000000,
   },
   {
     key: "100000000-company",
     icon: "🌌",
-    condition: (state) => state.company >= 100000000,
+    condition: (state) =>
+      (state.company + (state.autoCompany || 0)) >= 100000000,
   },
   {
     key: "1000000000-company",
     icon: "🌀",
-    condition: (state) => state.company >= 1000000000,
+    condition: (state) =>
+      (state.company + (state.autoCompany || 0)) >= 1000000000,
   },
   {
     key: "first-upgrade",

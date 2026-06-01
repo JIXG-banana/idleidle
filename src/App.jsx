@@ -10,6 +10,7 @@ import CryptoJS from "crypto-js";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
+import bgm from "./assets/idleidle.mp3";
 import { formatNumber, formatTime } from "./utils/format";
 import { SECRET_KEY, achievementsList } from "./constants/gameData";
 import { TabButton, ActionButton } from "./components/Buttons";
@@ -141,15 +142,18 @@ export default function App() {
       dp: 0,
       players: 0,
       developer: 0,
+      autoDeveloper: 0,
       aiDev: 0,
       automationUnlocked: false,
       aiEnabled: false,
       company: 0,
+      autoCompany: 0,
       currentCompanyGrade: 1,
       conglomerate: 0,
       unlockedAchievements: [],
       languageSelected: false,
       useScientific: false,
+      bgmEnabled: true,
       lastTimestamp: Date.now(),
       language: "en",
       usedLanguages: ["en"],
@@ -309,6 +313,29 @@ export default function App() {
       buyAmountIndex: ((prev.buyAmountIndex || 0) + 1) % buyAmounts.length,
     }));
   }, [buyAmounts.length]);
+
+  const bgmRef = useRef(null);
+  useEffect(() => {
+    if (!bgmRef.current) {
+      bgmRef.current = new Audio(bgm);
+      bgmRef.current.loop = true;
+    }
+
+    if (gameState.bgmEnabled) {
+      bgmRef.current.play().catch((e) => {
+        // Autoplay policy might block this until user interaction
+        console.log("BGM play failed:", e);
+      });
+    } else {
+      bgmRef.current.pause();
+    }
+
+    return () => {
+      if (bgmRef.current) {
+        bgmRef.current.pause();
+      }
+    };
+  }, [gameState.bgmEnabled]);
 
   const getBulkPrice = useCallback(
     (priceFunc, currentCount, amount, ...extraArgs) => {
@@ -473,9 +500,10 @@ export default function App() {
   const upgradeCompany = useCallback(() => {
     setGameState((prev) => {
       const currentPrice = getUpgradeCompanyPrice(prev.currentCompanyGrade);
+      const totalCompany = prev.company + (prev.autoCompany || 0);
       if (
         prev.money.gte(currentPrice) &&
-        prev.company >= 1 &&
+        totalCompany >= 1 &&
         prev.currentCompanyGrade < 15
       ) {
         const nextGrade = prev.currentCompanyGrade + 1;
@@ -578,10 +606,13 @@ export default function App() {
   }, []);
 
   const gps = React.useMemo(() => {
-    const devProd = new Decimal(gameState.developer).div(6);
+    const totalDev = new Decimal(gameState.developer).plus(
+      gameState.autoDeveloper || 0,
+    );
+    const devProd = totalDev.div(6);
     const aiProd = new Decimal(gameState.aiDev || 0).times(10000);
     return devProd.plus(aiProd);
-  }, [gameState.developer, gameState.aiDev]);
+  }, [gameState.developer, gameState.autoDeveloper, gameState.aiDev]);
 
   useEffect(() => {
     if (offlineProcessedRef.current) return;
@@ -678,16 +709,19 @@ export default function App() {
               newStoredTime -= actualCostMs;
             }
 
+            const totalCompany = prev.company + (prev.autoCompany || 0);
             const developerRate = new Decimal(prev.currentCompanyGrade)
               .pow(2.25)
-              .times(prev.company)
+              .times(totalCompany)
               .div(10)
               .toNumber();
 
             const conglomerateRate = (prev.conglomerate || 0) * 0.1; // 10秒に1社生産
 
-            let updatedDeveloper = prev.developer + developerRate * deltaTime;
-            let updatedCompany = prev.company + conglomerateRate * deltaTime;
+            let updatedAutoDeveloper =
+              (prev.autoDeveloper || 0) + developerRate * deltaTime;
+            let updatedAutoCompany =
+              (prev.autoCompany || 0) + conglomerateRate * deltaTime;
 
             const newGames = prev.games.plus(gpsRef.current.times(deltaTime));
             const newMoney = prev.money.plus(
@@ -695,6 +729,8 @@ export default function App() {
             );
             const newAutomation = { ...prev.automation };
             let updatedMoney = newMoney;
+            let updatedDeveloper = prev.developer;
+            let updatedCompany = prev.company;
             let updatedAiDev = prev.aiDev || 0;
             let updatedGrade = prev.currentCompanyGrade;
             let updatedGames = newGames;
@@ -747,7 +783,9 @@ export default function App() {
                             pendingFlashes.push("aiDev");
                         }
                       } else if (key === "companyUpgrade") {
-                        if (updatedCompany >= 1 && updatedGrade < 15) {
+                        const currentTotalCompany =
+                          updatedCompany + updatedAutoCompany;
+                        if (currentTotalCompany >= 1 && updatedGrade < 15) {
                           price = getUpgradeCompanyPrice(updatedGrade);
                           if (updatedMoney.gte(price)) {
                             updatedMoney = updatedMoney.minus(price);
@@ -800,8 +838,10 @@ export default function App() {
               const companyScale = new Decimal(5).pow(
                 prev.currentCompanyGrade - 1,
               );
-              const quantityScale = new Decimal(updatedDeveloper)
-                .plus(new Decimal(prev.company).times(10))
+              const currentTotalDev = updatedDeveloper + updatedAutoDeveloper;
+              const currentTotalCompany = updatedCompany + updatedAutoCompany;
+              const quantityScale = new Decimal(currentTotalDev)
+                .plus(new Decimal(currentTotalCompany).times(10))
                 .plus(new Decimal(prev.aiDev || 0).times(100))
                 .plus(1);
               billingMoneyGained = new Decimal(billingEvents)
@@ -820,7 +860,9 @@ export default function App() {
             if (
               updatedMoney.equals(prev.money) &&
               updatedDeveloper === prev.developer &&
+              updatedAutoDeveloper === (prev.autoDeveloper || 0) &&
               updatedCompany === prev.company &&
+              updatedAutoCompany === (prev.autoCompany || 0) &&
               updatedAiDev === (prev.aiDev || 0) &&
               updatedGrade === prev.currentCompanyGrade &&
               billingEvents === 0 &&
@@ -837,8 +879,10 @@ export default function App() {
               money: updatedMoney.plus(billingMoneyGained),
               billingCount: (prev.billingCount || 0) + billingEvents,
               developer: updatedDeveloper,
+              autoDeveloper: updatedAutoDeveloper,
               automationUnlocked: newAutomationUnlocked,
               company: updatedCompany,
+              autoCompany: updatedAutoCompany,
               conglomerate: prev.conglomerate,
               aiDev: updatedAiDev,
               currentCompanyGrade: updatedGrade,
@@ -910,8 +954,8 @@ export default function App() {
           time: Date.now(),
           games: state.games.toNumber(),
           money: state.money.toNumber(),
-          developer: state.developer,
-          company: state.company,
+          developer: state.developer + (state.autoDeveloper || 0),
+          company: state.company + (state.autoCompany || 0),
           conglomerate: state.conglomerate || 0,
           aiDev: state.aiDev || 0,
         };
@@ -1293,6 +1337,9 @@ export default function App() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
                     <div className="flex-1 text-sm font-bold text-gray-700">
                       {t("automation.developer")}: {format(gameState.developer)}
+                      {gameState.autoDeveloper > 0
+                        ? ` (${format(gameState.autoDeveloper)})`
+                        : ""}
                       {gameState.language === "ja" ? "人所有" : " owned"}
                     </div>
                     <div className="flex items-center gap-3">
@@ -1320,6 +1367,9 @@ export default function App() {
                     <div className="flex-1 text-sm font-bold text-gray-700">
                       {companyGrades[gameState.currentCompanyGrade]}
                       {t("automation.company")}: {format(gameState.company)}
+                      {gameState.autoCompany > 0
+                        ? ` (${format(gameState.autoCompany)})`
+                        : ""}
                       {gameState.language === "ja" ? "社所有" : " owned"}
                     </div>
                     <div className="flex items-center gap-3">
@@ -1415,7 +1465,7 @@ export default function App() {
                             onClick={upgradeCompany}
                             disabled={
                               gameState.money.lt(upgradeCompanyPrice) ||
-                              gameState.company <= 0
+                              gameState.company + (gameState.autoCompany || 0) <= 0
                             }
                             currentValue={gameState.money}
                             targetValue={upgradeCompanyPrice}

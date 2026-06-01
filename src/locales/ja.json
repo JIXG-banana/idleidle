@@ -83,6 +83,11 @@
     "speed": "自動購入速度",
     "upgrade": "速度をアップグレード ({{price}} ゲーム)"
   },
+  "settings": {
+    "language_label": "言語",
+    "use_scientific": "科学的表記を使用する",
+    "bgm_label": "BGM 有効"
+  },
   "achievements": {
     "first-game": "はじめてのゲーム",
     "first-game_desc": "ゲームを1つ作る",
@@ -371,7 +376,7 @@
     "100000-billing": "経済の心臓",
     "100000-billing_desc": "寄付や課金が100,000回行われる",
     "250000-billing": "富の奔流",
-    "250000-billing_desc": "寄付や課金が250,000回行われる",
+    "250000-billing_desc": "寄付や課金が25,000回行われる",
     "500000-billing": "黄金の雨",
     "500000-billing_desc": "寄付や課金が500,000回行われる",
     "1000000-billing": "全人類の貢ぎ物",

@@ -37,7 +37,7 @@ export default function SettingTab({ gameState, setGameState, i18n, t }) {
           <option value="emoji">絵文字 (Emoji)</option>
         </select>
       </div>
-      <div className="flex items-center gap-3 p-3 rounded">
+      <div className="flex flex-col gap-2 p-3 rounded">
         <label className="font-bold flex items-center cursor-pointer gap-2">
           <input
             type="checkbox"
@@ -51,6 +51,20 @@ export default function SettingTab({ gameState, setGameState, i18n, t }) {
             className="w-5 h-5"
           />
           <span>{t("settings.use_scientific")}</span>
+        </label>
+        <label className="font-bold flex items-center cursor-pointer gap-2">
+          <input
+            type="checkbox"
+            checked={gameState.bgmEnabled}
+            onChange={(e) =>
+              setGameState((prev) => ({
+                ...prev,
+                bgmEnabled: e.target.checked,
+              }))
+            }
+            className="w-5 h-5"
+          />
+          <span>{t("settings.bgm_label")}</span>
         </label>
       </div>
       <ActionButton

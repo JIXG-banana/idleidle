@@ -77,6 +77,11 @@
     "speed": "Auto Speed",
     "upgrade": "Upgrade Speed ({{price}} Games)"
   },
+  "settings": {
+    "language_label": "Language",
+    "use_scientific": "Use Scientific Notation",
+    "bgm_label": "BGM Enabled"
+  },
   "achievements": {
     "first-game": "First Game",
     "first-game_desc": "Create 1 game",
