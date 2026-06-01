@@ -6,7 +6,10 @@
     "help": "帮助",
     "help_title": "玩法说明",
     "close": "关闭",
-    "offline_stored_time_toast": "欢迎回来！ 已存储 +{{time}} 多巴胺。"
+    "offline_stored_time_toast": "欢迎回来！ 已存储 +{{time}} 多巴胺。",
+    "developer_upgraded": "开发者已培训至等级 {{grade}}！",
+    "ai_dev_upgraded": "AI 开发者已强化至等级 {{grade}}！",
+    "conglomerate_upgraded": "企业集团已整合至等级 {{grade}}！"
   },
   "help": {
     "basics_title": "基本规则",
@@ -30,12 +33,23 @@
     "buy_developer": "雇佣开发者 ({{price}}) / 持有: {{count}}人",
     "buy_company": "收购{{grade}}企业 ({{price}}) / 持有: {{count}}社",
     "upgrade_company": "升级公司 ({{price}})",
+    "upgrade_developer": "培训开发者 ({{price}})",
+    "upgrade_ai_dev": "强化 AI ({{price}})",
+    "upgrade_conglomerate": "整合企业集团 ({{price}})",
     "unlock_ai": "出售所有开发者以解锁 AI 开发者",
     "buy_ai": "雇佣 AI 开发者 (价格: {{price}}, 数量: {{count}})",
     "save": "存档",
     "import": "导入",
     "export": "导出存档",
     "clear_save": "删除存档"
+  },
+  "upgrade": {
+    "developer_title": "开发者培训",
+    "developer_desc": "提高开发人员技能，增加人均生产力。当前等级：{{grade}}",
+    "ai_dev_title": "AI 强化",
+    "ai_dev_desc": "优化 AI 算法以提高产出。当前等级：{{grade}}",
+    "conglomerate_title": "企业集团整合",
+    "conglomerate_desc": "增加企业集团内部协同效应，加快公司建立速度。当前等级：{{grade}}"
   },
   "company_grades": {
     "small": "微型",
@@ -60,6 +74,7 @@
     "graph": "📊",
     "achievements": "🏆",
     "setting": "⚙️",
+    "upgrade": "升级 ⤴️",
     "ai_assistant": "🤖"
   },
   "time_flux": {
@@ -74,6 +89,9 @@
     "developer": "自动雇佣开发者",
     "company": "自动收购公司",
     "aiDev": "自动雇佣 AI 开发者",
+    "developerUpgrade": "自动培训开发者",
+    "aiDevUpgrade": "自动 AI 强化",
+    "conglomerateUpgrade": "自动整合企业集团",
     "speed": "自动购买速度",
     "upgrade": "升级速度 ({{price}} 游戏)"
   },

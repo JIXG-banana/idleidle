@@ -6,7 +6,10 @@
     "help": "Msaada",
     "help_title": "Jinsi ya kucheza & Maelezo",
     "close": "Funga",
-    "offline_stored_time_toast": "Karibu tena! +{{time}} ya Dopamini imehifadhiwa."
+    "offline_stored_time_toast": "Karibu tena! +{{time}} ya Dopamini imehifadhiwa.",
+    "developer_upgraded": "Watengenezaji wamefunzwa hadi Daraja la {{grade}}!",
+    "ai_dev_upgraded": "Watengenezaji wa AI wameimarishwa hadi Daraja la {{grade}}!",
+    "conglomerate_upgraded": "Muungano umeunganishwa hadi Daraja la {{grade}}!"
   },
   "help": {
     "basics_title": "Sheria za Msingi",
@@ -14,7 +17,7 @@
     "offline_title": "Dopamini (Mkusanyiko wa Nje ya Mtandao)",
     "offline_text": "Wakati umefunga skrini, dopamini hukusanyika kutoka kwa watu wanaocheza mchezo wa kutofanya kazi ulioutengeneza. Unaporudi, unaweza kutumia dopamini kuharakisha kasi ya utengenezaji na uchezaji wa mchezo, huku vizidishio vya juu vikitumia dopamini kwa kasi zaidi.",
     "billing_title": "Michango na Ununuzi",
-    "billing_text": "Kadiri michezo yako inavyochezwa, wachezaji wanaweza kutoa michango au kufanya ununuzi wa ndani ya mchezo. Hilo likitokea, utapokea watengenezaji zaidi moja kwa moja, kukiwa na madoido maalum.",
+    "billing_text": "Kadiri michezo yako inavyochezwa, wachezaji wanaweza kutoa michango au kufama ununuzi wa ndani ya mchezo. Hilo likitokea, utapokea watengenezaji zaidi moja kwa moja, kukiwa na madoido maalum.",
     "automation_title": "Uotomatishaji",
     "automation_text": "Katika kichupo cha Msaidizi wa AI, unaweza kutumia 'michezo' ili kuotomatisha ununuzi wa vifaa. Kila kifaa kina kiwango cha uotomatishaji kinachoamua kasi yake. Uotomatishaji unaendelea kufanya kazi wakati wa nje ya mtandao kwa nusu ya kasi."
   },
@@ -30,12 +33,23 @@
     "buy_developer": "Ajiri Mtengenezaji ({{price}}) / Unayomiliki: {{count}}",
     "buy_company": "Nunua Kampuni ya {{grade}} ({{price}}) / Unayomiliki: {{count}}",
     "upgrade_company": "Boresha kampuni ({{price}})",
+    "upgrade_developer": "Funza Watengenezaji ({{price}})",
+    "upgrade_ai_dev": "Imarisha AI ({{price}})",
+    "upgrade_conglomerate": "Unganisha Muungano ({{price}})",
     "unlock_ai": "Uza watengenezaji wote ili kufungua Mtengenezaji wa AI",
     "buy_ai": "Ajiri Mtengenezaji wa AI (Bei: {{price}}, Idadi: {{count}})",
     "save": "Hifadhi",
     "import": "Ingiza",
     "export": "Hamisha hifadhi",
     "clear_save": "Futa Hifadhi"
+  },
+  "upgrade": {
+    "developer_title": "Mafunzo ya Watengenezaji",
+    "developer_desc": "Boresha ujuzi wa watengenezaji ili kuongeza tija kwa kila mtu. Daraja la Sasa: {{grade}}",
+    "ai_dev_title": "Uimarishaji wa AI",
+    "ai_dev_desc": "Boresha algoriti za AI ili kuongeza uzalishaji. Daraja la Sasa: {{grade}}",
+    "conglomerate_title": "Uunganishaji wa Muungano",
+    "conglomerate_desc": "Ongeza ushirikiano ndani ya muungano ili kuharakisha uanzishaji wa kampuni. Daraja la Sasa: {{grade}}"
   },
   "company_grades": {
     "small": "Ndogo",
@@ -60,6 +74,7 @@
     "graph": "📊",
     "achievements": "🏆",
     "setting": "⚙️",
+    "upgrade": "Boresha ⤴️",
     "ai_assistant": "🤖"
   },
   "time_flux": {
@@ -74,6 +89,9 @@
     "developer": "Auto Dev",
     "company": "Auto Kampuni",
     "aiDev": "Auto AI Dev",
+    "developerUpgrade": "Mafunzo ya Watengenezaji Kiotomatiki",
+    "aiDevUpgrade": "Uimarishaji wa AI Kiotomatiki",
+    "conglomerateUpgrade": "Uunganishaji wa Muungano Kiotomatiki",
     "speed": "Kasi ya Auto",
     "upgrade": "Boresha Kasi ({{price}} Michezo)"
   },

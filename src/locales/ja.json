@@ -7,6 +7,9 @@
     "help_title": "遊び方と解説",
     "close": "閉じる",
     "offline_stored_time_toast": "おかえりなさい！ ドーパミンが +{{time}} 蓄積されました。",
+    "developer_upgraded": "開発者がグレード {{grade}} にトレーニングされました！",
+    "ai_dev_upgraded": "AI開発者がグレード {{grade}} に強化されました！",
+    "conglomerate_upgraded": "財閥がグレード {{grade}} に統合されました！",
     "view_stats": "統計表示:",
     "collecting_data": "データ収集中のため少々お待ちください...",
     "graph_desc": "データは1秒ごとに記録されます。リロードするとリセットされます。"
@@ -33,12 +36,23 @@
     "buy_developer": "開発者を雇う ({{price}}) / 所持: {{count}}人",
     "buy_company": "{{grade}}企業を買収 ({{price}}) / 所持: {{count}}社",
     "upgrade_company": "会社をアップグレード ({{price}})",
+    "upgrade_developer": "開発者をトレーニング ({{price}})",
+    "upgrade_ai_dev": "AIを強化 ({{price}})",
+    "upgrade_conglomerate": "財閥を統合 ({{price}})",
     "unlock_ai": "開発者を全員解雇してAI開発者をアンロックする",
     "buy_ai": "AI開発者を雇う (価格: {{price}}, 雇用数: {{count}})",
     "save": "セーブ",
     "import": "インポート",
     "export": "セーブデータ書き出し",
     "clear_save": "セーブ消去"
+  },
+  "upgrade": {
+    "developer_title": "開発者トレーニング",
+    "developer_desc": "開発者のスキルを向上させ、1人あたりの生産性を高めます。現在のグレード: {{grade}}",
+    "ai_dev_title": "AI強化",
+    "ai_dev_desc": "AI開発者のアルゴリズムを最適化し、出力を向上させます。現在のグレード: {{grade}}",
+    "conglomerate_title": "財閥統合",
+    "conglomerate_desc": "財閥内のシナジーを高め、企業設立速度を向上させます。現在のグレード: {{grade}}"
   },
   "company_grades": {
     "small": "微小",
@@ -63,6 +77,7 @@
     "graph": "📊",
     "achievements": "🏆",
     "setting": "⚙️",
+    "upgrade": "アップグレード ⤴️",
     "ai_assistant": "🤖"
   },
   "time_flux": {
@@ -80,6 +95,9 @@
     "company": "企業の自動買収",
     "aiDev": "AI開発者の自動雇用",
     "companyUpgrade": "会社のアップグレード",
+    "developerUpgrade": "開発者のトレーニング",
+    "aiDevUpgrade": "AIの強化",
+    "conglomerateUpgrade": "財閥の統合",
     "speed": "自動購入速度",
     "upgrade": "速度をアップグレード ({{price}} ゲーム)"
   },
@@ -330,7 +348,7 @@
     "100000-ai-dev": "情報の海",
     "100000-ai-dev_desc": "AI開発者を100,000人雇う",
     "250000-ai-dev": "ニューラルクラウド",
-    "250000-ai-dev_desc": "AI開発者を250,000人雇う",
+    "250000-ai-dev_desc": "AI開発者を25,000人雇う",
     "500000-ai-dev": "マトリックスの王",
     "500000-ai-dev_desc": "AI開発者を500,000人雇う",
     "1000000-ai-dev": "機械仕掛けの神",

@@ -6,7 +6,10 @@
     "help": "Help",
     "help_title": "How to play & Explanation",
     "close": "Close",
-    "offline_stored_time_toast": "Welcome back! +{{time}} of Dopamine stored."
+    "offline_stored_time_toast": "Welcome back! +{{time}} of Dopamine stored.",
+    "developer_upgraded": "Developers trained to Grade {{grade}}!",
+    "ai_dev_upgraded": "AI Developers enhanced to Grade {{grade}}!",
+    "conglomerate_upgraded": "Conglomerate integrated to Grade {{grade}}!"
   },
   "help": {
     "basics_title": "Basic Rules",
@@ -30,12 +33,23 @@
     "buy_developer": "Hire Developer ({{price}}) / Owned: {{count}}",
     "buy_company": "Buy {{grade}} Company ({{price}}) / Owned: {{count}}",
     "upgrade_company": "Upgrade company ({{price}})",
+    "upgrade_developer": "Train Developers ({{price}})",
+    "upgrade_ai_dev": "Enhance AI ({{price}})",
+    "upgrade_conglomerate": "Integrate Conglomerate ({{price}})",
     "unlock_ai": "Sell all developers to unlock AI Developer",
     "buy_ai": "Hire AI Dev (Price: {{price}}, Count: {{count}})",
     "save": "Save",
     "import": "Import",
     "export": "Export save",
     "clear_save": "Clear Save"
+  },
+  "upgrade": {
+    "developer_title": "Developer Training",
+    "developer_desc": "Improve developer skills to increase productivity per person. Current Grade: {{grade}}",
+    "ai_dev_title": "AI Enhancement",
+    "ai_dev_desc": "Optimize AI algorithms to boost output. Current Grade: {{grade}}",
+    "conglomerate_title": "Conglomerate Integration",
+    "conglomerate_desc": "Increase synergy within the conglomerate to speed up company establishment. Current Grade: {{grade}}"
   },
   "company_grades": {
     "small": "Small",
@@ -60,6 +74,7 @@
     "graph": "📊",
     "achievements": "🏆",
     "setting": "⚙️",
+    "upgrade": "Upgrade ⤴️",
     "ai_assistant": "🤖"
   },
   "time_flux": {
@@ -74,6 +89,10 @@
     "developer": "Auto Developer",
     "company": "Auto Company",
     "aiDev": "Auto AI Dev",
+    "companyUpgrade": "Auto Company Upgrade",
+    "developerUpgrade": "Auto Developer Training",
+    "aiDevUpgrade": "Auto AI Enhancement",
+    "conglomerateUpgrade": "Auto Conglomerate Integration",
     "speed": "Auto Speed",
     "upgrade": "Upgrade Speed ({{price}} Games)"
   },

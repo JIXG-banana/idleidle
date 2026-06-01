@@ -66,10 +66,13 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
   const achievementTabRef = useRef(null);
   const moneyRef = useRef(null);
   const containerRef = useRef(null);
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
+
+  const bgmRef = useRef(null);
 
   const updateTargetPos = useCallback(() => {
     if (achievementTabRef.current) {
@@ -143,13 +146,16 @@ export default function App() {
       players: 0,
       developer: 0,
       autoDeveloper: 0,
+      currentDeveloperGrade: 1,
       aiDev: 0,
+      currentAiDevGrade: 1,
       automationUnlocked: false,
       aiEnabled: false,
       company: 0,
       autoCompany: 0,
       currentCompanyGrade: 1,
       conglomerate: 0,
+      currentConglomerateGrade: 1,
       unlockedAchievements: [],
       languageSelected: false,
       useScientific: false,
@@ -169,6 +175,9 @@ export default function App() {
         company: { level: 0, enabled: false, progress: 0 },
         aiDev: { level: 0, enabled: false, progress: 0 },
         companyUpgrade: { level: 0, enabled: false, progress: 0 },
+        developerUpgrade: { level: 0, enabled: false, progress: 0 },
+        aiDevUpgrade: { level: 0, enabled: false, progress: 0 },
+        conglomerateUpgrade: { level: 0, enabled: false, progress: 0 },
       },
     };
 
@@ -281,6 +290,25 @@ export default function App() {
       .floor();
   }, []);
 
+  const getUpgradeDeveloperPrice = useCallback((grade) => {
+    return new Decimal(1000)
+      .times(new Decimal(10).pow(Math.pow(grade - 1, 1.2)))
+      .floor();
+  }, []);
+
+  const getUpgradeAiDevPrice = useCallback((grade) => {
+    return new Decimal(1e9)
+      .times(new Decimal(100).pow(Math.pow(grade - 1, 1.2)))
+      .floor();
+  }, []);
+
+  const getUpgradeConglomeratePrice = useCallback((grade) => {
+    return new Decimal(1e15)
+      .times(new Decimal(1000).pow(Math.pow(grade - 1, 1.2)))
+      .floor();
+  }, []);
+
+
   const getAiDevPrice = useCallback((count) => {
     return new Decimal(1.5)
       .pow(count || 0)
@@ -314,14 +342,10 @@ export default function App() {
     }));
   }, [buyAmounts.length]);
 
-  const bgmRef = useRef(null);
   useEffect(() => {
-    if (!bgmRef.current) {
-      bgmRef.current = new Audio(bgm);
-      bgmRef.current.loop = true;
-    }
+    if (!bgmRef.current) return;
 
-    if (gameState.bgmEnabled) {
+    if (assetsLoaded && gameState.bgmEnabled) {
       bgmRef.current.play().catch((e) => {
         // Autoplay policy might block this until user interaction
         console.log("BGM play failed:", e);
@@ -335,7 +359,7 @@ export default function App() {
         bgmRef.current.pause();
       }
     };
-  }, [gameState.bgmEnabled]);
+  }, [gameState.bgmEnabled, assetsLoaded]);
 
   const getBulkPrice = useCallback(
     (priceFunc, currentCount, amount, ...extraArgs) => {
@@ -529,6 +553,81 @@ export default function App() {
     });
   }, [getUpgradeCompanyPrice, t, companyGrades]);
 
+  const upgradeDeveloper = useCallback(() => {
+    setGameState((prev) => {
+      const currentPrice = getUpgradeDeveloperPrice(prev.currentDeveloperGrade);
+      const totalDev = prev.developer + (prev.autoDeveloper || 0);
+      if (prev.money.gte(currentPrice) && totalDev >= 1) {
+        const nextGrade = prev.currentDeveloperGrade + 1;
+        setToastQueue((q) => [
+          ...q,
+          {
+            id: `upgrade-dev-${Date.now()}`,
+            icon: "👨‍💻",
+            type: "info",
+            title: t("ui.developer_upgraded", { grade: nextGrade }),
+          },
+        ]);
+        return {
+          ...prev,
+          money: prev.money.minus(currentPrice),
+          currentDeveloperGrade: nextGrade,
+        };
+      }
+      return prev;
+    });
+  }, [getUpgradeDeveloperPrice, t]);
+
+  const upgradeAiDev = useCallback(() => {
+    setGameState((prev) => {
+      const currentPrice = getUpgradeAiDevPrice(prev.currentAiDevGrade);
+      if (prev.money.gte(currentPrice) && (prev.aiDev || 0) >= 1) {
+        const nextGrade = prev.currentAiDevGrade + 1;
+        setToastQueue((q) => [
+          ...q,
+          {
+            id: `upgrade-ai-${Date.now()}`,
+            icon: "🤖",
+            type: "info",
+            title: t("ui.ai_dev_upgraded", { grade: nextGrade }),
+          },
+        ]);
+        return {
+          ...prev,
+          money: prev.money.minus(currentPrice),
+          currentAiDevGrade: nextGrade,
+        };
+      }
+      return prev;
+    });
+  }, [getUpgradeAiDevPrice, t]);
+
+  const upgradeConglomerate = useCallback(() => {
+    setGameState((prev) => {
+      const currentPrice = getUpgradeConglomeratePrice(
+        prev.currentConglomerateGrade,
+      );
+      if (prev.money.gte(currentPrice) && (prev.conglomerate || 0) >= 1) {
+        const nextGrade = prev.currentConglomerateGrade + 1;
+        setToastQueue((q) => [
+          ...q,
+          {
+            id: `upgrade-cong-${Date.now()}`,
+            icon: "amber-600",
+            type: "info",
+            title: t("ui.conglomerate_upgraded", { grade: nextGrade }),
+          },
+        ]);
+        return {
+          ...prev,
+          money: prev.money.minus(currentPrice),
+          currentConglomerateGrade: nextGrade,
+        };
+      }
+      return prev;
+    });
+  }, [getUpgradeConglomeratePrice, t]);
+
   const unlockAI = useCallback(() => {
     setGameState((prev) => ({ ...prev, developer: 0, aiEnabled: true }));
   }, []);
@@ -609,10 +708,18 @@ export default function App() {
     const totalDev = new Decimal(gameState.developer).plus(
       gameState.autoDeveloper || 0,
     );
-    const devProd = totalDev.div(6);
-    const aiProd = new Decimal(gameState.aiDev || 0).times(10000);
+    const devProd = totalDev.div(6).times(gameState.currentDeveloperGrade);
+    const aiProd = new Decimal(gameState.aiDev || 0)
+      .times(10000)
+      .times(gameState.currentAiDevGrade);
     return devProd.plus(aiProd);
-  }, [gameState.developer, gameState.autoDeveloper, gameState.aiDev]);
+  }, [
+    gameState.developer,
+    gameState.autoDeveloper,
+    gameState.currentDeveloperGrade,
+    gameState.aiDev,
+    gameState.currentAiDevGrade,
+  ]);
 
   useEffect(() => {
     if (offlineProcessedRef.current) return;
@@ -716,7 +823,8 @@ export default function App() {
               .div(10)
               .toNumber();
 
-            const conglomerateRate = (prev.conglomerate || 0) * 0.1; // 10秒に1社生産
+            const conglomerateRate =
+              (prev.conglomerate || 0) * 0.1 * prev.currentConglomerateGrade;
 
             let updatedAutoDeveloper =
               (prev.autoDeveloper || 0) + developerRate * deltaTime;
@@ -733,13 +841,16 @@ export default function App() {
             let updatedCompany = prev.company;
             let updatedAiDev = prev.aiDev || 0;
             let updatedGrade = prev.currentCompanyGrade;
+            let updatedDeveloperGrade = prev.currentDeveloperGrade;
+            let updatedAiDevGrade = prev.currentAiDevGrade;
+            let updatedConglomerateGrade = prev.currentConglomerateGrade;
             let updatedGames = newGames;
             const newAutomationUnlocked =
               prev.automationUnlocked || newGames.gte(automationThreshold);
 
             const pendingFlashes = [];
 
-            ["developer", "company", "aiDev", "companyUpgrade"].forEach(
+            ["developer", "company", "aiDev", "companyUpgrade", "developerUpgrade", "aiDevUpgrade", "conglomerateUpgrade"].forEach(
               (key) => {
                 if (
                   newAutomation[key].level > 0 &&
@@ -791,6 +902,31 @@ export default function App() {
                             updatedMoney = updatedMoney.minus(price);
                             updatedGrade++;
                             updatedGames = new Decimal(0);
+                          }
+                        }
+                      } else if (key === "developerUpgrade") {
+                        const currentTotalDev = updatedDeveloper + updatedAutoDeveloper;
+                        if (currentTotalDev >= 1) {
+                          price = getUpgradeDeveloperPrice(updatedDeveloperGrade);
+                          if (updatedMoney.gte(price)) {
+                            updatedMoney = updatedMoney.minus(price);
+                            updatedDeveloperGrade++;
+                          }
+                        }
+                      } else if (key === "aiDevUpgrade") {
+                        if (updatedAiDev >= 1) {
+                          price = getUpgradeAiDevPrice(updatedAiDevGrade);
+                          if (updatedMoney.gte(price)) {
+                            updatedMoney = updatedMoney.minus(price);
+                            updatedAiDevGrade++;
+                          }
+                        }
+                      } else if (key === "conglomerateUpgrade") {
+                        if ((prev.conglomerate || 0) >= 1) {
+                          price = getUpgradeConglomeratePrice(updatedConglomerateGrade);
+                          if (updatedMoney.gte(price)) {
+                            updatedMoney = updatedMoney.minus(price);
+                            updatedConglomerateGrade++;
                           }
                         }
                       }
@@ -865,6 +1001,9 @@ export default function App() {
               updatedAutoCompany === (prev.autoCompany || 0) &&
               updatedAiDev === (prev.aiDev || 0) &&
               updatedGrade === prev.currentCompanyGrade &&
+              updatedDeveloperGrade === prev.currentDeveloperGrade &&
+              updatedAiDevGrade === prev.currentAiDevGrade &&
+              updatedConglomerateGrade === prev.currentConglomerateGrade &&
               billingEvents === 0 &&
               updatedGames.equals(prev.games) &&
               newAutomationUnlocked === prev.automationUnlocked &&
@@ -886,6 +1025,9 @@ export default function App() {
               conglomerate: prev.conglomerate,
               aiDev: updatedAiDev,
               currentCompanyGrade: updatedGrade,
+              currentDeveloperGrade: updatedDeveloperGrade,
+              currentAiDevGrade: updatedAiDevGrade,
+              currentConglomerateGrade: updatedConglomerateGrade,
               automation: newAutomation,
               storedTime: newStoredTime,
               isTimeFluxActive: newIsTimeFluxActive,
@@ -903,8 +1045,14 @@ export default function App() {
     getCompanyPrice,
     getDeveloperPrice,
     getUpgradeCompanyPrice,
+    getUpgradeDeveloperPrice,
+    getUpgradeAiDevPrice,
+    getUpgradeConglomeratePrice,
     triggerFlash,
     gameState.currentCompanyGrade,
+    gameState.currentDeveloperGrade,
+    gameState.currentAiDevGrade,
+    gameState.currentConglomerateGrade,
   ]);
 
   // 最新のgameStateをインターバル内で安全に参照するためのRef
@@ -1392,7 +1540,7 @@ export default function App() {
                           ? "企業を買う"
                           : "Buy Co."}{" "}
                         ({format(companyPrice)}G)
-                      </ActionButton>
+                      </AあctionButton>
                       <div className="w-20 text-right text-xs font-mono text-emerald-600">
                         +
                         {format(
@@ -1481,6 +1629,82 @@ export default function App() {
                           </p>
                         )}
                       </section>
+
+                      {/* Developer Training Section */}
+                      <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                          👨‍💻 {t("upgrade.developer_title") || "Developer Training"}
+                        </h2>
+                        <ActionButton
+                          onClick={upgradeDeveloper}
+                          disabled={
+                            gameState.money.lt(getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)) ||
+                            gameState.developer + (gameState.autoDeveloper || 0) <= 0
+                          }
+                          currentValue={gameState.money}
+                          targetValue={getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)}
+                          progressColorClass="bg-yellow-400/30"
+                        >
+                          {t("actions.upgrade_developer", {
+                            price: format(getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)),
+                          })}
+                        </ActionButton>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {t("upgrade.developer_desc", { grade: gameState.currentDeveloperGrade })}
+                        </p>
+                      </section>
+
+                      {/* AI Dev Boost Section */}
+                      {gameState.aiEnabled && (
+                        <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
+                          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            🤖 {t("upgrade.ai_dev_title") || "AI Development Boost"}
+                          </h2>
+                          <ActionButton
+                            onClick={upgradeAiDev}
+                            disabled={
+                              gameState.money.lt(getUpgradeAiDevPrice(gameState.currentAiDevGrade)) ||
+                              (gameState.aiDev || 0) <= 0
+                            }
+                            currentValue={gameState.money}
+                            targetValue={getUpgradeAiDevPrice(gameState.currentAiDevGrade)}
+                            progressColorClass="bg-indigo-400/30"
+                          >
+                            {t("actions.upgrade_ai_dev", {
+                              price: format(getUpgradeAiDevPrice(gameState.currentAiDevGrade)),
+                            })}
+                          </ActionButton>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {t("upgrade.ai_dev_desc", { grade: gameState.currentAiDevGrade })}
+                          </p>
+                        </section>
+                      )}
+
+                      {/* Conglomerate Integration Section */}
+                      {gameState.currentCompanyGrade >= 10 && (
+                        <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
+                          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            🏢 {t("upgrade.conglomerate_title") || "Conglomerate Integration"}
+                          </h2>
+                          <ActionButton
+                            onClick={upgradeConglomerate}
+                            disabled={
+                              gameState.money.lt(getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)) ||
+                              (gameState.conglomerate || 0) <= 0
+                            }
+                            currentValue={gameState.money}
+                            targetValue={getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)}
+                            progressColorClass="bg-amber-400/30"
+                          >
+                            {t("actions.upgrade_conglomerate", {
+                              price: format(getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)),
+                            })}
+                          </ActionButton>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {t("upgrade.conglomerate_desc", { grade: gameState.currentConglomerateGrade })}
+                          </p>
+                        </section>
+                      )}
 
                       {/* Automation Section (Moved from AiAssistantTab) */}
                       {gameState.automationUnlocked && (

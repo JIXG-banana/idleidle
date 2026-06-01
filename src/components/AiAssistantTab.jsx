@@ -15,11 +15,14 @@ export default function AiAssistantTab({
         {t("tabs.ai_assistant")}
       </h2>
       <div className="space-y-8">
-        {["developer", "company", "companyUpgrade", "aiDev"]
+        {["developer", "company", "companyUpgrade", "aiDev", "developerUpgrade", "aiDevUpgrade", "conglomerateUpgrade"]
           .filter((key) => {
             if (key === "companyUpgrade")
               return gameState.currentCompanyGrade < 15;
             if (key === "aiDev") return gameState.aiEnabled;
+            if (key === "aiDevUpgrade") return gameState.aiEnabled;
+            if (key === "conglomerateUpgrade")
+              return gameState.currentCompanyGrade >= 10;
             return true;
           })
           .map((key) => {
