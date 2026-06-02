@@ -8,7 +8,6 @@
     "close": "Funga",
     "offline_stored_time_toast": "Karibu tena! +{{time}} ya Dopamini imehifadhiwa.",
     "developer_upgraded": "Watengenezaji wamefunzwa hadi Daraja la {{grade}}!",
-    "ai_dev_upgraded": "Watengenezaji wa AI wameimarishwa hadi Daraja la {{grade}}!",
     "conglomerate_upgraded": "Muungano umeunganishwa hadi Daraja la {{grade}}!"
   },
   "help": {
@@ -34,10 +33,7 @@
     "buy_company": "Nunua Kampuni ya {{grade}} ({{price}}) / Unayomiliki: {{count}}",
     "upgrade_company": "Boresha kampuni ({{price}})",
     "upgrade_developer": "Funza Watengenezaji ({{price}})",
-    "upgrade_ai_dev": "Imarisha AI ({{price}})",
     "upgrade_conglomerate": "Unganisha Muungano ({{price}})",
-    "unlock_ai": "Uza watengenezaji wote ili kufungua Mtengenezaji wa AI",
-    "buy_ai": "Ajiri Mtengenezaji wa AI (Bei: {{price}}, Idadi: {{count}})",
     "save": "Hifadhi",
     "import": "Ingiza",
     "export": "Hamisha hifadhi",
@@ -46,8 +42,6 @@
   "upgrade": {
     "developer_title": "Mafunzo ya Watengenezaji",
     "developer_desc": "Boresha ujuzi wa watengenezaji ili kuongeza tija kwa kila mtu. Daraja la Sasa: {{grade}}",
-    "ai_dev_title": "Uimarishaji wa AI",
-    "ai_dev_desc": "Boresha algoriti za AI ili kuongeza uzalishaji. Daraja la Sasa: {{grade}}",
     "conglomerate_title": "Uunganishaji wa Muungano",
     "conglomerate_desc": "Ongeza ushirikiano ndani ya muungano ili kuharakisha uanzishaji wa kampuni. Daraja la Sasa: {{grade}}"
   },
@@ -74,8 +68,7 @@
     "graph": "📊",
     "achievements": "🏆",
     "setting": "⚙️",
-    "upgrade": "Boresha ⤴️",
-    "ai_assistant": "🤖"
+    "upgrade": "Boresha ⤴️"
   },
   "time_flux": {
     "title": "Dopamini",
@@ -88,9 +81,7 @@
   "automation": {
     "developer": "Auto Dev",
     "company": "Auto Kampuni",
-    "aiDev": "Auto AI Dev",
     "developerUpgrade": "Mafunzo ya Watengenezaji Kiotomatiki",
-    "aiDevUpgrade": "Uimarishaji wa AI Kiotomatiki",
     "conglomerateUpgrade": "Uunganishaji wa Muungano Kiotomatiki",
     "speed": "Kasi ya Auto",
     "upgrade": "Boresha Kasi ({{price}} Michezo)"
@@ -130,26 +121,6 @@
     "10-developer_desc": "Ajiri watengenezaji 10",
     "50-developer": "Ofisi Kubwa",
     "50-developer_desc": "Ajiri watengenezaji 50",
-    "ai-unlocked": "Kuzaliwa kwa Singularity",
-    "ai-unlocked_desc": "Fungua Mtengenezaji wa AI",
-    "1-ai-dev": "Akili ya Kidijitali",
-    "1-ai-dev_desc": "Ajiri mtengenezaji wa AI 1",
-    "10-ai-dev": "Mtandao wa AI wa Global",
-    "10-ai-dev_desc": "Ajiri watengenezaji wa AI 10",
-    "50-ai-dev": "Akili ya Nyural",
-    "50-ai-dev_desc": "Ajiri watengenezaji wa AI 50",
-    "100-ai-dev": "Mashine ya Kufikiri",
-    "100-ai-dev_desc": "Ajiri watengenezaji wa AI 100",
-    "250-ai-dev": "Bahari ya Kielektroniki",
-    "250-ai-dev_desc": "Ajiri watengenezaji wa AI 250",
-    "500-ai-dev": "Mzunguko Unaofahamu Kila Kitu",
-    "500-ai-dev_desc": "Ajiri watengenezaji wa AI 500",
-    "1000-ai-dev": "Akili ya Sayari",
-    "1000-ai-dev_desc": "Ajiri watengenezaji wa AI 1,000",
-    "2500-ai-dev": "Mtandao wa Galaksi",
-    "2500-ai-dev_desc": "Ajiri watengenezaji wa AI 2,500",
-    "5000-ai-dev": "Ufahamu wa Kosmiki",
-    "5000-ai-dev_desc": "Ajiri watengenezaji wa AI 5,000",
     "10000-game": "Mtengenezaji Maarufu",
     "10000-game_desc": "Tengeneza michezo 10,000",
     "100000-game": "Bahari ya Michezo",

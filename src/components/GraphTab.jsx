@@ -14,7 +14,6 @@ export default function GraphTab({ history, t, format }) {
     },
     { key: "developer", label: t("automation.developer") },
     { key: "company", label: t("automation.company") },
-    { key: "aiDev", label: t("automation.aiDev") },
   ];
 
   const [selectedKey, setSelectedKey] = useState("games");

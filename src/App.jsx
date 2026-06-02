@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import Decimal from "break_infinity.js";
 import CryptoJS from "crypto-js";
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
@@ -23,7 +24,6 @@ import {
 import RebirthButton from "./components/RebirthButton";
 
 // Lazy load tab components
-const AiAssistantTab = React.lazy(() => import("./components/AiAssistantTab"));
 const TimeFluxTab = React.lazy(() => import("./components/TimeFluxTab"));
 const AchievementsTab = React.lazy(
   () => import("./components/AchievementsTab"),
@@ -72,7 +72,7 @@ export default function App() {
   const containerRef = useRef(null);
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
 
-  const bgmRef = useRef(null);
+  const bgmRef = useRef(new Audio(bgm));
 
   const updateTargetPos = useCallback(() => {
     if (achievementTabRef.current) {
@@ -103,11 +103,14 @@ export default function App() {
   const [flashes, setFlashes] = useState({
     developer: false,
     company: false,
-    aiDev: false,
   });
   const [showResetPrompt, setShowResetPrompt] = useState(false);
   const [isRebirthing, setIsRebirthing] = useState(false);
   const [offlinePopupData, setOfflinePopupData] = useState(null);
+
+  useEffect(() => {
+    setAssetsLoaded(true);
+  }, []);
 
   useEffect(() => {
     const hasSave = localStorage.getItem("save");
@@ -147,13 +150,13 @@ export default function App() {
       developer: 0,
       autoDeveloper: 0,
       currentDeveloperGrade: 1,
-      aiDev: 0,
-      currentAiDevGrade: 1,
       automationUnlocked: false,
-      aiEnabled: false,
       company: 0,
       autoCompany: 0,
       currentCompanyGrade: 1,
+      government: 0,
+      autoConglomerate: 0,
+      currentGovernmentGrade: 1,
       conglomerate: 0,
       currentConglomerateGrade: 1,
       unlockedAchievements: [],
@@ -173,11 +176,10 @@ export default function App() {
       automation: {
         developer: { level: 0, enabled: false, progress: 0 },
         company: { level: 0, enabled: false, progress: 0 },
-        aiDev: { level: 0, enabled: false, progress: 0 },
         companyUpgrade: { level: 0, enabled: false, progress: 0 },
         developerUpgrade: { level: 0, enabled: false, progress: 0 },
-        aiDevUpgrade: { level: 0, enabled: false, progress: 0 },
         conglomerateUpgrade: { level: 0, enabled: false, progress: 0 },
+        governmentUpgrade: { level: 0, enabled: false, progress: 0 },
       },
     };
 
@@ -296,23 +298,22 @@ export default function App() {
       .floor();
   }, []);
 
-  const getUpgradeAiDevPrice = useCallback((grade) => {
-    return new Decimal(1e9)
-      .times(new Decimal(100).pow(Math.pow(grade - 1, 1.2)))
-      .floor();
-  }, []);
-
   const getUpgradeConglomeratePrice = useCallback((grade) => {
     return new Decimal(1e15)
       .times(new Decimal(1000).pow(Math.pow(grade - 1, 1.2)))
       .floor();
   }, []);
 
-
-  const getAiDevPrice = useCallback((count) => {
+  const getGovernmentPrice = useCallback((count) => {
     return new Decimal(1.5)
       .pow(count || 0)
-      .times(1000000)
+      .times(1e18) // 初期費用 100京G
+      .floor();
+  }, []);
+
+  const getUpgradeGovernmentPrice = useCallback((grade) => {
+    return new Decimal(1e24)
+      .times(new Decimal(10000).pow(Math.pow(grade - 1, 1.2)))
       .floor();
   }, []);
 
@@ -343,20 +344,21 @@ export default function App() {
   }, [buyAmounts.length]);
 
   useEffect(() => {
-    if (!bgmRef.current) return;
+    const currentAudio = bgmRef.current;
+    if (!currentAudio) return;
 
     if (assetsLoaded && gameState.bgmEnabled) {
-      bgmRef.current.play().catch((e) => {
+      currentAudio.play().catch((e) => {
         // Autoplay policy might block this until user interaction
         console.log("BGM play failed:", e);
       });
     } else {
-      bgmRef.current.pause();
+      currentAudio.pause();
     }
 
     return () => {
-      if (bgmRef.current) {
-        bgmRef.current.pause();
+      if (currentAudio) {
+        currentAudio.pause();
       }
     };
   }, [gameState.bgmEnabled, assetsLoaded]);
@@ -386,14 +388,14 @@ export default function App() {
   const upgradeCompanyPrice = getUpgradeCompanyPrice(
     gameState.currentCompanyGrade,
   );
-  const aiDevPrice = getBulkPrice(
-    getAiDevPrice,
-    gameState.aiDev || 0,
-    currentBuyAmount,
-  );
   const conglomeratePrice = getBulkPrice(
     getConglomeratePrice,
     gameState.conglomerate || 0,
+    currentBuyAmount,
+  );
+  const governmentPrice = getBulkPrice(
+    getGovernmentPrice,
+    gameState.government || 0,
     currentBuyAmount,
   );
 
@@ -578,30 +580,6 @@ export default function App() {
     });
   }, [getUpgradeDeveloperPrice, t]);
 
-  const upgradeAiDev = useCallback(() => {
-    setGameState((prev) => {
-      const currentPrice = getUpgradeAiDevPrice(prev.currentAiDevGrade);
-      if (prev.money.gte(currentPrice) && (prev.aiDev || 0) >= 1) {
-        const nextGrade = prev.currentAiDevGrade + 1;
-        setToastQueue((q) => [
-          ...q,
-          {
-            id: `upgrade-ai-${Date.now()}`,
-            icon: "🤖",
-            type: "info",
-            title: t("ui.ai_dev_upgraded", { grade: nextGrade }),
-          },
-        ]);
-        return {
-          ...prev,
-          money: prev.money.minus(currentPrice),
-          currentAiDevGrade: nextGrade,
-        };
-      }
-      return prev;
-    });
-  }, [getUpgradeAiDevPrice, t]);
-
   const upgradeConglomerate = useCallback(() => {
     setGameState((prev) => {
       const currentPrice = getUpgradeConglomeratePrice(
@@ -628,24 +606,50 @@ export default function App() {
     });
   }, [getUpgradeConglomeratePrice, t]);
 
-  const unlockAI = useCallback(() => {
-    setGameState((prev) => ({ ...prev, developer: 0, aiEnabled: true }));
-  }, []);
-
-  const buyAiDev = useCallback(() => {
+  const upgradeGovernment = useCallback(() => {
     setGameState((prev) => {
-      const amount = currentBuyAmount;
-      const totalCost = getBulkPrice(getAiDevPrice, prev.aiDev || 0, amount);
-      if (prev.money.gte(totalCost)) {
+      const currentPrice = getUpgradeGovernmentPrice(
+        prev.currentGovernmentGrade,
+      );
+      if (prev.money.gte(currentPrice) && (prev.government || 0) >= 1) {
+        const nextGrade = prev.currentGovernmentGrade + 1;
+        setToastQueue((q) => [
+          ...q,
+          {
+            id: `upgrade-gov-${Date.now()}`,
+            icon: "🏛️",
+            type: "info",
+            title: t("ui.government_upgraded", { grade: nextGrade }),
+          },
+        ]);
         return {
           ...prev,
-          money: prev.money.minus(totalCost),
-          aiDev: (prev.aiDev || 0) + amount,
+          money: prev.money.minus(currentPrice),
+          currentGovernmentGrade: nextGrade,
         };
       }
       return prev;
     });
-  }, [getAiDevPrice, getBulkPrice, currentBuyAmount]);
+  }, [getUpgradeGovernmentPrice, t]);
+
+  const buyGovernment = useCallback(() => {
+    setGameState((prev) => {
+      const amount = currentBuyAmount;
+      const totalCost = getBulkPrice(
+        getGovernmentPrice,
+        prev.government || 0,
+        amount,
+      );
+      if (prev.money.gte(totalCost)) {
+        return {
+          ...prev,
+          money: prev.money.minus(totalCost),
+          government: (prev.government || 0) + amount,
+        };
+      }
+      return prev;
+    });
+  }, [getGovernmentPrice, getBulkPrice, currentBuyAmount]);
 
   const buyConglomerate = useCallback(() => {
     setGameState((prev) => {
@@ -709,16 +713,11 @@ export default function App() {
       gameState.autoDeveloper || 0,
     );
     const devProd = totalDev.div(6).times(gameState.currentDeveloperGrade);
-    const aiProd = new Decimal(gameState.aiDev || 0)
-      .times(10000)
-      .times(gameState.currentAiDevGrade);
-    return devProd.plus(aiProd);
+    return devProd;
   }, [
     gameState.developer,
     gameState.autoDeveloper,
     gameState.currentDeveloperGrade,
-    gameState.aiDev,
-    gameState.currentAiDevGrade,
   ]);
 
   useEffect(() => {
@@ -826,10 +825,16 @@ export default function App() {
             const conglomerateRate =
               (prev.conglomerate || 0) * 0.1 * prev.currentConglomerateGrade;
 
+            const governmentRate =
+              (prev.government || 0) * 0.05 * prev.currentGovernmentGrade;
+
             let updatedAutoDeveloper =
               (prev.autoDeveloper || 0) + developerRate * deltaTime;
             let updatedAutoCompany =
               (prev.autoCompany || 0) + conglomerateRate * deltaTime;
+            let updatedAutoConglomerate =
+              (prev.autoConglomerate || 0) * (1 - 0.1 * deltaTime) +
+              governmentRate * deltaTime;
 
             const newGames = prev.games.plus(gpsRef.current.times(deltaTime));
             const newMoney = prev.money.plus(
@@ -839,102 +844,100 @@ export default function App() {
             let updatedMoney = newMoney;
             let updatedDeveloper = prev.developer;
             let updatedCompany = prev.company;
-            let updatedAiDev = prev.aiDev || 0;
             let updatedGrade = prev.currentCompanyGrade;
+            let updatedGovernment = prev.government || 0;
             let updatedDeveloperGrade = prev.currentDeveloperGrade;
-            let updatedAiDevGrade = prev.currentAiDevGrade;
             let updatedConglomerateGrade = prev.currentConglomerateGrade;
+            let updatedGovernmentGrade = prev.currentGovernmentGrade;
             let updatedGames = newGames;
             const newAutomationUnlocked =
               prev.automationUnlocked || newGames.gte(automationThreshold);
 
             const pendingFlashes = [];
 
-            ["developer", "company", "aiDev", "companyUpgrade", "developerUpgrade", "aiDevUpgrade", "conglomerateUpgrade"].forEach(
-              (key) => {
-                if (
-                  newAutomation[key].level > 0 &&
-                  newAutomation[key].enabled
-                ) {
-                  // ネストされたオブジェクトをコピーして不変性を守る
-                  newAutomation[key] = { ...newAutomation[key] };
-                  const auto = newAutomation[key];
-                  auto.progress += auto.level * 0.1 * deltaTime;
-                  if (auto.progress >= 1) {
-                    const buyCount = Math.floor(auto.progress);
-                    auto.progress -= buyCount;
-                    for (let i = 0; i < buyCount; i++) {
-                      let price;
-                      if (key === "developer") {
-                        price = getDeveloperPrice(Math.floor(updatedDeveloper));
+            [
+              "developer",
+              "company",
+              "companyUpgrade",
+              "developerUpgrade",
+              "conglomerateUpgrade",
+              "governmentUpgrade",
+            ].forEach((key) => {
+              if (newAutomation[key].level > 0 && newAutomation[key].enabled) {
+                // ネストされたオブジェクトをコピーして不変性を守る
+                newAutomation[key] = { ...newAutomation[key] };
+                const auto = newAutomation[key];
+                auto.progress += auto.level * 0.1 * deltaTime;
+                if (auto.progress >= 1) {
+                  const buyCount = Math.floor(auto.progress);
+                  auto.progress -= buyCount;
+                  for (let i = 0; i < buyCount; i++) {
+                    let price;
+                    if (key === "developer") {
+                      price = getDeveloperPrice(Math.floor(updatedDeveloper));
+                      if (updatedMoney.gte(price)) {
+                        updatedMoney = updatedMoney.minus(price);
+                        updatedDeveloper++;
+                        if (!pendingFlashes.includes("developer"))
+                          pendingFlashes.push("developer");
+                      }
+                    } else if (key === "company") {
+                      price = getCompanyPrice(
+                        updatedCompany,
+                        prev.currentCompanyGrade,
+                      );
+                      if (updatedMoney.gte(price)) {
+                        updatedMoney = updatedMoney.minus(price);
+                        updatedCompany++;
+                        if (!pendingFlashes.includes("company"))
+                          pendingFlashes.push("company");
+                      }
+                    } else if (key === "companyUpgrade") {
+                      const currentTotalCompany =
+                        updatedCompany + updatedAutoCompany;
+                      if (currentTotalCompany >= 1 && updatedGrade < 15) {
+                        price = getUpgradeCompanyPrice(updatedGrade);
                         if (updatedMoney.gte(price)) {
                           updatedMoney = updatedMoney.minus(price);
-                          updatedDeveloper++;
-                          if (!pendingFlashes.includes("developer"))
-                            pendingFlashes.push("developer");
+                          updatedGrade++;
+                          updatedGames = new Decimal(0);
                         }
-                      } else if (key === "company") {
-                        price = getCompanyPrice(
-                          updatedCompany,
-                          prev.currentCompanyGrade,
+                      }
+                    } else if (key === "developerUpgrade") {
+                      const currentTotalDev =
+                        updatedDeveloper + updatedAutoDeveloper;
+                      if (currentTotalDev >= 1) {
+                        price = getUpgradeDeveloperPrice(updatedDeveloperGrade);
+                        if (updatedMoney.gte(price)) {
+                          updatedMoney = updatedMoney.minus(price);
+                          updatedDeveloperGrade++;
+                        }
+                      }
+                    } else if (key === "conglomerateUpgrade") {
+                      if ((prev.conglomerate || 0) >= 1) {
+                        price = getUpgradeConglomeratePrice(
+                          updatedConglomerateGrade,
                         );
                         if (updatedMoney.gte(price)) {
                           updatedMoney = updatedMoney.minus(price);
-                          updatedCompany++;
-                          if (!pendingFlashes.includes("company"))
-                            pendingFlashes.push("company");
+                          updatedConglomerateGrade++;
                         }
-                      } else if (key === "aiDev") {
-                        if (!prev.aiEnabled) continue;
-                        price = getAiDevPrice(updatedAiDev);
+                      }
+                    } else if (key === "governmentUpgrade") {
+                      if (updatedGovernment >= 1) {
+                        price = getUpgradeGovernmentPrice(
+                          updatedGovernmentGrade,
+                        );
                         if (updatedMoney.gte(price)) {
                           updatedMoney = updatedMoney.minus(price);
-                          updatedAiDev++;
-                          if (!pendingFlashes.includes("aiDev"))
-                            pendingFlashes.push("aiDev");
-                        }
-                      } else if (key === "companyUpgrade") {
-                        const currentTotalCompany =
-                          updatedCompany + updatedAutoCompany;
-                        if (currentTotalCompany >= 1 && updatedGrade < 15) {
-                          price = getUpgradeCompanyPrice(updatedGrade);
-                          if (updatedMoney.gte(price)) {
-                            updatedMoney = updatedMoney.minus(price);
-                            updatedGrade++;
-                            updatedGames = new Decimal(0);
-                          }
-                        }
-                      } else if (key === "developerUpgrade") {
-                        const currentTotalDev = updatedDeveloper + updatedAutoDeveloper;
-                        if (currentTotalDev >= 1) {
-                          price = getUpgradeDeveloperPrice(updatedDeveloperGrade);
-                          if (updatedMoney.gte(price)) {
-                            updatedMoney = updatedMoney.minus(price);
-                            updatedDeveloperGrade++;
-                          }
-                        }
-                      } else if (key === "aiDevUpgrade") {
-                        if (updatedAiDev >= 1) {
-                          price = getUpgradeAiDevPrice(updatedAiDevGrade);
-                          if (updatedMoney.gte(price)) {
-                            updatedMoney = updatedMoney.minus(price);
-                            updatedAiDevGrade++;
-                          }
-                        }
-                      } else if (key === "conglomerateUpgrade") {
-                        if ((prev.conglomerate || 0) >= 1) {
-                          price = getUpgradeConglomeratePrice(updatedConglomerateGrade);
-                          if (updatedMoney.gte(price)) {
-                            updatedMoney = updatedMoney.minus(price);
-                            updatedConglomerateGrade++;
-                          }
+                          updatedGovernmentGrade++;
                         }
                       }
                     }
                   }
                 }
-              },
-            );
+              }
+            });
 
             // 購入が発生した場合は、アニメーションをトリガー
             if (pendingFlashes.length > 0) {
@@ -978,7 +981,6 @@ export default function App() {
               const currentTotalCompany = updatedCompany + updatedAutoCompany;
               const quantityScale = new Decimal(currentTotalDev)
                 .plus(new Decimal(currentTotalCompany).times(10))
-                .plus(new Decimal(prev.aiDev || 0).times(100))
                 .plus(1);
               billingMoneyGained = new Decimal(billingEvents)
                 .times(Math.random() * 9 + 1)
@@ -999,10 +1001,11 @@ export default function App() {
               updatedAutoDeveloper === (prev.autoDeveloper || 0) &&
               updatedCompany === prev.company &&
               updatedAutoCompany === (prev.autoCompany || 0) &&
-              updatedAiDev === (prev.aiDev || 0) &&
+              updatedGovernment === (prev.government || 0) &&
+              updatedAutoConglomerate === (prev.autoConglomerate || 0) &&
               updatedGrade === prev.currentCompanyGrade &&
               updatedDeveloperGrade === prev.currentDeveloperGrade &&
-              updatedAiDevGrade === prev.currentAiDevGrade &&
+              updatedGovernmentGrade === prev.currentGovernmentGrade &&
               updatedConglomerateGrade === prev.currentConglomerateGrade &&
               billingEvents === 0 &&
               updatedGames.equals(prev.games) &&
@@ -1022,12 +1025,13 @@ export default function App() {
               automationUnlocked: newAutomationUnlocked,
               company: updatedCompany,
               autoCompany: updatedAutoCompany,
+              government: updatedGovernment,
+              autoConglomerate: updatedAutoConglomerate,
               conglomerate: prev.conglomerate,
-              aiDev: updatedAiDev,
               currentCompanyGrade: updatedGrade,
               currentDeveloperGrade: updatedDeveloperGrade,
-              currentAiDevGrade: updatedAiDevGrade,
               currentConglomerateGrade: updatedConglomerateGrade,
+              currentGovernmentGrade: updatedGovernmentGrade,
               automation: newAutomation,
               storedTime: newStoredTime,
               isTimeFluxActive: newIsTimeFluxActive,
@@ -1041,18 +1045,17 @@ export default function App() {
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
   }, [
-    getAiDevPrice,
     getCompanyPrice,
     getDeveloperPrice,
     getUpgradeCompanyPrice,
     getUpgradeDeveloperPrice,
-    getUpgradeAiDevPrice,
     getUpgradeConglomeratePrice,
+    getUpgradeGovernmentPrice,
     triggerFlash,
     gameState.currentCompanyGrade,
     gameState.currentDeveloperGrade,
-    gameState.currentAiDevGrade,
     gameState.currentConglomerateGrade,
+    gameState.currentGovernmentGrade,
   ]);
 
   // 最新のgameStateをインターバル内で安全に参照するためのRef
@@ -1105,7 +1108,6 @@ export default function App() {
           developer: state.developer + (state.autoDeveloper || 0),
           company: state.company + (state.autoCompany || 0),
           conglomerate: state.conglomerate || 0,
-          aiDev: state.aiDev || 0,
         };
         // 最大100件まで保持
         const next = [...prev, newData];
@@ -1222,9 +1224,6 @@ export default function App() {
       },
       setDeveloper: (count) => {
         setGameState((prev) => ({ ...prev, developer: count }));
-      },
-      setAiDev: (count) => {
-        setGameState((prev) => ({ ...prev, aiDev: count }));
       },
       setConglomerate: (count) => {
         setGameState((prev) => ({ ...prev, conglomerate: count }));
@@ -1540,7 +1539,7 @@ export default function App() {
                           ? "企業を買う"
                           : "Buy Co."}{" "}
                         ({format(companyPrice)}G)
-                      </AあctionButton>
+                      </ActionButton>
                       <div className="w-20 text-right text-xs font-mono text-emerald-600">
                         +
                         {format(
@@ -1557,9 +1556,12 @@ export default function App() {
                   {gameState.currentCompanyGrade >= 10 && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
                       <div className="flex-1 text-sm font-bold text-gray-700">
-                        {gameState.language === "ja" ? "財閥" : "Conglomerate"}:{" "}
+                        {t("automation.conglomerate")}:{" "}
                         {format(gameState.conglomerate || 0)}
-                        {gameState.language === "ja" ? "組織" : " owned"}
+                        {gameState.autoConglomerate > 0
+                          ? ` (${format(gameState.autoConglomerate)})`
+                          : ""}
+                        {gameState.language === "ja" ? "組織所有" : " owned"}
                       </div>
                       <div className="flex items-center gap-3">
                         <ActionButton
@@ -1579,6 +1581,33 @@ export default function App() {
                         </ActionButton>
                         <div className="w-20 text-right text-xs font-mono text-amber-600">
                           +{format(0.1, 2)} Co./s
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {gameState.currentConglomerateGrade >= 5 && (
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
+                      <div className="flex-1 text-sm font-bold text-gray-700">
+                        {gameState.language === "ja" ? "政府" : "Government"}:{" "}
+                        {format(gameState.government || 0)}
+                        {gameState.language === "ja" ? "機関所有" : " owned"}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <ActionButton
+                          onClick={buyGovernment}
+                          disabled={gameState.money.lt(governmentPrice)}
+                          colorClass="bg-red-700 hover:bg-red-800"
+                          shadowClass="shadow-[0_4px_0_0_theme(colors.red-900)]"
+                          currentValue={gameState.money}
+                          targetValue={governmentPrice}
+                        >
+                          {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}
+                          {t("actions.buy_government") || "成立させる"} (
+                          {format(governmentPrice)})
+                        </ActionButton>
+                        <div className="w-20 text-right text-xs font-mono text-red-600">
+                          +{format(0.05, 2)} Cong./s
                         </div>
                       </div>
                     </div>
@@ -1613,7 +1642,9 @@ export default function App() {
                             onClick={upgradeCompany}
                             disabled={
                               gameState.money.lt(upgradeCompanyPrice) ||
-                              gameState.company + (gameState.autoCompany || 0) <= 0
+                              gameState.company +
+                                (gameState.autoCompany || 0) <=
+                                0
                             }
                             currentValue={gameState.money}
                             targetValue={upgradeCompanyPrice}
@@ -1633,93 +1664,205 @@ export default function App() {
                       {/* Developer Training Section */}
                       <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
                         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                          👨‍💻 {t("upgrade.developer_title") || "Developer Training"}
+                          👨‍💻{" "}
+                          {t("upgrade.developer_title") || "Developer Training"}
                         </h2>
                         <ActionButton
                           onClick={upgradeDeveloper}
                           disabled={
-                            gameState.money.lt(getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)) ||
-                            gameState.developer + (gameState.autoDeveloper || 0) <= 0
+                            gameState.money.lt(
+                              getUpgradeDeveloperPrice(
+                                gameState.currentDeveloperGrade,
+                              ),
+                            ) ||
+                            gameState.developer +
+                              (gameState.autoDeveloper || 0) <=
+                              0
                           }
                           currentValue={gameState.money}
-                          targetValue={getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)}
+                          targetValue={getUpgradeDeveloperPrice(
+                            gameState.currentDeveloperGrade,
+                          )}
                           progressColorClass="bg-yellow-400/30"
                         >
                           {t("actions.upgrade_developer", {
-                            price: format(getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)),
+                            price: format(
+                              getUpgradeDeveloperPrice(
+                                gameState.currentDeveloperGrade,
+                              ),
+                            ),
                           })}
                         </ActionButton>
                         <p className="text-xs text-gray-500 mt-2">
-                          {t("upgrade.developer_desc", { grade: gameState.currentDeveloperGrade })}
+                          {t("upgrade.developer_desc", {
+                            grade: gameState.currentDeveloperGrade,
+                          })}
                         </p>
                       </section>
-
-                      {/* AI Dev Boost Section */}
-                      {gameState.aiEnabled && (
-                        <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
-                          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            🤖 {t("upgrade.ai_dev_title") || "AI Development Boost"}
-                          </h2>
-                          <ActionButton
-                            onClick={upgradeAiDev}
-                            disabled={
-                              gameState.money.lt(getUpgradeAiDevPrice(gameState.currentAiDevGrade)) ||
-                              (gameState.aiDev || 0) <= 0
-                            }
-                            currentValue={gameState.money}
-                            targetValue={getUpgradeAiDevPrice(gameState.currentAiDevGrade)}
-                            progressColorClass="bg-indigo-400/30"
-                          >
-                            {t("actions.upgrade_ai_dev", {
-                              price: format(getUpgradeAiDevPrice(gameState.currentAiDevGrade)),
-                            })}
-                          </ActionButton>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {t("upgrade.ai_dev_desc", { grade: gameState.currentAiDevGrade })}
-                          </p>
-                        </section>
-                      )}
 
                       {/* Conglomerate Integration Section */}
                       {gameState.currentCompanyGrade >= 10 && (
                         <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
                           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            🏢 {t("upgrade.conglomerate_title") || "Conglomerate Integration"}
+                            🏢{" "}
+                            {t("upgrade.conglomerate_title") ||
+                              "Conglomerate Integration"}
                           </h2>
                           <ActionButton
                             onClick={upgradeConglomerate}
                             disabled={
-                              gameState.money.lt(getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)) ||
-                              (gameState.conglomerate || 0) <= 0
+                              gameState.money.lt(
+                                getUpgradeConglomeratePrice(
+                                  gameState.currentConglomerateGrade,
+                                ),
+                              ) || (gameState.conglomerate || 0) <= 0
                             }
                             currentValue={gameState.money}
-                            targetValue={getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)}
+                            targetValue={getUpgradeConglomeratePrice(
+                              gameState.currentConglomerateGrade,
+                            )}
                             progressColorClass="bg-amber-400/30"
                           >
                             {t("actions.upgrade_conglomerate", {
-                              price: format(getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)),
+                              price: format(
+                                getUpgradeConglomeratePrice(
+                                  gameState.currentConglomerateGrade,
+                                ),
+                              ),
                             })}
                           </ActionButton>
                           <p className="text-xs text-gray-500 mt-2">
-                            {t("upgrade.conglomerate_desc", { grade: gameState.currentConglomerateGrade })}
+                            {t("upgrade.conglomerate_desc", {
+                              grade: gameState.currentConglomerateGrade,
+                            })}
                           </p>
                         </section>
                       )}
 
-                      {/* Automation Section (Moved from AiAssistantTab) */}
+                      {/* Government Reform Section */}
+                      {gameState.government >= 1 && (
+                        <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
+                          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            🏛️{" "}
+                            {t("upgrade.government_title") ||
+                              "Government Reform"}
+                          </h2>
+                          <ActionButton
+                            onClick={upgradeGovernment}
+                            disabled={gameState.money.lt(
+                              getUpgradeGovernmentPrice(
+                                gameState.currentGovernmentGrade,
+                              ),
+                            )}
+                            currentValue={gameState.money}
+                            targetValue={getUpgradeGovernmentPrice(
+                              gameState.currentGovernmentGrade,
+                            )}
+                          >
+                            {t("actions.upgrade_government", {
+                              price: format(
+                                getUpgradeGovernmentPrice(
+                                  gameState.currentGovernmentGrade,
+                                ),
+                              ),
+                            }) ||
+                              `政府を改革する (${format(getUpgradeGovernmentPrice(gameState.currentGovernmentGrade))}G)`}
+                          </ActionButton>
+                        </section>
+                      )}
+
+                      {/* Automation Section */}
                       {gameState.automationUnlocked && (
                         <section className="p-4 bg-white/40 rounded-2xl border border-gray-200">
                           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                             🤖 {t("tabs.automation") || "Automation"}
                           </h2>
-                          <AiAssistantTab
-                            gameState={gameState}
-                            t={t}
-                            format={format}
-                            getAutomationUpgradeCost={getAutomationUpgradeCost}
-                            upgradeAutomation={upgradeAutomation}
-                            toggleAutomation={toggleAutomation}
-                          />
+                          <div className="space-y-4">
+                            {[
+                              "developer",
+                              "company",
+                              "companyUpgrade",
+                              "developerUpgrade",
+                              "conglomerateUpgrade",
+                              "governmentUpgrade",
+                            ]
+                              .filter((key) => {
+                                if (key === "companyUpgrade")
+                                  return gameState.currentCompanyGrade < 15;
+                                if (key === "conglomerateUpgrade")
+                                  return gameState.currentCompanyGrade >= 10;
+                                return true;
+                              })
+                              .map((key) => {
+                                const auto = gameState.automation?.[key] || {
+                                  level: 0,
+                                  enabled: false,
+                                  progress: 0,
+                                };
+                                const upgradeCost = getAutomationUpgradeCost(
+                                  auto.level,
+                                );
+                                return (
+                                  <div
+                                    key={key}
+                                    className="p-4 border border-gray-200 rounded-xl bg-gray-50/50 flex flex-col gap-3"
+                                  >
+                                    <div className="flex justify-between items-center">
+                                      <h3 className="text-sm font-bold uppercase">
+                                        {t(`automation.${key}`)}
+                                      </h3>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-gray-500">
+                                          LV. {auto.level}
+                                        </span>
+                                        {auto.level > 0 && (
+                                          <button
+                                            onClick={() =>
+                                              toggleAutomation(key)
+                                            }
+                                            className={`w-10 h-5 rounded-full relative transition-colors ${auto.enabled ? "bg-green-500" : "bg-gray-400"}`}
+                                          >
+                                            <div
+                                              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${auto.enabled ? "left-5.5" : "left-0.5"}`}
+                                            />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1 text-xs text-gray-600">
+                                      <p>
+                                        {t("automation.speed")}:{" "}
+                                        <span className="font-bold text-blue-600">
+                                          {(auto.level * 0.1).toFixed(1)}/s
+                                        </span>
+                                      </p>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className="bg-blue-400 h-full transition-all duration-75"
+                                          style={{
+                                            width: `${(auto.progress || 0) * 100}%`,
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                    <ActionButton
+                                      onClick={() => upgradeAutomation(key)}
+                                      disabled={gameState.games.lt(upgradeCost)}
+                                      colorClass="bg-indigo-600 hover:bg-indigo-700"
+                                      shadowClass="shadow-[0_4px_0_0_theme(colors.indigo.800)]"
+                                      currentValue={gameState.games}
+                                      targetValue={upgradeCost}
+                                      progressColorClass="bg-yellow-400/30"
+                                      size="sm"
+                                    >
+                                      {t("automation.upgrade", {
+                                        price: format(upgradeCost),
+                                      })}
+                                    </ActionButton>
+                                  </div>
+                                );
+                              })}
+                          </div>
                         </section>
                       )}
                     </div>
