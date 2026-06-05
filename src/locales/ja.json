@@ -34,9 +34,13 @@
   "actions": {
     "buy_developer": "開発者を雇う ({{price}}) / 所持: {{count}}人",
     "buy_company": "{{grade}}企業を買収 ({{price}}) / 所持: {{count}}社",
+    "buy_conglomerate": "財閥を編制 ({{price}})",
+    "buy_government": "政府を成立させる ({{price}})",
+    "buy_developer_x": "開発者Xを召喚 ({{price}})",
     "upgrade_company": "会社をアップグレード ({{price}})",
     "upgrade_developer": "開発者をトレーニング ({{price}})",
     "upgrade_conglomerate": "財閥を統合 ({{price}})",
+    "upgrade_government": "政府を改革する ({{price}}G)",
     "save": "セーブ",
     "import": "インポート",
     "export": "セーブデータ書き出し",
@@ -71,6 +75,7 @@
     "graph": "📊",
     "achievements": "🏆",
     "setting": "⚙️",
+    "developer": "開発者 👨‍💻",
     "upgrade": "アップグレード ⤴️"
   },
   "time_flux": {
@@ -86,6 +91,7 @@
   "automation": {
     "developer": "開発者の自動雇用",
     "company": "企業の自動買収",
+    "developerX": "開発者X",
     "companyUpgrade": "会社のアップグレード",
     "developerUpgrade": "開発者のトレーニング",
     "conglomerateUpgrade": "財閥の統合",
@@ -275,7 +281,7 @@
     "250000-developer": "軌道上のオフィス",
     "250000-developer_desc": "開発者を250,000人雇う",
     "500000-developer": "月面開発拠点",
-    "500000-developer_desc": "開発者を500,000人雇う",
+    "500000-developer_desc": "開発者を50,000人雇う",
     "1000000-developer": "太陽系最大のチーム",
     "1000000-developer_desc": "開発者を1,000,000人雇う",
     "10000000-developer": "銀河を覆う開発者",

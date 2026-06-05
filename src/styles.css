@@ -10,16 +10,12 @@
     src: url('./assets/ZenMaruGothic-Regular.ttf') format('truetype');
 }
 
-@theme {
-  --comicneue: 'ComicNeue', sans-serif;
-}
-
 :lang(en) {
   font-family: 'ComicNeue', comic-sans-ms, sans-serif;
 }
 
 :lang(ja) {
-  font-family: 'ZenMaruGothic', sans-serif; /* 日本語用のフォントを指定 */
+  font-family: 'ZenMaruGothic', sans-serif;
 }
 
 @keyframes float-up {
@@ -50,4 +46,28 @@
 
 .animate-flash {
   animation: flash 0.3s ease-out;
+}
+
+@keyframes sway-z {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(10px, -20px) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-5px, -50px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-sway-z {
+  animation: sway-z 2s ease-in-out infinite;
 }

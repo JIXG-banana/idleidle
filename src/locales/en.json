@@ -31,9 +31,13 @@
   "actions": {
     "buy_developer": "Hire Developer ({{price}}) / Owned: {{count}}",
     "buy_company": "Buy {{grade}} Company ({{price}}) / Owned: {{count}}",
+    "buy_conglomerate": "Form Conglomerate ({{price}})",
+    "buy_government": "Establish Government ({{price}})",
+    "buy_developer_x": "Summon Developer X ({{price}})",
     "upgrade_company": "Upgrade company ({{price}})",
     "upgrade_developer": "Train Developers ({{price}})",
     "upgrade_conglomerate": "Integrate Conglomerate ({{price}})",
+    "upgrade_government": "Reform Government ({{price}}G)",
     "save": "Save",
     "import": "Import",
     "export": "Export save",
@@ -68,6 +72,7 @@
     "graph": "📊",
     "achievements": "🏆",
     "setting": "⚙️",
+    "developer": "Dev 👨‍💻",
     "upgrade": "Upgrade ⤴️"
   },
   "time_flux": {
@@ -81,6 +86,7 @@
   "automation": {
     "developer": "Auto Developer",
     "company": "Auto Company",
+    "developerX": "Developer X",
     "companyUpgrade": "Auto Company Upgrade",
     "developerUpgrade": "Auto Developer Training",
     "conglomerateUpgrade": "Auto Conglomerate Integration",
