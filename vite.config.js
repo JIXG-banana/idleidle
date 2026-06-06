@@ -8,7 +8,6 @@ export default defineConfig({
   base: "/",
   plugins: [react(), tailwindcss()/*, viteSingleFile()*/],
   build: {
-    assetsInlineLimit: 100000000,
     chunkSizeWarningLimit: 1000,
     /*
     rollupOptions: {

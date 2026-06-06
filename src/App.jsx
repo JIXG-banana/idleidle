@@ -163,6 +163,7 @@ export default function App() {
       resetPromptShown: false,
       storedTime: 0,
       developerX: 0,
+      developerXStates: [],
       isTimeFluxActive: false,
       timeFluxMultiplier: 2,
       timeFluxReferenceTime: 0,
@@ -202,6 +203,11 @@ export default function App() {
           developer: parsed.developer ?? parsed.indieDev ?? 0,
           games: new Decimal(parsed.games ?? 0),
           usedLanguages,
+          developerXStates: parsed.developerXStates ?? Array.from({ length: parsed.developerX ?? 0 }, () => ({
+            isSleeping: false,
+            sleepFrame: 0,
+            timeUntilNextDecision: 2 + Math.random() * 3,
+          })),
           automation: {
             ...defaultState.automation,
             ...(parsed.automation ?? {}),
@@ -453,15 +459,34 @@ export default function App() {
     setGameState((prev) => {
       const currentPrice = getDeveloperXPrice(prev.developerX || 0);
       if (prev.money.gte(currentPrice) && (prev.developerX || 0) < 10) {
+        const newStates = [...(prev.developerXStates || [])];
+        newStates.push({
+          isSleeping: false,
+          sleepFrame: 0,
+          timeUntilNextDecision: 2 + Math.random() * 3,
+        });
         return {
           ...prev,
           money: prev.money.minus(currentPrice),
           developerX: (prev.developerX || 0) + 1,
+          developerXStates: newStates,
         };
       }
       return prev;
     });
   }, [getDeveloperXPrice]);
+
+  const wakeAllDevelopers = useCallback(() => {
+    setGameState((prev) => ({
+      ...prev,
+      developerXStates: (prev.developerXStates || []).map((dev) => ({
+        ...dev,
+        isSleeping: false,
+        sleepFrame: 0,
+        timeUntilNextDecision: 2 + Math.random() * 3,
+      })),
+    }));
+  }, []);
 
   const buyCompany = useCallback(() => {
     setGameState((prev) => {
@@ -648,10 +673,19 @@ export default function App() {
 
   const gps = React.useMemo(() => {
     const totalDev = new Decimal(gameState.developer).plus(gameState.autoDeveloper || 0);
-    const devProd = totalDev.div(6).times(gameState.currentDeveloperGrade);
-    const devXProd = new Decimal(gameState.developerX || 0).times(1e18);
+    const sleepingCount = (gameState.developerXStates || []).filter((d) => d.isSleeping).length;
+    let devProd = totalDev.div(6).times(gameState.currentDeveloperGrade);
+    devProd = devProd.times(Math.max(0, 1 - 0.1 * sleepingCount));
+    const activeDevX = Math.max(0, (gameState.developerX || 0) - sleepingCount);
+    const devXProd = new Decimal(activeDevX).times(1e18);
     return devProd.plus(devXProd);
-  }, [gameState.developer, gameState.autoDeveloper, gameState.currentDeveloperGrade, gameState.developerX]);
+  }, [
+    gameState.developer,
+    gameState.autoDeveloper,
+    gameState.currentDeveloperGrade,
+    gameState.developerX,
+    gameState.developerXStates,
+  ]);
 
   useEffect(() => {
     if (offlineProcessedRef.current) return;
@@ -662,16 +696,21 @@ export default function App() {
       if (diffMs >= 60000 && gameState.currentCompanyGrade > 1) {
         setGameState((prev) => {
           const MAX_STORED = 50 * 60 * 60 * 1000;
+          const devXCount = prev.developerX || 0;
+          const offlineMultiplier = Math.pow(0.775, devXCount);
+          const gainedTime = diffMs * offlineMultiplier;
           return {
             ...prev,
-            storedTime: Math.min(MAX_STORED, (prev.storedTime || 0) + diffMs),
+            storedTime: Math.min(MAX_STORED, (prev.storedTime || 0) + gainedTime),
             lastTimestamp: now,
           };
         });
-        setOfflinePopupData({ time: diffMs });
+        const devXCount = gameState.developerX || 0;
+        const offlineMultiplier = Math.pow(0.775, devXCount);
+        setOfflinePopupData({ time: diffMs * offlineMultiplier });
       }
     }
-  }, [gameState.lastTimestamp, gameState.currentCompanyGrade]);
+  }, [gameState.lastTimestamp, gameState.currentCompanyGrade, gameState.developerX]);
 
   const lastTimeRef = useRef(null);
   const gpsRef = useRef(gps);
@@ -695,7 +734,10 @@ export default function App() {
           setGameState((prev) => {
             const MAX_STORED = 50 * 60 * 60 * 1000;
             const currentStored = prev.storedTime || 0;
-            const newStored = Math.min(MAX_STORED, currentStored + excessMs);
+            const devXCount = prev.developerX || 0;
+            const offlineMultiplier = Math.pow(0.775, devXCount);
+            const gainedTime = excessMs * offlineMultiplier;
+            const newStored = Math.min(MAX_STORED, currentStored + gainedTime);
             if (newStored === currentStored) return prev;
             return { ...prev, storedTime: newStored };
           });
@@ -739,6 +781,47 @@ export default function App() {
               newStoredTime -= actualCostMs;
             }
 
+            let updatedDevXStates = [...(prev.developerXStates || [])];
+            while (updatedDevXStates.length < (prev.developerX || 0)) {
+              updatedDevXStates.push({
+                isSleeping: false,
+                sleepFrame: 0,
+                timeUntilNextDecision: 2 + Math.random() * 3,
+              });
+            }
+            if (updatedDevXStates.length > (prev.developerX || 0)) {
+              updatedDevXStates.length = prev.developerX || 0;
+            }
+
+            updatedDevXStates = updatedDevXStates.map((dev) => {
+              let nextTime = (dev.timeUntilNextDecision ?? (2 + Math.random() * 3)) - deltaTime;
+              let isSleeping = dev.isSleeping || false;
+              let sleepFrame = dev.sleepFrame || 0;
+              if (nextTime <= 0) {
+                if (isSleeping) {
+                  // Developers no longer wake up on their own
+                  sleepFrame = (sleepFrame + 1) % 3;
+                  // Increased nextTime interval (5 to 10 seconds) to lower the sleep motion framerate
+                  nextTime = 5 + Math.random() * 5;
+                } else {
+                  // Decreased sleep probability to 0.001 (0.1%) so developers sleep very rarely
+                  if (Math.random() < 0.001) {
+                    isSleeping = true;
+                    sleepFrame = 0;
+                    nextTime = 5 + Math.random() * 5;
+                  } else {
+                    nextTime = 2 + Math.random() * 3;
+                  }
+                }
+              }
+              return {
+                ...dev,
+                isSleeping,
+                sleepFrame,
+                timeUntilNextDecision: nextTime,
+              };
+            });
+
             const totalCompany = prev.company + (prev.autoCompany || 0);
             const developerRate = new Decimal(prev.currentCompanyGrade).pow(2.25).times(totalCompany).div(10).toNumber();
             const conglomerateRate = (prev.conglomerate || 0) * 0.1 * prev.currentConglomerateGrade;
@@ -748,7 +831,15 @@ export default function App() {
             let updatedAutoCompany = (prev.autoCompany || 0) + conglomerateRate * deltaTime;
             let updatedAutoConglomerate = (prev.autoConglomerate || 0) * (1 - 0.1 * deltaTime) + governmentRate * deltaTime;
 
-            const newGames = prev.games.plus(gpsRef.current.times(deltaTime));
+            const totalDev = new Decimal(prev.developer).plus(prev.autoDeveloper || 0);
+            const sleepingCount = updatedDevXStates.filter((d) => d.isSleeping).length;
+            let devProd = totalDev.div(6).times(prev.currentDeveloperGrade);
+            devProd = devProd.times(Math.max(0, 1 - 0.1 * sleepingCount));
+            const activeDevX = Math.max(0, (prev.developerX || 0) - sleepingCount);
+            const devXProd = new Decimal(activeDevX).times(1e18);
+            const currentGps = devProd.plus(devXProd);
+
+            const newGames = prev.games.plus(currentGps.times(deltaTime));
             const newMoney = prev.money.plus(prev.games.floor().times(deltaTime));
             const newAutomation = { ...prev.automation };
             let updatedMoney = newMoney;
@@ -873,6 +964,7 @@ export default function App() {
               automation: newAutomation,
               storedTime: newStoredTime,
               isTimeFluxActive: newIsTimeFluxActive,
+              developerXStates: updatedDevXStates,
             };
           });
 
@@ -996,6 +1088,13 @@ export default function App() {
     return () => { delete window.game; };
   }, []);
 
+  useEffect(() => {
+    if (activeTab === "developer" && (gameState.developerX || 0) === 0) {
+      setActiveTab("idle2");
+    }
+  }, [activeTab, gameState.developerX]);
+
+
   return (
     <div className="p-3 md:p-5 pb-24 md:pb-5">
       {!gameState.languageSelected && (
@@ -1093,20 +1192,20 @@ export default function App() {
                   )}
 
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                    <div className="flex-1 text-sm font-bold text-gray-700">{t("automation.developer")}: {format(gameState.developer)}{gameState.autoDeveloper > 0 ? ` (${format(gameState.autoDeveloper)})` : ""}{gameState.language === "ja" ? "人所有" : " owned"}</div>
+                    <div className="flex-1 text-sm font-bold text-gray-700">{t("ui.developer") || "Developer"}: {format(gameState.developer)}{gameState.autoDeveloper > 0 ? ` (${format(gameState.autoDeveloper)})` : ""}{t("ui.developer_owned") || " owned"}</div>
                     <div className="flex items-center gap-3">
                       <ActionButton onClick={buyDeveloper} disabled={gameState.money.lt(developerPrice)} flashing={flashes.developer} currentValue={gameState.money} targetValue={developerPrice} progressColorClass="bg-yellow-400/30">
-                        {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{gameState.language === "ja" ? "開発者を雇う" : "Hire Dev"} ({format(developerPrice)}G)
+                        {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.hire_developer_btn") || "Hire Dev"} ({format(developerPrice)}G)
                       </ActionButton>
                       <div className="w-20 text-right text-xs font-mono text-blue-600">+{format(1 / 6, 2)} G/s</div>
                     </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                    <div className="flex-1 text-sm font-bold text-gray-700">{companyGrades[gameState.currentCompanyGrade]}{t("automation.company")}: {format(gameState.company)}{gameState.autoCompany > 0 ? ` (${format(gameState.autoCompany)})` : ""}{gameState.language === "ja" ? "社所有" : " owned"}</div>
+                    <div className="flex-1 text-sm font-bold text-gray-700">{companyGrades[gameState.currentCompanyGrade]}{t("ui.company") || "Company"}: {format(gameState.company)}{gameState.autoCompany > 0 ? ` (${format(gameState.autoCompany)})` : ""}{t("ui.company_owned") || " owned"}</div>
                     <div className="flex items-center gap-3">
                       <ActionButton onClick={buyCompany} disabled={gameState.money.lt(companyPrice)} colorClass={companyButtonColors.color} shadowClass={companyButtonColors.shadow} flashing={flashes.company} currentValue={gameState.money} targetValue={companyPrice} progressColorClass={gameState.currentCompanyGrade % 2 === 0 ? "bg-orange-400/30" : "bg-fuchsia-400/30"}>
-                        {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{gameState.language === "ja" ? "企業を買う" : "Buy Co."} ({format(companyPrice)}G)
+                        {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.buy_company_btn") || "Buy Co."} ({format(companyPrice)}G)
                       </ActionButton>
                       <div className="w-20 text-right text-xs font-mono text-emerald-600">+{format(new Decimal(gameState.currentCompanyGrade).pow(2.25).div(10), 2)} dev/s</div>
                     </div>
@@ -1114,10 +1213,10 @@ export default function App() {
 
                   {gameState.currentCompanyGrade >= 10 && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                      <div className="flex-1 text-sm font-bold text-gray-700">{t("automation.conglomerate")}: {format(gameState.conglomerate || 0)}{gameState.autoConglomerate > 0 ? ` (${format(gameState.autoConglomerate)})` : ""}{gameState.language === "ja" ? "組織所有" : " owned"}</div>
+                      <div className="flex-1 text-sm font-bold text-gray-700">{t("ui.conglomerate") || "Conglomerate"}: {format(gameState.conglomerate || 0)}{gameState.autoConglomerate > 0 ? ` (${format(gameState.autoConglomerate)})` : ""}{t("ui.conglomerate_owned") || " owned"}</div>
                       <div className="flex items-center gap-3">
                         <ActionButton onClick={buyConglomerate} disabled={gameState.money.lt(conglomeratePrice)} colorClass="bg-amber-600 hover:bg-amber-700" shadowClass="shadow-[0_4px_0_0_theme(colors.amber-800)]" currentValue={gameState.money} targetValue={conglomeratePrice} progressColorClass="bg-yellow-400/30">
-                          {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{gameState.language === "ja" ? "財閥を編制" : "Form Conglomerate"} ({format(conglomeratePrice)})
+                          {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.form_conglomerate_btn") || "Form Conglomerate"} ({format(conglomeratePrice)})
                         </ActionButton>
                         <div className="w-20 text-right text-xs font-mono text-amber-600">+{format(0.1, 2)} Co./s</div>
                       </div>
@@ -1126,10 +1225,10 @@ export default function App() {
 
                   {gameState.currentConglomerateGrade >= 5 && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                      <div className="flex-1 text-sm font-bold text-gray-700">{gameState.language === "ja" ? "政府" : "Government"}: {format(gameState.government || 0)}{gameState.language === "ja" ? "機関所有" : " owned"}</div>
+                      <div className="flex-1 text-sm font-bold text-gray-700">{t("ui.government") || "Government"}: {format(gameState.government || 0)}{t("ui.government_owned") || " owned"}</div>
                       <div className="flex items-center gap-3">
                         <ActionButton onClick={buyGovernment} disabled={gameState.money.lt(governmentPrice)} colorClass="bg-red-700 hover:bg-red-800" shadowClass="shadow-[0_4px_0_0_theme(colors.red-900)]" currentValue={gameState.money} targetValue={governmentPrice}>
-                          {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.buy_government") || "成立させる"} ({format(governmentPrice)})
+                          {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.buy_government_btn") || "Establish Government"} ({format(governmentPrice)})
                         </ActionButton>
                         <div className="w-20 text-right text-xs font-mono text-red-600">+{format(0.05, 2)} Cong./s</div>
                       </div>
@@ -1138,10 +1237,10 @@ export default function App() {
 
                   {gameState.currentGovernmentGrade >= 10 && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-200">
-                      <div className="flex-1 text-sm font-bold text-indigo-900 italic">{t("automation.developerX") || "Developer X"}: {gameState.developerX || 0} / 10{gameState.language === "ja" ? "人召喚" : " summoned"}</div>
+                      <div className="flex-1 text-sm font-bold text-indigo-900 italic">{t("automation.developerX") || "Developer X"}: {gameState.developerX || 0} / 10{t("ui.developer_x_owned") || " summoned"}</div>
                       <div className="flex items-center gap-3">
                         <ActionButton onClick={buyDeveloperX} disabled={gameState.money.lt(getDeveloperXPrice(gameState.developerX || 0)) || (gameState.developerX || 0) >= 10} colorClass="bg-black hover:bg-gray-800" shadowClass="shadow-[0_4px_0_0_theme(colors.gray.600)]" currentValue={gameState.money} targetValue={getDeveloperXPrice(gameState.developerX || 0)}>
-                          {t("actions.buy_developer_x") || "開発者Xを召喚"} ({format(getDeveloperXPrice(gameState.developerX || 0))})
+                          {t("actions.buy_developer_x_btn") || "Summon Developer X"} ({format(getDeveloperXPrice(gameState.developerX || 0))})
                         </ActionButton>
                         <div className="w-20 text-right text-xs font-mono text-indigo-700">+{format(1e18)} G/s</div>
                       </div>
@@ -1241,7 +1340,7 @@ export default function App() {
                   {activeTab === "graph" && <GraphTab history={history} t={t} format={format} />}
                   {activeTab === "achievements" && <AchievementsTab gameState={gameState} t={t} />}
                   {activeTab === "setting" && <SettingTab gameState={gameState} setGameState={setGameState} i18n={i18n} t={t} />}
-                  {activeTab === "developer" && <DeveloperTab developerCount={gameState.developerX || 0} />}
+                  {activeTab === "developer" && (gameState.developerX || 0) > 0 && <DeveloperTab developerCount={gameState.developerX || 0} developerXStates={gameState.developerXStates || []} normalDeveloperCount={gameState.developer || 0} onWakeAll={wakeAllDevelopers} t={t} />}
                 </Suspense>
               </ErrorBoundary>
             </div>
@@ -1287,7 +1386,9 @@ export default function App() {
               <TabButton active={activeTab === "time_flux"} onClick={handleTabTimeFlux}>{t("tabs.time_flux")}</TabButton>
             )}
             <TabButton active={activeTab === "graph"} onClick={handleTabGraph}>{t("tabs.graph") || "Graph"}</TabButton>
-            <TabButton active={activeTab === "developer"} onClick={handleTabDeveloper}>{t("tabs.developer") || "Dev"}</TabButton>
+            {(gameState.developerX || 0) > 0 && (
+              <TabButton active={activeTab === "developer"} onClick={handleTabDeveloper}>{t("tabs.developer") || "Dev"}</TabButton>
+            )}
             <TabButton ref={achievementTabRef} active={activeTab === "achievements"} onClick={handleTabAchievements}>{t("tabs.achievements")}</TabButton>
             <TabButton active={activeTab === "setting"} onClick={handleTabSetting}>{t("tabs.setting")}</TabButton>
           </div>

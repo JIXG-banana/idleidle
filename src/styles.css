@@ -1,21 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap');
 @import "tailwindcss";
 
-@font-face {
-  font-family: 'ComicNeue';
-  src: url('./assets/ComicNeue-Regular.ttf') format('truetype');
-}
-
-@font-face {
-    font-family: ZenMaruGothic;
-    src: url('./assets/ZenMaruGothic-Regular.ttf') format('truetype');
-}
-
 :lang(en) {
-  font-family: 'ComicNeue', comic-sans-ms, sans-serif;
+  font-family: 'Comic Neue', comic-sans-ms, sans-serif;
 }
 
 :lang(ja) {
-  font-family: 'ZenMaruGothic', sans-serif;
+  font-family: 'Zen Maru Gothic', sans-serif;
 }
 
 @keyframes float-up {
@@ -71,3 +62,18 @@
 .animate-sway-z {
   animation: sway-z 2s ease-in-out infinite;
 }
+
+@keyframes wobble-bell {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-15deg); }
+  30% { transform: rotate(12deg); }
+  45% { transform: rotate(-10deg); }
+  60% { transform: rotate(8deg); }
+  75% { transform: rotate(-4deg); }
+}
+
+.animate-wobble-bell {
+  animation: wobble-bell 0.8s ease-in-out infinite;
+  transform-origin: top center;
+}
+
