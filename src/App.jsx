@@ -13,18 +13,15 @@ import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
 import bgm from "./assets/idleidle.mp3";
 import { formatNumber, formatTime } from "./utils/format";
-import { SECRET_KEY, achievementsList } from "./constants/gameData";
+import { SECRET_KEY, achievementsList, promotionsList } from "./constants/gameData";
 import { TabButton, ActionButton } from "./components/Buttons";
 import { InfoToast, AchievementToast } from "./components/Toasts";
 import {
-  AchievementCard,
   StaticAdsAndForm,
   SideAds,
 } from "./components/GameUI";
-import RebirthButton from "./components/RebirthButton";
 
 // Lazy load tab components
-const TimeFluxTab = React.lazy(() => import("./components/TimeFluxTab"));
 const AchievementsTab = React.lazy(
   () => import("./components/AchievementsTab"),
 );
@@ -106,7 +103,6 @@ export default function App() {
     company: false,
   });
   const [showResetPrompt, setShowResetPrompt] = useState(false);
-  const [isRebirthing, setIsRebirthing] = useState(false);
   const [offlinePopupData, setOfflinePopupData] = useState(null);
 
   useEffect(() => {
@@ -162,11 +158,6 @@ export default function App() {
       billingCount: 0,
       resetPromptShown: false,
       storedTime: 0,
-      developerX: 0,
-      developerXStates: [],
-      isTimeFluxActive: false,
-      timeFluxMultiplier: 2,
-      timeFluxReferenceTime: 0,
       buyAmountIndex: 0,
       automation: {
         developer: { level: 0, enabled: false, progress: 0 },
@@ -176,6 +167,10 @@ export default function App() {
         conglomerateUpgrade: { level: 0, enabled: false, progress: 0 },
         governmentUpgrade: { level: 0, enabled: false, progress: 0 },
       },
+      unlockedSkills: [],
+      activePromotionKey: null,
+      activePromotionEndTime: 0,
+      promotionCooldowns: {},
     };
 
     try {
@@ -194,20 +189,29 @@ export default function App() {
         const usedLanguages = parsed.usedLanguages ?? [language];
         if (!usedLanguages.includes(language)) usedLanguages.push(language);
 
+        let unlockedSkills = parsed.unlockedSkills;
+        if (!unlockedSkills) {
+          try {
+            const savedDevSkills = localStorage.getItem("dev_skills");
+            unlockedSkills = savedDevSkills ? JSON.parse(savedDevSkills) : [];
+          } catch {
+            unlockedSkills = [];
+          }
+        }
+
         return {
           ...defaultState,
           ...parsed,
+          unlockedSkills,
+          activePromotionKey: parsed.activePromotionKey ?? null,
+          activePromotionEndTime: parsed.activePromotionEndTime ?? 0,
+          promotionCooldowns: parsed.promotionCooldowns ?? {},
           money: new Decimal(
             parsed.money ?? parsed.developers ?? parsed.gold ?? 50,
           ),
           developer: parsed.developer ?? parsed.indieDev ?? 0,
           games: new Decimal(parsed.games ?? 0),
           usedLanguages,
-          developerXStates: parsed.developerXStates ?? Array.from({ length: parsed.developerX ?? 0 }, () => ({
-            isSleeping: false,
-            sleepFrame: 0,
-            timeUntilNextDecision: 2 + Math.random() * 3,
-          })),
           automation: {
             ...defaultState.automation,
             ...(parsed.automation ?? {}),
@@ -322,19 +326,14 @@ export default function App() {
     return new Decimal(1.5).pow(count || 0).times(1e12).floor();
   }, []);
 
-  const getDeveloperXPrice = useCallback((count) => {
-    return new Decimal(100).pow(count).times(1e21).floor();
-  }, []);
-
   const getAutomationUpgradeCost = useCallback((level) => {
     return level >= 50 ? new Decimal(Infinity) : new Decimal(1e12);
   }, []);
 
   const buyAmounts = React.useMemo(() => [1, 2, 5, 10, 50, 100, 200], []);
   const currentBuyAmount = React.useMemo(() => {
-    if (!gameState.unlockedAchievements.includes("1000-game")) return 1;
     return buyAmounts[gameState.buyAmountIndex || 0] || 1;
-  }, [gameState.unlockedAchievements, gameState.buyAmountIndex, buyAmounts]);
+  }, [gameState.buyAmountIndex, buyAmounts]);
 
   const cycleBuyAmount = useCallback(() => {
     setGameState((prev) => ({
@@ -342,6 +341,44 @@ export default function App() {
       buyAmountIndex: ((prev.buyAmountIndex || 0) + 1) % buyAmounts.length,
     }));
   }, [buyAmounts.length]);
+
+  // eslint-disable-next-line no-unused-vars
+  const startPromotion = useCallback((key) => {
+    const promo = promotionsList.find((p) => p.key === key);
+    if (!promo) return;
+    const now = Date.now();
+    const costDecimal = new Decimal(promo.cost);
+
+    setGameState((prev) => {
+      if (prev.money.lt(costDecimal)) return prev;
+      const cooldownEndTime = prev.promotionCooldowns?.[key] || 0;
+      if (now < cooldownEndTime) return prev;
+      if (prev.activePromotionKey && now < prev.activePromotionEndTime) return prev;
+
+      const nextCooldowns = {
+        ...(prev.promotionCooldowns || {}),
+        [key]: now + promo.cooldown * 1000,
+      };
+
+      return {
+        ...prev,
+        money: prev.money.minus(costDecimal),
+        activePromotionKey: key,
+        activePromotionEndTime: now + promo.duration * 1000,
+        promotionCooldowns: nextCooldowns,
+      };
+    });
+
+    setToastQueue((q) => [
+      ...q,
+      {
+        id: `promo-${key}-${now}`,
+        icon: promo.icon,
+        type: "info",
+        title: t(`promotions.activated`, { name: t(`promotions.names.${key}`) }),
+      },
+    ]);
+  }, [t]);
 
   useEffect(() => {
     const currentAudio = bgmRef.current;
@@ -398,25 +435,28 @@ export default function App() {
     currentBuyAmount,
   );
 
+  const StarGrade = useCallback(({ grade }) => {
+    if (!grade) return null;
+    return (
+      <span className="inline-flex ml-1">
+        {[...Array(grade)].map((_, i) => (
+          <svg key={i} className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+      </span>
+    );
+  }, []);
+
   const companyGrades = React.useMemo(
-    () => ({
-      1: t("company_grades.small"),
-      2: t("company_grades.normal"),
-      3: t("company_grades.big"),
-      4: t("company_grades.huge"),
-      5: t("company_grades.legal"),
-      6: t("company_grades.illegal"),
-      7: t("company_grades.ultimet"),
-      8: t("company_grades.extreme"),
-      9: t("company_grades.endless"),
-      10: t("company_grades.JIXG"),
-      11: t("company_grades.multiverse"),
-      12: t("company_grades.omnipotent"),
-      13: t("company_grades.eternal"),
-      14: t("company_grades.godly"),
-      15: t("company_grades.transcendent"),
-    }),
-    [t],
+    () => {
+      const grades = {};
+      for (let i = 1; i <= 15; i++) {
+        grades[i] = i;
+      }
+      return grades;
+    },
+    [],
   );
 
   const companyButtonColors = React.useMemo(() => {
@@ -454,39 +494,6 @@ export default function App() {
       return prev;
     });
   }, [getDeveloperPrice, getBulkPrice, currentBuyAmount]);
-
-  const buyDeveloperX = useCallback(() => {
-    setGameState((prev) => {
-      const currentPrice = getDeveloperXPrice(prev.developerX || 0);
-      if (prev.money.gte(currentPrice) && (prev.developerX || 0) < 10) {
-        const newStates = [...(prev.developerXStates || [])];
-        newStates.push({
-          isSleeping: false,
-          sleepFrame: 0,
-          timeUntilNextDecision: 2 + Math.random() * 3,
-        });
-        return {
-          ...prev,
-          money: prev.money.minus(currentPrice),
-          developerX: (prev.developerX || 0) + 1,
-          developerXStates: newStates,
-        };
-      }
-      return prev;
-    });
-  }, [getDeveloperXPrice]);
-
-  const wakeAllDevelopers = useCallback(() => {
-    setGameState((prev) => ({
-      ...prev,
-      developerXStates: (prev.developerXStates || []).map((dev) => ({
-        ...dev,
-        isSleeping: false,
-        sleepFrame: 0,
-        timeUntilNextDecision: 2 + Math.random() * 3,
-      })),
-    }));
-  }, []);
 
   const buyCompany = useCallback(() => {
     setGameState((prev) => {
@@ -673,18 +680,22 @@ export default function App() {
 
   const gps = React.useMemo(() => {
     const totalDev = new Decimal(gameState.developer).plus(gameState.autoDeveloper || 0);
-    const sleepingCount = (gameState.developerXStates || []).filter((d) => d.isSleeping).length;
     let devProd = totalDev.div(6).times(gameState.currentDeveloperGrade);
-    devProd = devProd.times(Math.max(0, 1 - 0.1 * sleepingCount));
-    const activeDevX = Math.max(0, (gameState.developerX || 0) - sleepingCount);
-    const devXProd = new Decimal(activeDevX).times(1e18);
-    return devProd.plus(devXProd);
+    
+    // Apply skill multipliers
+    let devProdMultiplier = 1;
+    if (gameState.unlockedSkills?.includes("basics")) devProdMultiplier += 0.5;
+    if (gameState.unlockedSkills?.includes("frontend")) devProdMultiplier += 0.5;
+    if (gameState.unlockedSkills?.includes("react_ninja")) devProdMultiplier += 1.0;
+    if (gameState.unlockedSkills?.includes("fullstack")) devProdMultiplier += 1.0;
+    devProd = devProd.times(devProdMultiplier);
+
+    return devProd;
   }, [
     gameState.developer,
     gameState.autoDeveloper,
     gameState.currentDeveloperGrade,
-    gameState.developerX,
-    gameState.developerXStates,
+    gameState.unlockedSkills,
   ]);
 
   useEffect(() => {
@@ -696,21 +707,16 @@ export default function App() {
       if (diffMs >= 60000 && gameState.currentCompanyGrade > 1) {
         setGameState((prev) => {
           const MAX_STORED = 50 * 60 * 60 * 1000;
-          const devXCount = prev.developerX || 0;
-          const offlineMultiplier = Math.pow(0.775, devXCount);
-          const gainedTime = diffMs * offlineMultiplier;
           return {
             ...prev,
-            storedTime: Math.min(MAX_STORED, (prev.storedTime || 0) + gainedTime),
+            storedTime: Math.min(MAX_STORED, (prev.storedTime || 0) + diffMs),
             lastTimestamp: now,
           };
         });
-        const devXCount = gameState.developerX || 0;
-        const offlineMultiplier = Math.pow(0.775, devXCount);
-        setOfflinePopupData({ time: diffMs * offlineMultiplier });
+        setOfflinePopupData({ time: diffMs });
       }
     }
-  }, [gameState.lastTimestamp, gameState.currentCompanyGrade, gameState.developerX]);
+  }, [gameState.lastTimestamp, gameState.currentCompanyGrade]);
 
   const lastTimeRef = useRef(null);
   const gpsRef = useRef(gps);
@@ -734,10 +740,7 @@ export default function App() {
           setGameState((prev) => {
             const MAX_STORED = 50 * 60 * 60 * 1000;
             const currentStored = prev.storedTime || 0;
-            const devXCount = prev.developerX || 0;
-            const offlineMultiplier = Math.pow(0.775, devXCount);
-            const gainedTime = excessMs * offlineMultiplier;
-            const newStored = Math.min(MAX_STORED, currentStored + gainedTime);
+            const newStored = Math.min(MAX_STORED, currentStored + excessMs);
             if (newStored === currentStored) return prev;
             return { ...prev, storedTime: newStored };
           });
@@ -756,91 +759,42 @@ export default function App() {
           setGameState((prev) => {
             let deltaTime = currentAccumulated / 1000;
             let newStoredTime = prev.storedTime || 0;
-            let newIsTimeFluxActive = prev.isTimeFluxActive;
-
-            if (newIsTimeFluxActive && newStoredTime > 0) {
-              const multiplier = Math.min(50, prev.timeFluxMultiplier || 2);
-              const speedupFactor = multiplier - 1;
-              const costFactor = Math.pow(multiplier, 1.35) - 1;
-              const costMs = currentAccumulated * costFactor;
-              const speedupMs = currentAccumulated * speedupFactor;
-
-              let actualSpeedupMs;
-              let actualCostMs;
-
-              if (newStoredTime >= costMs) {
-                actualSpeedupMs = speedupMs;
-                actualCostMs = costMs;
-              } else {
-                const ratio = costFactor / speedupFactor;
-                actualSpeedupMs = newStoredTime / ratio;
-                actualCostMs = newStoredTime;
-                newIsTimeFluxActive = false;
-              }
-              deltaTime = (currentAccumulated + actualSpeedupMs) / 1000;
-              newStoredTime -= actualCostMs;
-            }
-
-            let updatedDevXStates = [...(prev.developerXStates || [])];
-            while (updatedDevXStates.length < (prev.developerX || 0)) {
-              updatedDevXStates.push({
-                isSleeping: false,
-                sleepFrame: 0,
-                timeUntilNextDecision: 2 + Math.random() * 3,
-              });
-            }
-            if (updatedDevXStates.length > (prev.developerX || 0)) {
-              updatedDevXStates.length = prev.developerX || 0;
-            }
-
-            updatedDevXStates = updatedDevXStates.map((dev) => {
-              let nextTime = (dev.timeUntilNextDecision ?? (2 + Math.random() * 3)) - deltaTime;
-              let isSleeping = dev.isSleeping || false;
-              let sleepFrame = dev.sleepFrame || 0;
-              if (nextTime <= 0) {
-                if (isSleeping) {
-                  // Developers no longer wake up on their own
-                  sleepFrame = (sleepFrame + 1) % 3;
-                  // Increased nextTime interval (5 to 10 seconds) to lower the sleep motion framerate
-                  nextTime = 5 + Math.random() * 5;
-                } else {
-                  // Decreased sleep probability to 0.001 (0.1%) so developers sleep very rarely
-                  if (Math.random() < 0.001) {
-                    isSleeping = true;
-                    sleepFrame = 0;
-                    nextTime = 5 + Math.random() * 5;
-                  } else {
-                    nextTime = 2 + Math.random() * 3;
-                  }
-                }
-              }
-              return {
-                ...dev,
-                isSleeping,
-                sleepFrame,
-                timeUntilNextDecision: nextTime,
-              };
-            });
 
             const totalCompany = prev.company + (prev.autoCompany || 0);
-            const developerRate = new Decimal(prev.currentCompanyGrade).pow(2.25).times(totalCompany).div(10).toNumber();
-            const conglomerateRate = (prev.conglomerate || 0) * 0.1 * prev.currentConglomerateGrade;
-            const governmentRate = (prev.government || 0) * 0.05 * prev.currentGovernmentGrade;
+            
+            let companyMultiplier = 1;
+            if (prev.unlockedSkills?.includes("css_magic")) companyMultiplier += 0.5;
+            const developerRate = new Decimal(prev.currentCompanyGrade).pow(2.25).times(totalCompany).div(10).times(companyMultiplier).toNumber();
+            
+            let cloudMultiplier = 1;
+            if (prev.unlockedSkills?.includes("cloud_scale")) cloudMultiplier += 1.0;
+            const conglomerateRate = (prev.conglomerate || 0) * 0.1 * prev.currentConglomerateGrade * cloudMultiplier;
+            const governmentRate = (prev.government || 0) * 0.05 * prev.currentGovernmentGrade * cloudMultiplier;
 
             let updatedAutoDeveloper = (prev.autoDeveloper || 0) + developerRate * deltaTime;
             let updatedAutoCompany = (prev.autoCompany || 0) + conglomerateRate * deltaTime;
             let updatedAutoConglomerate = (prev.autoConglomerate || 0) * (1 - 0.1 * deltaTime) + governmentRate * deltaTime;
 
             const totalDev = new Decimal(prev.developer).plus(prev.autoDeveloper || 0);
-            const sleepingCount = updatedDevXStates.filter((d) => d.isSleeping).length;
             let devProd = totalDev.div(6).times(prev.currentDeveloperGrade);
-            devProd = devProd.times(Math.max(0, 1 - 0.1 * sleepingCount));
-            const activeDevX = Math.max(0, (prev.developerX || 0) - sleepingCount);
-            const devXProd = new Decimal(activeDevX).times(1e18);
-            const currentGps = devProd.plus(devXProd);
+            
+            // Apply skill multipliers
+            let devProdMultiplier = 1;
+            if (prev.unlockedSkills?.includes("basics")) devProdMultiplier += 0.5;
+            if (prev.unlockedSkills?.includes("frontend")) devProdMultiplier += 0.5;
+            if (prev.unlockedSkills?.includes("react_ninja")) devProdMultiplier += 1.0;
+            if (prev.unlockedSkills?.includes("fullstack")) devProdMultiplier += 1.0;
+            devProd = devProd.times(devProdMultiplier);
+
+            const currentGps = devProd;
 
             const newGames = prev.games.plus(currentGps.times(deltaTime));
-            const newMoney = prev.money.plus(prev.games.floor().times(deltaTime));
+            
+            let moneyMultiplier = 1;
+            if (prev.unlockedSkills?.includes("backend")) moneyMultiplier += 0.5;
+            if (prev.unlockedSkills?.includes("fullstack")) moneyMultiplier += 1.0;
+            const moneyGained = prev.games.floor().times(deltaTime).times(moneyMultiplier);
+            const newMoney = prev.money.plus(moneyGained);
             const newAutomation = { ...prev.automation };
             let updatedMoney = newMoney;
             let updatedDeveloper = prev.developer;
@@ -860,7 +814,9 @@ export default function App() {
               if (newAutomation[key].level > 0 && newAutomation[key].enabled) {
                 newAutomation[key] = { ...newAutomation[key] };
                 const auto = newAutomation[key];
-                auto.progress += auto.level * 0.1 * deltaTime;
+                let autoSpeedMultiplier = 1;
+                if (prev.unlockedSkills?.includes("ai_copilot")) autoSpeedMultiplier += 1.0;
+                auto.progress += auto.level * 0.1 * deltaTime * autoSpeedMultiplier;
                 if (auto.progress >= 1) {
                   const buyCount = Math.floor(auto.progress);
                   auto.progress -= buyCount;
@@ -941,7 +897,9 @@ export default function App() {
             if (billingEvents > 0) {
               const companyScale = new Decimal(5).pow(prev.currentCompanyGrade - 1);
               const quantityScale = new Decimal(updatedDeveloper + updatedAutoDeveloper).plus(new Decimal(updatedCompany + updatedAutoCompany).times(10)).plus(1);
-              billingMoneyGained = new Decimal(billingEvents).times(Math.random() * 9 + 1).times(companyScale).times(quantityScale).times(prev.games.div(1000).plus(1)).floor();
+              let billingMultiplier = 1;
+              if (prev.unlockedSkills?.includes("sql_opt")) billingMultiplier += 1.0;
+              billingMoneyGained = new Decimal(billingEvents).times(Math.random() * 9 + 1).times(companyScale).times(quantityScale).times(prev.games.div(1000).plus(1)).times(billingMultiplier).floor();
               billingGainToTrigger = billingMoneyGained;
             }
 
@@ -963,8 +921,6 @@ export default function App() {
               currentGovernmentGrade: updatedGovernmentGrade,
               automation: newAutomation,
               storedTime: newStoredTime,
-              isTimeFluxActive: newIsTimeFluxActive,
-              developerXStates: updatedDevXStates,
             };
           });
 
@@ -978,40 +934,6 @@ export default function App() {
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
   }, [getCompanyPrice, getDeveloperPrice, getUpgradeCompanyPrice, getUpgradeDeveloperPrice, getUpgradeConglomeratePrice, getUpgradeGovernmentPrice, triggerFlash]);
-
-  const seenAchievementsRef = useRef(new Set());
-  useEffect(() => {
-    if (gameState.unlockedAchievements) {
-      gameState.unlockedAchievements.forEach((key) => seenAchievementsRef.current.add(key));
-    }
-  }, [gameState.unlockedAchievements]);
-
-  useEffect(() => {
-    const checkAchievements = setInterval(() => {
-      const currentState = gameStateRef.current;
-      const newlyUnlocked = achievementsList.filter(
-        (ach) => !currentState.unlockedAchievements.includes(ach.key) && !seenAchievementsRef.current.has(ach.key) && ach.condition(currentState),
-      );
-
-      if (newlyUnlocked.length > 0) {
-        newlyUnlocked.forEach((ach) => seenAchievementsRef.current.add(ach.key));
-        const timestamp = Date.now();
-        const newToasts = newlyUnlocked.map((ach, idx) => ({
-          id: `ach-${timestamp}-${ach.key}-${idx}`,
-          icon: ach.icon,
-          type: "achievement",
-          title: t(`achievements.${ach.key}`),
-        }));
-
-        setGameState((prev) => ({
-          ...prev,
-          unlockedAchievements: [...prev.unlockedAchievements, ...newlyUnlocked.map((a) => a.key)],
-        }));
-        setToastQueue((q) => [...q, ...newToasts]);
-      }
-    }, 1000);
-    return () => clearInterval(checkAchievements);
-  }, [t]);
 
   useEffect(() => {
     const recordInterval = setInterval(() => {
@@ -1052,25 +974,52 @@ export default function App() {
   }, []);
 
   const handleTabIdle2 = useCallback(() => { setActiveTab("idle2"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
-  const handleTabTimeFlux = useCallback(() => { setActiveTab("time_flux"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabAchievements = useCallback(() => { setActiveTab("achievements"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabSetting = useCallback(() => { setActiveTab("setting"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabUpgrade = useCallback(() => { setActiveTab("upgrade"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabGraph = useCallback(() => { setActiveTab("graph"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabDeveloper = useCallback(() => { setActiveTab("developer"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
 
-  const toggleTimeFlux = useCallback(() => {
-    setGameState((prev) => {
-      const activating = !prev.isTimeFluxActive;
-      return {
-        ...prev,
-        isTimeFluxActive: activating,
-        timeFluxReferenceTime: activating ? prev.storedTime : prev.timeFluxReferenceTime,
-      };
-    });
-  }, []);
+  const seenAchievementsRef = useRef(new Set());
+  useEffect(() => {
+    if (gameState.unlockedAchievements) {
+      gameState.unlockedAchievements.forEach((key) => seenAchievementsRef.current.add(key));
+    }
+  }, [gameState.unlockedAchievements]);
 
-  const mps = React.useMemo(() => gameState.games.floor(), [gameState.games]);
+  useEffect(() => {
+    const checkAchievements = setInterval(() => {
+      const currentState = gameStateRef.current;
+      const newlyUnlocked = achievementsList.filter(
+        (ach) => !currentState.unlockedAchievements.includes(ach.key) && !seenAchievementsRef.current.has(ach.key) && ach.condition(currentState),
+      );
+
+      if (newlyUnlocked.length > 0) {
+        newlyUnlocked.forEach((ach) => seenAchievementsRef.current.add(ach.key));
+        const timestamp = Date.now();
+        const newToasts = newlyUnlocked.map((ach, idx) => ({
+          id: `ach-${timestamp}-${ach.key}-${idx}`,
+          icon: ach.icon,
+          type: "achievement",
+          title: t(`achievements.${ach.key}`),
+        }));
+
+        setGameState((prev) => ({
+          ...prev,
+          unlockedAchievements: [...prev.unlockedAchievements, ...newlyUnlocked.map((a) => a.key)],
+        }));
+        setToastQueue((q) => [...q, ...newToasts]);
+      }
+    }, 1000);
+    return () => clearInterval(checkAchievements);
+  }, [t]);
+
+  const mps = React.useMemo(() => {
+    let moneyMultiplier = 1;
+    if (gameState.unlockedSkills?.includes("backend")) moneyMultiplier += 0.5;
+    if (gameState.unlockedSkills?.includes("fullstack")) moneyMultiplier += 1.0;
+    return gameState.games.floor().times(moneyMultiplier);
+  }, [gameState.games, gameState.unlockedSkills]);
 
   useEffect(() => {
     window.game = {
@@ -1089,10 +1038,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "developer" && (gameState.developerX || 0) === 0) {
+    if (activeTab === "developer" && (gameState.developer + (gameState.autoDeveloper || 0)) < 100) {
       setActiveTab("idle2");
     }
-  }, [activeTab, gameState.developerX]);
+  }, [activeTab, gameState.developer, gameState.autoDeveloper]);
 
 
   return (
@@ -1150,8 +1099,8 @@ export default function App() {
           <motion.div
             className="flex-1 flex flex-col"
             style={{ transformOrigin: "center center" }}
-            animate={isRebirthing ? { scale: [1, 0.8, 0], rotate: [0, -360, -1440], rotateX: [0, 45, 90], rotateY: [0, -45, -90], z: [0, -500, -2000], opacity: [1, 1, 0] } : { scale: 1, rotate: 0, rotateX: 0, rotateY: 0, z: 0, opacity: 1 }}
-            transition={{ duration: isRebirthing ? 8.0 : 0.1, ease: isRebirthing ? "easeInOut" : "linear" }}
+            animate={{ scale: 1, rotate: 0, rotateX: 0, rotateY: 0, z: 0, opacity: 1 }}
+            transition={{ duration: 0.1, ease: "linear" }}
           >
             <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-y-auto">
               {activeTab === "idle2" && (
@@ -1165,34 +1114,16 @@ export default function App() {
                     <h1 ref={moneyRef} className="text-xl sm:text-2xl md:text-4xl font-bold">{t("ui.money", { count: format(gameState.money) })}</h1>
                     <span className="text-xs sm:text-base">+{format(mps, 2)}/s</span>
                   </div>
-                  {!isRebirthing && moneyEffects.map((e) => (
+                  {moneyEffects.map((e) => (
                     <div key={e.id} className="floating-money" style={{ left: e.x, top: e.y }}>{e.amount}</div>
                   ))}
 
-                  {gameState.isTimeFluxActive && gameState.currentCompanyGrade > 1 && (
-                    <div className="mb-4">
-                      <button onClick={toggleTimeFlux} className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl shadow-[0_4px_0_0_#991b1b] active:translate-y-[2px] active:shadow-none transition-all relative overflow-hidden group">
-                        <motion.div className="absolute inset-0 bg-white/10 pointer-events-none" animate={{ opacity: [0, 0.2, 0] }} transition={{ duration: 1.5, repeat: Infinity }} />
-                        <motion.div className="absolute bottom-0 left-0 h-full bg-blue-500/40 pointer-events-none" initial={{ width: 0 }} animate={{ width: `${Math.min(Math.max(((gameState.storedTime || 0) / (50 * 60 * 60 * 1000)) * 100, 0), 100)}%` }} transition={{ type: "spring", bounce: 0, duration: 0.5 }} />
-                        <div className="relative z-10 flex flex-col items-center justify-center">
-                          <div className="flex items-center gap-2">
-                            <span>{t("time_flux.deactivate")}</span>
-                            <span className="text-xs opacity-80 bg-black/20 px-2 py-0.5 rounded-full">{gameState.timeFluxMultiplier}x</span>
-                          </div>
-                          <span className="text-[10px] font-bold opacity-80 tracking-tighter">{formatTime(gameState.storedTime)} REMAINING</span>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
-                  {gameState.unlockedAchievements.includes("1000-game") && (
-                    <div className="flex justify-end mb-2">
-                      <button onClick={cycleBuyAmount} className="bg-white text-gray-800 font-bold py-1 px-3 rounded border border-gray-300 shadow-sm text-sm hover:bg-gray-100 transition-colors">Buy: {currentBuyAmount}</button>
-                    </div>
-                  )}
+                  <div className="flex justify-end mb-2">
+                    <button onClick={cycleBuyAmount} className="bg-white text-gray-800 font-bold py-1 px-3 rounded border border-gray-300 shadow-sm text-sm hover:bg-gray-100 transition-colors">Buy: {currentBuyAmount}</button>
+                  </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                    <div className="flex-1 text-sm font-bold text-gray-700">{t("ui.developer") || "Developer"}: {format(gameState.developer)}{gameState.autoDeveloper > 0 ? ` (${format(gameState.autoDeveloper)})` : ""}{t("ui.developer_owned") || " owned"}</div>
+                    <div className="flex-1 text-sm font-bold text-gray-700 flex items-center">{t("ui.developer") || "Developer"}<StarGrade grade={gameState.currentDeveloperGrade} />: {format(gameState.developer)}{gameState.autoDeveloper > 0 ? ` (${format(gameState.autoDeveloper)})` : ""}{t("ui.developer_owned") || " owned"}</div>
                     <div className="flex items-center gap-3">
                       <ActionButton onClick={buyDeveloper} disabled={gameState.money.lt(developerPrice)} flashing={flashes.developer} currentValue={gameState.money} targetValue={developerPrice} progressColorClass="bg-yellow-400/30">
                         {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.hire_developer_btn") || "Hire Dev"} ({format(developerPrice)}G)
@@ -1202,7 +1133,7 @@ export default function App() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                    <div className="flex-1 text-sm font-bold text-gray-700">{companyGrades[gameState.currentCompanyGrade]}{t("ui.company") || "Company"}: {format(gameState.company)}{gameState.autoCompany > 0 ? ` (${format(gameState.autoCompany)})` : ""}{t("ui.company_owned") || " owned"}</div>
+                    <div className="flex-1 text-sm font-bold text-gray-700 flex items-center">{t("ui.company") || "Company"}<StarGrade grade={gameState.currentCompanyGrade} />: {format(gameState.company)}{gameState.autoCompany > 0 ? ` (${format(gameState.autoCompany)})` : ""}{t("ui.company_owned") || " owned"}</div>
                     <div className="flex items-center gap-3">
                       <ActionButton onClick={buyCompany} disabled={gameState.money.lt(companyPrice)} colorClass={companyButtonColors.color} shadowClass={companyButtonColors.shadow} flashing={flashes.company} currentValue={gameState.money} targetValue={companyPrice} progressColorClass={gameState.currentCompanyGrade % 2 === 0 ? "bg-orange-400/30" : "bg-fuchsia-400/30"}>
                         {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.buy_company_btn") || "Buy Co."} ({format(companyPrice)}G)
@@ -1213,7 +1144,7 @@ export default function App() {
 
                   {gameState.currentCompanyGrade >= 10 && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                      <div className="flex-1 text-sm font-bold text-gray-700">{t("ui.conglomerate") || "Conglomerate"}: {format(gameState.conglomerate || 0)}{gameState.autoConglomerate > 0 ? ` (${format(gameState.autoConglomerate)})` : ""}{t("ui.conglomerate_owned") || " owned"}</div>
+                      <div className="flex-1 text-sm font-bold text-gray-700 flex items-center">{t("ui.conglomerate") || "Conglomerate"}<StarGrade grade={gameState.currentConglomerateGrade} />: {format(gameState.conglomerate || 0)}{gameState.autoConglomerate > 0 ? ` (${format(gameState.autoConglomerate)})` : ""}{t("ui.conglomerate_owned") || " owned"}</div>
                       <div className="flex items-center gap-3">
                         <ActionButton onClick={buyConglomerate} disabled={gameState.money.lt(conglomeratePrice)} colorClass="bg-amber-600 hover:bg-amber-700" shadowClass="shadow-[0_4px_0_0_theme(colors.amber-800)]" currentValue={gameState.money} targetValue={conglomeratePrice} progressColorClass="bg-yellow-400/30">
                           {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.form_conglomerate_btn") || "Form Conglomerate"} ({format(conglomeratePrice)})
@@ -1225,7 +1156,7 @@ export default function App() {
 
                   {gameState.currentConglomerateGrade >= 5 && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
-                      <div className="flex-1 text-sm font-bold text-gray-700">{t("ui.government") || "Government"}: {format(gameState.government || 0)}{t("ui.government_owned") || " owned"}</div>
+                      <div className="flex-1 text-sm font-bold text-gray-700 flex items-center">{t("ui.government") || "Government"}<StarGrade grade={gameState.currentGovernmentGrade} />: {format(gameState.government || 0)}{t("ui.government_owned") || " owned"}</div>
                       <div className="flex items-center gap-3">
                         <ActionButton onClick={buyGovernment} disabled={gameState.money.lt(governmentPrice)} colorClass="bg-red-700 hover:bg-red-800" shadowClass="shadow-[0_4px_0_0_theme(colors.red-900)]" currentValue={gameState.money} targetValue={governmentPrice}>
                           {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t("actions.buy_government_btn") || "Establish Government"} ({format(governmentPrice)})
@@ -1235,19 +1166,6 @@ export default function App() {
                     </div>
                   )}
 
-                  {gameState.currentGovernmentGrade >= 10 && (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-200">
-                      <div className="flex-1 text-sm font-bold text-indigo-900 italic">{t("automation.developerX") || "Developer X"}: {gameState.developerX || 0} / 10{t("ui.developer_x_owned") || " summoned"}</div>
-                      <div className="flex items-center gap-3">
-                        <ActionButton onClick={buyDeveloperX} disabled={gameState.money.lt(getDeveloperXPrice(gameState.developerX || 0)) || (gameState.developerX || 0) >= 10} colorClass="bg-black hover:bg-gray-800" shadowClass="shadow-[0_4px_0_0_theme(colors.gray.600)]" currentValue={gameState.money} targetValue={getDeveloperXPrice(gameState.developerX || 0)}>
-                          {t("actions.buy_developer_x_btn") || "Summon Developer X"} ({format(getDeveloperXPrice(gameState.developerX || 0))})
-                        </ActionButton>
-                        <div className="w-20 text-right text-xs font-mono text-indigo-700">+{format(1e18)} G/s</div>
-                      </div>
-                    </div>
-                  )}
-
-                  <RebirthButton production={gameState.games} setIsRebirthing={setIsRebirthing} />
                   <StaticAdsAndForm />
                 </div>
               )}
@@ -1271,7 +1189,7 @@ export default function App() {
                         <ActionButton onClick={upgradeDeveloper} disabled={gameState.money.lt(getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)) || gameState.developer + (gameState.autoDeveloper || 0) <= 0} currentValue={gameState.money} targetValue={getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)} progressColorClass="bg-yellow-400/30">
                           {t("actions.upgrade_developer", { price: format(getUpgradeDeveloperPrice(gameState.currentDeveloperGrade)) })}
                         </ActionButton>
-                        <p className="text-xs text-gray-500 mt-2">{t("upgrade.developer_desc", { grade: gameState.currentDeveloperGrade })}</p>
+                        <p className="text-xs text-gray-500 mt-2 flex items-center">{t("upgrade.developer_desc_no_grade") || "Current Grade: "}<StarGrade grade={gameState.currentDeveloperGrade} /></p>
                       </section>
 
                       {gameState.currentCompanyGrade >= 10 && (
@@ -1280,7 +1198,7 @@ export default function App() {
                           <ActionButton onClick={upgradeConglomerate} disabled={gameState.money.lt(getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)) || (gameState.conglomerate || 0) <= 0} currentValue={gameState.money} targetValue={getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)} progressColorClass="bg-amber-400/30">
                             {t("actions.upgrade_conglomerate", { price: format(getUpgradeConglomeratePrice(gameState.currentConglomerateGrade)) })}
                           </ActionButton>
-                          <p className="text-xs text-gray-500 mt-2">{t("upgrade.conglomerate_desc", { grade: gameState.currentConglomerateGrade })}</p>
+                          <p className="text-xs text-gray-500 mt-2 flex items-center">{t("upgrade.conglomerate_desc_no_grade") || "Current Grade: "}<StarGrade grade={gameState.currentConglomerateGrade} /></p>
                         </section>
                       )}
 
@@ -1318,7 +1236,7 @@ export default function App() {
                                     </div>
                                   </div>
                                   <div className="flex flex-col gap-1 text-xs text-gray-600">
-                                    <p>{t("automation.speed")}: <span className="font-bold text-blue-600">{(auto.level * 0.1).toFixed(1)}/s</span></p>
+                                    <p>{t("automation.speed")}: <span className="font-bold text-blue-600">{(auto.level * 0.1 * (gameState.unlockedSkills?.includes("ai_copilot") ? 2 : 1)).toFixed(1)}/s</span></p>
                                     <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                                       <div className="bg-blue-400 h-full transition-all duration-75" style={{ width: `${(auto.progress || 0) * 100}%` }} />
                                     </div>
@@ -1334,13 +1252,10 @@ export default function App() {
                       )}
                     </div>
                   )}
-                  {activeTab === "time_flux" && gameState.currentCompanyGrade > 1 && (
-                    <TimeFluxTab gameState={gameState} setGameState={setGameState} toggleTimeFlux={toggleTimeFlux} t={t} maxMultiplier={50} />
-                  )}
                   {activeTab === "graph" && <GraphTab history={history} t={t} format={format} />}
                   {activeTab === "achievements" && <AchievementsTab gameState={gameState} t={t} />}
                   {activeTab === "setting" && <SettingTab gameState={gameState} setGameState={setGameState} i18n={i18n} t={t} />}
-                  {activeTab === "developer" && (gameState.developerX || 0) > 0 && <DeveloperTab developerCount={gameState.developerX || 0} developerXStates={gameState.developerXStates || []} normalDeveloperCount={gameState.developer || 0} onWakeAll={wakeAllDevelopers} t={t} />}
+                  {activeTab === "developer" && <DeveloperTab normalDeveloperCount={gameState.developer + (gameState.autoDeveloper || 0)} t={t} unlockedSkills={gameState.unlockedSkills || []} setGameState={setGameState} />}
                 </Suspense>
               </ErrorBoundary>
             </div>
@@ -1382,11 +1297,8 @@ export default function App() {
           <div className="flex flex-row md:flex-col gap-2 overflow-x-auto">
             <TabButton active={activeTab === "idle2"} onClick={handleTabIdle2}>{t("tabs.idle2")}</TabButton>
             <TabButton active={activeTab === "upgrade"} onClick={handleTabUpgrade}>{t("tabs.upgrade") || "Upgrade ⤴️"}</TabButton>
-            {gameState.currentCompanyGrade > 1 && (
-              <TabButton active={activeTab === "time_flux"} onClick={handleTabTimeFlux}>{t("tabs.time_flux")}</TabButton>
-            )}
             <TabButton active={activeTab === "graph"} onClick={handleTabGraph}>{t("tabs.graph") || "Graph"}</TabButton>
-            {(gameState.developerX || 0) > 0 && (
+            {(gameState.developer + (gameState.autoDeveloper || 0)) >= 100 && (
               <TabButton active={activeTab === "developer"} onClick={handleTabDeveloper}>{t("tabs.developer") || "Dev"}</TabButton>
             )}
             <TabButton ref={achievementTabRef} active={activeTab === "achievements"} onClick={handleTabAchievements}>{t("tabs.achievements")}</TabButton>
