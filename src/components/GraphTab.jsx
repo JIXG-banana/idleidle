@@ -12,8 +12,9 @@ export default function GraphTab({ history, t, format }) {
       key: "money",
       label: t("ui.money", { count: "" }).replace(":", "").trim(),
     },
-    { key: "developer", label: t("automation.developer") },
-    { key: "company", label: t("automation.company") },
+    { key: "developer", label: t("ui.developer") },
+    { key: "company", label: t("ui.publisher") },
+    { key: "conglomerate", label: t("ui.conglomerate") },
   ];
 
   const [selectedKey, setSelectedKey] = useState("games");
