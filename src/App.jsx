@@ -92,29 +92,6 @@ export default function App() {
     };
   }, [updateTargetPos]);
 
-  // BGM control effect
-  useEffect(() => {
-    const audio = bgmRef.current;
-    audio.loop = true;
-
-    // タブに応じて再生速度（ピッチ）を変更
-    if (activeTab === "capacity") {
-      audio.playbackRate = 0.7; // キャパシティタブでは重厚感を出すためにピッチを低く
-    } else {
-      audio.playbackRate = 1.0; // 通常のピッチ
-    }
-
-    if (gameState.bgmEnabled) {
-      audio.play().catch((err) => {
-        // Autoplay might be blocked until user interacts with the page
-        console.log("Audio play deferred until user interaction");
-      });
-    } else {
-      audio.pause();
-    }
-    return () => audio.pause();
-  }, [gameState.bgmEnabled, activeTab]);
-
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
   const [toastQueue, setToastQueue] = useState([]);
@@ -445,6 +422,27 @@ export default function App() {
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  // BGM control effect (Moved here to fix ReferenceError)
+  useEffect(() => {
+    const audio = bgmRef.current;
+    audio.loop = true;
+
+    if (activeTab === "capacity") {
+      audio.playbackRate = 0.7;
+    } else {
+      audio.playbackRate = 1.0;
+    }
+
+    if (gameState.bgmEnabled) {
+      audio.play().catch((err) => {
+        console.log("Audio play deferred until user interaction");
+      });
+    } else {
+      audio.pause();
+    }
+    return () => audio.pause();
+  }, [gameState.bgmEnabled, activeTab]);
 
   const gps = React.useMemo(() => {
     const devCount = new Decimal(gameState.dimensions.tier1);
