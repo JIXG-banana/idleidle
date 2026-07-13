@@ -3,7 +3,7 @@ import CryptoJS from "crypto-js";
 import { ActionButton } from "./Buttons";
 import { SECRET_KEY } from "../constants/gameData";
 
-export default function SettingTab({ gameState, setGameState, i18n, t }) {
+export default function SettingTab({ gameState, setGameState, i18n, t, onSave }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 p-3 rounded">
@@ -68,19 +68,7 @@ export default function SettingTab({ gameState, setGameState, i18n, t }) {
         </label>
       </div>
       <ActionButton
-        onClick={() => {
-          localStorage.setItem(
-            "save",
-            CryptoJS.AES.encrypt(
-              JSON.stringify({
-                ...gameState,
-                lastTimestamp: Date.now(),
-              }),
-              SECRET_KEY,
-            ).toString(),
-          );
-          alert(t("messages.save_success"));
-        }}
+        onClick={onSave}
         colorClass="bg-green-700 hover:bg-green-800"
         shadowClass="shadow-[0_4px_0_0_theme(colors.green.900)]"
       >

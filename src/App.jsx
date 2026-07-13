@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
 import bgm from "./assets/idleidle.mp3";
 import { formatNumber, formatTime } from "./utils/format";
-import { SECRET_KEY, achievementsList, promotionsList, DIMENSIONS, EXPANSION_LINE, AUTOMATORS, CP_SHOP } from "./constants/gameData";
+import { SECRET_KEY, achievementsList, DIMENSIONS, EXPANSION_LINE, AUTOMATORS, CP_SHOP } from "./constants/gameData";
 import { TabButton, ActionButton } from "./components/Buttons";
 import { InfoToast, AchievementToast } from "./components/Toasts";
 import {
@@ -65,13 +65,11 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  const [assetsLoaded, setAssetsLoaded] = useState(false);
   const achievementTabRef = useRef(null);
   const moneyRef = useRef(null);
   const containerRef = useRef(null);
-  const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
-
   const bgmRef = useRef(new Audio(bgm));
+  const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
 
   const updateTargetPos = useCallback(() => {
     if (achievementTabRef.current) {
@@ -94,34 +92,36 @@ export default function App() {
     };
   }, [updateTargetPos]);
 
+  // BGM control effect
+  useEffect(() => {
+    const audio = bgmRef.current;
+    audio.loop = true;
+
+    // タブに応じて再生速度（ピッチ）を変更
+    if (activeTab === "capacity") {
+      audio.playbackRate = 0.7; // キャパシティタブでは重厚感を出すためにピッチを低く
+    } else {
+      audio.playbackRate = 1.0; // 通常のピッチ
+    }
+
+    if (gameState.bgmEnabled) {
+      audio.play().catch((err) => {
+        // Autoplay might be blocked until user interacts with the page
+        console.log("Audio play deferred until user interaction");
+      });
+    } else {
+      audio.pause();
+    }
+    return () => audio.pause();
+  }, [gameState.bgmEnabled, activeTab]);
+
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("idle2");
   const [toastQueue, setToastQueue] = useState([]);
   const [history, setHistory] = useState([]);
   const [moneyEffects, setMoneyEffects] = useState([]);
-  const [flashes, setFlashes] = useState({
-    developer: false,
-    company: false,
-  });
   const [showResetPrompt, setShowResetPrompt] = useState(false);
   const [offlinePopupData, setOfflinePopupData] = useState(null);
-
-  useEffect(() => {
-    setAssetsLoaded(true);
-  }, []);
-
-  const flashTimers = useRef({});
-
-  const triggerFlash = useCallback((key) => {
-    if (flashTimers.current[key]) {
-      clearTimeout(flashTimers.current[key]);
-    }
-    setFlashes((prev) => ({ ...prev, [key]: true }));
-    flashTimers.current[key] = setTimeout(() => {
-      setFlashes((prev) => ({ ...prev, [key]: false }));
-      flashTimers.current[key] = null;
-    }, 300);
-  }, []);
 
   const removeToast = useCallback((id) => {
     setToastQueue((prev) => prev.filter((item) => item.id !== id));
@@ -194,6 +194,7 @@ export default function App() {
           parsed = JSON.parse(saveData);
         }
         
+        const money = new Decimal(parsed.money ?? 100);
         const totalGames = new Decimal(parsed.totalGames ?? parsed.games ?? 0);
         const currentGames = new Decimal(parsed.currentGames ?? parsed.games ?? 0);
 
@@ -440,38 +441,6 @@ export default function App() {
     );
   }, []);
 
-  const companyGrades = React.useMemo(
-    () => {
-      const grades = {};
-      for (let i = 1; i <= 15; i++) {
-        grades[i] = i;
-      }
-      return grades;
-    },
-    [],
-  );
-
-  const companyButtonColors = React.useMemo(() => {
-    const colors = [
-      { color: "bg-blue-500 hover:bg-blue-600", shadow: "shadow-[0_4px_0_0_theme(colors.blue.700)]" },
-      { color: "bg-emerald-500 hover:bg-emerald-600", shadow: "shadow-[0_4px_0_0_theme(colors.emerald.700)]" },
-      { color: "bg-yellow-500 hover:bg-yellow-600", shadow: "shadow-[0_4px_0_0_theme(colors.yellow.700)]" },
-      { color: "bg-orange-500 hover:bg-orange-600", shadow: "shadow-[0_4px_0_0_theme(colors.orange.700)]" },
-      { color: "bg-red-500 hover:bg-red-600", shadow: "shadow-[0_4px_0_0_theme(colors.red.700)]" },
-      { color: "bg-pink-500 hover:bg-pink-600", shadow: "shadow-[0_4px_0_0_theme(colors.pink.700)]" },
-      { color: "bg-purple-500 hover:bg-purple-600", shadow: "shadow-[0_4px_0_0_theme(colors.purple.700)]" },
-      { color: "bg-indigo-500 hover:bg-indigo-600", shadow: "shadow-[0_4px_0_0_theme(colors.indigo.700)]" },
-      { color: "bg-gray-800 hover:bg-gray-900", shadow: "shadow-[0_4px_0_0_theme(colors.gray.950)]" },
-      { color: "bg-cyan-500 hover:bg-cyan-600", shadow: "shadow-[0_4px_0_0_theme(colors.cyan.700)]" },
-      { color: "bg-lime-500 hover:bg-lime-600", shadow: "shadow-[0_4px_0_0_theme(colors.lime.700)]" },
-      { color: "bg-teal-500 hover:bg-teal-600", shadow: "shadow-[0_4px_0_0_theme(colors.teal.700)]" },
-      { color: "bg-fuchsia-500 hover:bg-fuchsia-600", shadow: "shadow-[0_4px_0_0_theme(colors.fuchsia.700)]" },
-      { color: "bg-rose-500 hover:bg-rose-600", shadow: "shadow-[0_4px_0_0_theme(colors.rose.700)]" },
-      { color: "bg-sky-500 hover:bg-sky-600", shadow: "shadow-[0_4px_0_0_theme(colors.sky.700)]" },
-    ];
-    return colors[Math.min(gameState.currentCompanyGrade - 1, colors.length - 1)];
-  }, [gameState.currentCompanyGrade]);
-
   const gameStateRef = useRef(gameState);
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -499,8 +468,7 @@ export default function App() {
       // Only simulate if offline for more than 1 minute
       if (diffMs >= 60000) {
         const diffSeconds = diffMs / 1000;
-        // Cap simulation at 24 hours to prevent extreme lag/calculation issues
-        const simSeconds = Math.min(diffSeconds, 86400);
+        const simSeconds = diffSeconds;
         
         // We simulate in discrete chunks to allow higher tiers to produce lower tiers
         // which then produce resources. More chunks = more accuracy but slower start.
@@ -567,7 +535,7 @@ export default function App() {
         setGameState(prev => ({ ...prev, lastTimestamp: now }));
       }
     }
-  }, [getDimensionPrice, getExpansionLinePrice]);
+  }, [getDimensionPrice, getExpansionLinePrice, gameState.lastTimestamp]);
 
   const lastTimeRef = useRef(null);
   const gpsRef = useRef(gps);
@@ -704,6 +672,20 @@ export default function App() {
       clearInterval(autoSaveInterval);
     };
   }, []);
+
+  const handleManualSave = useCallback(() => {
+    const stateToSave = {
+      ...gameStateRef.current,
+      lastTimestamp: Date.now(),
+    };
+    try {
+      const encrypted = CryptoJS.AES.encrypt(JSON.stringify(stateToSave), SECRET_KEY).toString();
+      localStorage.setItem("save", encrypted);
+      alert(t("messages.save_success"));
+    } catch (e) {
+      console.error("Manual save failed:", e);
+    }
+  }, [t]);
 
   const handleTabIdle2 = useCallback(() => { setActiveTab("idle2"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabGraph = useCallback(() => { setActiveTab("graph"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
@@ -847,12 +829,14 @@ export default function App() {
 
                   <div className="space-y-3 mt-4">
                     {DIMENSIONS.map((dim) => {
-                      const count = gameState.dimensions[`tier${dim.tier}`];
-                      const price = getBulkPrice(getDimensionPrice, count, currentBuyAmount, dim.tier);
+                      const totalCount = gameState.dimensions[`tier${dim.tier}`];
+                      const manualCount = gameState.manualDimensions[`tier${dim.tier}`];
+                      const producedCount = totalCount - manualCount;
+                      const price = getBulkPrice(getDimensionPrice, manualCount, currentBuyAmount, dim.tier);
                       
                       // Unlock logic: Tier 1 is always unlocked. Tier 2-5 unlock if the previous tier is owned.
                       // Tier 6 (Aliens) only unlocks if the CP upgrade 'aliens' is owned.
-                      let isUnlocked = dim.tier === 1 || gameState.dimensions[`tier${dim.tier - 1}`] > 0 || gameState.dimensions[`tier${dim.tier}`] > 0;
+                      let isUnlocked = dim.tier === 1 || gameState.dimensions[`tier${dim.tier - 1}`] > 0 || totalCount > 0;
                       if (dim.tier === 6) isUnlocked = gameState.cpUpgrades.aliens;
                       
                       if (!isUnlocked) return null;
@@ -861,7 +845,10 @@ export default function App() {
                         <div key={dim.tier} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
                           <div className="flex-1 text-sm font-bold text-gray-700 flex items-center gap-2">
                             <span className="text-xl">{dim.icon}</span>
-                            <span>{t(`ui.${dim.nameKey}`) || dim.nameKey}: {format(count)} {t(`ui.${dim.nameKey}_owned`) || "owned"}</span>
+                            <span>
+                              {t(`ui.${dim.nameKey}`) || dim.nameKey}: {format(manualCount)}
+                              {producedCount > 0.01 && ` (+${format(producedCount)})`} {t(`ui.${dim.nameKey}_owned`) || "owned"}
+                            </span>
                           </div>
                           <div className="flex items-center gap-3">
                             <ActionButton 
@@ -936,7 +923,7 @@ export default function App() {
                   )}
                   {activeTab === "graph" && <GraphTab history={history} t={t} format={format} />}
                   {activeTab === "achievements" && <AchievementsTab gameState={gameState} t={t} />}
-                  {activeTab === "setting" && <SettingTab gameState={gameState} setGameState={setGameState} i18n={i18n} t={t} />}
+                  {activeTab === "setting" && <SettingTab gameState={gameState} setGameState={setGameState} i18n={i18n} t={t} onSave={handleManualSave} />}
                 </Suspense>
               </ErrorBoundary>
             </div>
