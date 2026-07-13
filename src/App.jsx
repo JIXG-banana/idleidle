@@ -68,8 +68,17 @@ export default function App() {
   const achievementTabRef = useRef(null);
   const moneyRef = useRef(null);
   const containerRef = useRef(null);
-  const bgmRef = useRef(new Audio(bgm));
+  // Audioインスタンスを遅延初期化
+  const bgmRef = useRef(null);
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
+
+  // bgmRefの初期化
+  useEffect(() => {
+    if (!bgmRef.current) {
+      bgmRef.current = new Audio(bgm);
+      bgmRef.current.loop = true;
+    }
+  }, []);
 
   const updateTargetPos = useCallback(() => {
     if (achievementTabRef.current) {
@@ -425,6 +434,7 @@ export default function App() {
 
   // BGM control effect (Moved here to fix ReferenceError)
   useEffect(() => {
+    if (!bgmRef.current) return;
     const audio = bgmRef.current;
     audio.loop = true;
 
