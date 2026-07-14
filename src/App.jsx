@@ -150,6 +150,15 @@ export default function App() {
         tier5: false,
         tier6: false,
       },
+      automationEnabled: {
+        expansion: true,
+        tier1: true,
+        tier2: true,
+        tier3: true,
+        tier4: true,
+        tier5: true,
+        tier6: true,
+      },
       capacityPoints: 0,
       cpUpgrades: {
         ssd: false,
@@ -209,6 +218,7 @@ export default function App() {
           dimensions,
           manualDimensions,
           automation: parsed.automation ?? defaultState.automation,
+          automationEnabled: parsed.automationEnabled ?? defaultState.automationEnabled,
           cpUpgrades: parsed.cpUpgrades ?? defaultState.cpUpgrades,
         };
       }
@@ -356,9 +366,35 @@ export default function App() {
             ...prev.automation,
             [key]: true,
           },
+          automationEnabled: {
+            ...prev.automationEnabled,
+            [key]: true,
+          },
         };
       }
       return prev;
+    });
+  }, []);
+
+  const toggleAutomator = useCallback((key) => {
+    setGameState((prev) => ({
+      ...prev,
+      automationEnabled: {
+        ...prev.automationEnabled,
+        [key]: prev.automationEnabled ? (prev.automationEnabled[key] === false ? true : false) : false,
+      },
+    }));
+  }, []);
+
+  const toggleAllAutomators = useCallback((enable) => {
+    setGameState((prev) => {
+      const nextEnabled = { ...(prev.automationEnabled || {}) };
+      Object.keys(prev.automation).forEach((key) => {
+        if (prev.automation[key]) {
+          nextEnabled[key] = enable;
+        }
+      });
+      return { ...prev, automationEnabled: nextEnabled };
     });
   }, []);
 
@@ -375,6 +411,16 @@ export default function App() {
         };
       }
       return prev;
+    });
+  }, []);
+
+  const unlockAchievement = useCallback((key) => {
+    setGameState((prev) => {
+      if (prev.unlockedAchievements.includes(key)) return prev;
+      return {
+        ...prev,
+        unlockedAchievements: [...prev.unlockedAchievements, key],
+      };
     });
   }, []);
 
@@ -503,7 +549,7 @@ export default function App() {
           let totalGamesGained = new Decimal(0);
           
           for (let i = 0; i < numTicks; i++) {
-            const { dimensions, manualDimensions, expansionLines, automation } = tempState;
+            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled } = tempState;
             
             // 1. Production Chain
             const prodTier5 = (dimensions.tier6 * manualDimensions.tier5) * tickTime;
@@ -545,7 +591,7 @@ export default function App() {
             
             const autoTiers = [1, 2, 3, 4, 5];
             autoTiers.forEach(t => {
-              if (automation[`tier${t}`]) {
+              if (automation[`tier${t}`] && automationEnabled?.[`tier${t}`] !== false) {
                 const price = getDimensionPrice(tempState.manualDimensions[`tier${t}`], t);
                 if (tempState.money.gte(price)) {
                   tempState.money = tempState.money.minus(price);
@@ -556,7 +602,7 @@ export default function App() {
             });
 
             // Tier 6 (Aliens) requires CP upgrade
-            if (automation.tier6 && tempState.cpUpgrades.aliens) {
+            if (automation.tier6 && tempState.cpUpgrades.aliens && automationEnabled?.tier6 !== false) {
               const price = getDimensionPrice(tempState.manualDimensions.tier6, 6);
               if (tempState.money.gte(price)) {
                 tempState.money = tempState.money.minus(price);
@@ -603,7 +649,7 @@ export default function App() {
           accumulatedTimeRef.current = 0;
 
           setGameState((prev) => {
-            const { dimensions, manualDimensions, expansionLines, automation } = prev;
+            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled } = prev;
             
             // Production Chain: (Above Total * Current Manual)
             const newTier5 = dimensions.tier5 + (dimensions.tier6 * manualDimensions.tier5) * deltaTime;
@@ -628,14 +674,14 @@ export default function App() {
             let updatedExpansionLines = expansionLines;
 
             // Automation (Now updates both manual and total)
-            if (automation.expansion) {
+            if (automation.expansion && automationEnabled?.expansion !== false) {
               const price = getExpansionLinePrice(updatedExpansionLines);
               if (updatedMoney.gte(price)) {
                 updatedMoney = updatedMoney.minus(price);
                 updatedExpansionLines++;
               }
             }
-            if (automation.tier1) {
+            if (automation.tier1 && automationEnabled?.tier1 !== false) {
               const price = getDimensionPrice(updatedManualDimensions.tier1, 1);
               if (updatedMoney.gte(price)) {
                 updatedMoney = updatedMoney.minus(price);
@@ -643,7 +689,7 @@ export default function App() {
                 updatedDimensions.tier1++;
               }
             }
-            if (automation.tier2) {
+            if (automation.tier2 && automationEnabled?.tier2 !== false) {
               const price = getDimensionPrice(updatedManualDimensions.tier2, 2);
               if (updatedMoney.gte(price)) {
                 updatedMoney = updatedMoney.minus(price);
@@ -651,7 +697,7 @@ export default function App() {
                 updatedDimensions.tier2++;
               }
             }
-            if (automation.tier3) {
+            if (automation.tier3 && automationEnabled?.tier3 !== false) {
               const price = getDimensionPrice(updatedManualDimensions.tier3, 3);
               if (updatedMoney.gte(price)) {
                 updatedMoney = updatedMoney.minus(price);
@@ -659,7 +705,7 @@ export default function App() {
                 updatedDimensions.tier3++;
               }
             }
-            if (automation.tier4) {
+            if (automation.tier4 && automationEnabled?.tier4 !== false) {
               const price = getDimensionPrice(updatedManualDimensions.tier4, 4);
               if (updatedMoney.gte(price)) {
                 updatedMoney = updatedMoney.minus(price);
@@ -667,7 +713,7 @@ export default function App() {
                 updatedDimensions.tier4++;
               }
             }
-            if (automation.tier5) {
+            if (automation.tier5 && automationEnabled?.tier5 !== false) {
               const price = getDimensionPrice(updatedManualDimensions.tier5, 5);
               if (updatedMoney.gte(price)) {
                 updatedMoney = updatedMoney.minus(price);
@@ -675,7 +721,7 @@ export default function App() {
                 updatedDimensions.tier5++;
               }
             }
-            if (automation.tier6 && prev.cpUpgrades.aliens) {
+            if (automation.tier6 && prev.cpUpgrades.aliens && automationEnabled?.tier6 !== false) {
               const price = getDimensionPrice(updatedManualDimensions.tier6, 6);
               if (updatedMoney.gte(price)) {
                 updatedMoney = updatedMoney.minus(price);
@@ -982,6 +1028,8 @@ export default function App() {
                       t={t} 
                       format={format} 
                       onBuyAutomator={buyAutomator} 
+                      onToggleAutomator={toggleAutomator}
+                      onToggleAllAutomators={toggleAllAutomators}
                     />
                   )}
                   {activeTab === "capacity" && (
@@ -994,7 +1042,7 @@ export default function App() {
                     />
                   )}
                   {activeTab === "graph" && <GraphTab history={history} t={t} format={format} />}
-                  {activeTab === "achievements" && <AchievementsTab gameState={gameState} t={t} />}
+                  {activeTab === "achievements" && <AchievementsTab gameState={gameState} t={t} onUnlockAchievement={unlockAchievement} />}
                   {activeTab === "setting" && <SettingTab gameState={gameState} setGameState={setGameState} i18n={i18n} t={t} onSave={handleManualSave} />}
                 </Suspense>
               </ErrorBoundary>

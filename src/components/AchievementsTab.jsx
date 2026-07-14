@@ -1,7 +1,7 @@
 import React, { useState, memo } from "react";
 import { achievementsList } from "../constants/gameData";
 
-const AchievementCard = memo(({ number, title, icon, isLocked, description }) => {
+const AchievementCard = memo(({ id, number, title, icon, isLocked, description, onUnlockAchievement }) => {
   const [showOverlay, setShowOverlay] = useState(false);
 
   const baseStyles =
@@ -13,7 +13,13 @@ const AchievementCard = memo(({ number, title, icon, isLocked, description }) =>
   return (
     <div
       className={`${baseStyles} ${stateStyles}`}
-      onClick={() => setShowOverlay(!showOverlay)}
+      onClick={() => {
+        // 特定の実績かつ未達成の場合、クリックで解除
+        if (isLocked && id === "click-secret" && onUnlockAchievement) {
+          onUnlockAchievement(id);
+        }
+        setShowOverlay(!showOverlay);
+      }}
       onMouseLeave={() => setShowOverlay(false)}
     >
       <span className="absolute top-2 left-2 text-[10px] font-mono opacity-50">
@@ -40,13 +46,26 @@ const AchievementCard = memo(({ number, title, icon, isLocked, description }) =>
   );
 });
 
-export default function AchievementsTab({ gameState, t }) {
+export default function AchievementsTab({ gameState, t, onUnlockAchievement }) {
   const [filter, setFilter] = useState("regular");
 
-  const filteredList = achievementsList.filter(item => {
-    if (filter === "regular") return !item.hidden;
-    return item.hidden;
-  });
+  const filteredList = useMemo(() => {
+    const list = achievementsList.filter(item => {
+      if (filter === "regular") return !item.hidden;
+      return item.hidden;
+    });
+
+    // 隠し実績タブに「クリックの達人」を注入
+    if (filter === "hidden") {
+      list.push({
+        key: "click-secret",
+        icon: "🖱️",
+        hidden: true,
+      });
+    }
+
+    return list;
+  }, [filter]);
 
   return (
     <div className="flex flex-col gap-6 p-2">
@@ -77,11 +96,13 @@ export default function AchievementsTab({ gameState, t }) {
         {filteredList.map((item, index) => (
           <AchievementCard
             key={item.key}
+            id={item.key}
             number={index + 1}
             title={t(`achievements.${item.key}`)}
             description={t(`achievements.${item.key}_desc`)}
             icon={item.icon}
             isLocked={!gameState.unlockedAchievements.includes(item.key)}
+            onUnlockAchievement={onUnlockAchievement}
           />
         ))}
         {filteredList.length === 0 && (
