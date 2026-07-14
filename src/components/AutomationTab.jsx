@@ -18,7 +18,7 @@ export default function AutomationTab({ gameState, t, format, onBuyAutomator }) 
           const isOwned = automation[auto.key];
           
           return (
-            <div key={auto.key} className={`p-4 border rounded-xl flex flex-col gap-3 transition-all ${isOwned ? "bg-green-50 border-green-200" : isUnlocked ? "bg-gray-50/50 border-gray-200" : "bg-gray-200 border-gray-300 opacity-50 select-none"}`}>
+            <div key={auto.key} className={`p-4 rounded-xl flex flex-col gap-3 transition-all ${isOwned ? "bg-green-50" : isUnlocked ? "bg-gray-50/50" : "bg-gray-200 opacity-50 select-none"}`}>
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-bold uppercase flex items-center gap-2">
                   {isOwned && <span className="text-green-600">✓</span>}

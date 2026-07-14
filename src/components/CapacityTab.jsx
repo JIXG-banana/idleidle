@@ -11,7 +11,7 @@ export default function CapacityTab({ gameState, t, format, onBuyCPUpgrade, onRe
       <h2 className="text-xl font-bold flex items-center gap-2">🌐 {t("tabs.capacity") || "Capacity"}</h2>
       
       {isCapacityReached ? (
-        <div className="p-6 bg-red-50 border-2 border-red-200 rounded-2xl text-center flex flex-col gap-4 animate-pulse">
+        <div className="p-6 bg-red-50 rounded-2xl text-center flex flex-col gap-4 animate-pulse">
           <h3 className="text-2xl font-black text-red-600">{t("capacity.reached_title") || "CAPACITY REACHED!"}</h3>
           <p className="text-sm text-red-800 leading-relaxed">
             {t("capacity.reached_desc") || "致命的なエラー：経済データの処理容量（Capacity）を超過しました。全資産をリセットし、上位クラウドへ移行します。"}
@@ -24,7 +24,7 @@ export default function CapacityTab({ gameState, t, format, onBuyCPUpgrade, onRe
           </button>
         </div>
       ) : (
-        <div className="p-4 bg-gray-100 rounded-xl border border-gray-300 text-center">
+        <div className="p-4 bg-gray-100 rounded-xl text-center">
           <p className="text-xs text-gray-500 mb-1">{t("capacity.progress_label") || "Capacity Progress"}</p>
           <div className="text-lg font-bold text-gray-800">{format(money.log10() / 60 * 100, 2)}%</div>
           <div className="w-full bg-gray-300 h-2 rounded-full mt-2 overflow-hidden">
@@ -50,7 +50,7 @@ export default function CapacityTab({ gameState, t, format, onBuyCPUpgrade, onRe
             {CP_SHOP.map((item) => {
               const isOwned = cpUpgrades[item.id];
               return (
-                <div key={item.id} className={`p-4 border rounded-xl flex items-center gap-4 transition-all ${isOwned ? "bg-indigo-50 border-indigo-200" : "bg-white border-gray-200"}`}>
+                <div key={item.id} className={`p-4 rounded-xl flex items-center gap-4 transition-all ${isOwned ? "bg-indigo-50" : "bg-white"}`}>
                   <div className="text-3xl">{item.icon}</div>
                   <div className="flex-1">
                     <h4 className="font-bold text-sm">{t(`capacity.${item.nameKey}`) || item.id}</h4>

@@ -20,6 +20,9 @@ export const AUTOMATORS = [
   { key: "tier1", cost: 40000000, nameKey: "auto_tier1" },
   { key: "tier2", cost: 15000000000, nameKey: "auto_tier2" },
   { key: "tier3", cost: 20000000000000, nameKey: "auto_tier3" },
+  { key: "tier4", cost: 80000000000000000, nameKey: "auto_tier4" },
+  { key: "tier5", cost: 400000000000000000000, nameKey: "auto_tier5" },
+  { key: "tier6", cost: 2000000000000000000000000, nameKey: "auto_tier6" },
 ];
 
 export const CP_SHOP = [
@@ -47,4 +50,3 @@ export const promotionsList = [
     icon: "📱",
   },
 ];
-

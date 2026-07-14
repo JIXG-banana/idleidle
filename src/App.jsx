@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import AccessCounter from "./AccessCounter";
 import bgm from "./assets/idleidle.mp3";
+import LoadingScreen from "./components/LoadingScreen";
 import { formatNumber, formatTime } from "./utils/format";
 import { SECRET_KEY, achievementsList, DIMENSIONS, EXPANSION_LINE, AUTOMATORS, CP_SHOP } from "./constants/gameData";
 import { TabButton, ActionButton } from "./components/Buttons";
@@ -108,6 +109,7 @@ export default function App() {
   const [moneyEffects, setMoneyEffects] = useState([]);
   const [showResetPrompt, setShowResetPrompt] = useState(false);
   const [offlinePopupData, setOfflinePopupData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const removeToast = useCallback((id) => {
     setToastQueue((prev) => prev.filter((item) => item.id !== id));
@@ -144,6 +146,9 @@ export default function App() {
         tier1: false,
         tier2: false,
         tier3: false,
+        tier4: false,
+        tier5: false,
+        tier6: false,
       },
       capacityPoints: 0,
       cpUpgrades: {
@@ -233,6 +238,12 @@ export default function App() {
       formatNumber(val, gameState.useScientific, gameState.language, decimals),
     [gameState.useScientific, gameState.language],
   );
+
+  // ロード画面を一定時間後に非表示にする
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const triggerMoneyEffect = useCallback(
     (amount) => {
@@ -397,6 +408,9 @@ export default function App() {
           tier1: prev.cpUpgrades.macro,
           tier2: false,
           tier3: false,
+          tier4: false,
+          tier5: false,
+          tier6: false,
         },
         capacityPoints: newCP,
         lastTimestamp: Date.now(),
@@ -528,6 +542,28 @@ export default function App() {
                 tempState.expansionLines++;
               }
             }
+            
+            const autoTiers = [1, 2, 3, 4, 5];
+            autoTiers.forEach(t => {
+              if (automation[`tier${t}`]) {
+                const price = getDimensionPrice(tempState.manualDimensions[`tier${t}`], t);
+                if (tempState.money.gte(price)) {
+                  tempState.money = tempState.money.minus(price);
+                  tempState.manualDimensions[`tier${t}`]++;
+                  tempState.dimensions[`tier${t}`]++;
+                }
+              }
+            });
+
+            // Tier 6 (Aliens) requires CP upgrade
+            if (automation.tier6 && tempState.cpUpgrades.aliens) {
+              const price = getDimensionPrice(tempState.manualDimensions.tier6, 6);
+              if (tempState.money.gte(price)) {
+                tempState.money = tempState.money.minus(price);
+                tempState.manualDimensions.tier6++;
+                tempState.dimensions.tier6++;
+              }
+            }
             // (Other automations omitted in sim for stability/simplicity, or could be added)
           }
           
@@ -587,7 +623,7 @@ export default function App() {
             const newMoney = prev.money.plus(goldGained);
             
             let updatedMoney = newMoney;
-            let updatedDimensions = { ...dimensions, tier1: newTier1, tier2: newTier2, tier3: newTier3, tier4: newTier4, tier5: newTier5 };
+            let updatedDimensions = { ...dimensions, tier1: newTier1, tier2: newTier2, tier3: newTier3, tier4: newTier4, tier5: newTier5, tier6: dimensions.tier6 };
             let updatedManualDimensions = { ...manualDimensions };
             let updatedExpansionLines = expansionLines;
 
@@ -621,6 +657,30 @@ export default function App() {
                 updatedMoney = updatedMoney.minus(price);
                 updatedManualDimensions.tier3++;
                 updatedDimensions.tier3++;
+              }
+            }
+            if (automation.tier4) {
+              const price = getDimensionPrice(updatedManualDimensions.tier4, 4);
+              if (updatedMoney.gte(price)) {
+                updatedMoney = updatedMoney.minus(price);
+                updatedManualDimensions.tier4++;
+                updatedDimensions.tier4++;
+              }
+            }
+            if (automation.tier5) {
+              const price = getDimensionPrice(updatedManualDimensions.tier5, 5);
+              if (updatedMoney.gte(price)) {
+                updatedMoney = updatedMoney.minus(price);
+                updatedManualDimensions.tier5++;
+                updatedDimensions.tier5++;
+              }
+            }
+            if (automation.tier6 && prev.cpUpgrades.aliens) {
+              const price = getDimensionPrice(updatedManualDimensions.tier6, 6);
+              if (updatedMoney.gte(price)) {
+                updatedMoney = updatedMoney.minus(price);
+                updatedManualDimensions.tier6++;
+                updatedDimensions.tier6++;
               }
             }
 
@@ -749,6 +809,10 @@ export default function App() {
 
   return (
     <div className="p-3 md:p-5 pb-24 md:pb-5">
+      <AnimatePresence>
+        {isLoading && <LoadingScreen key="loader" message={t("ui.loading") || "Loading..."} />}
+      </AnimatePresence>
+
       {!gameState.languageSelected && (
         <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
@@ -850,7 +914,7 @@ export default function App() {
                       if (!isUnlocked) return null;
 
                       return (
-                        <div key={dim.tier} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-200">
+                        <div key={dim.tier} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50/50 rounded-xl">
                           <div className="flex-1 text-sm font-bold text-gray-700 flex items-center gap-2">
                             <span className="text-xl">{dim.icon}</span>
                             <span>
@@ -884,7 +948,7 @@ export default function App() {
                       );
                     })}
 
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-indigo-50/50 rounded-xl">
                       <div className="flex-1 text-sm font-bold text-indigo-800 flex items-center gap-2">
                         <span className="text-xl">{EXPANSION_LINE.icon}</span>
                         <span>{t("ui.expansion_line") || "Expansion Line"}: {format(gameState.expansionLines)} {t("ui.expansion_line_owned") || "owned"}</span>

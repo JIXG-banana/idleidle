@@ -8,8 +8,8 @@ export const TabButton = memo(
     const baseClass =
       "text-white font-bold py-2 px-4 rounded transition-all duration-75 relative";
     const activeClass = active
-      ? "bg-green-700 shadow-[0_4px_0_0_theme(colors.green.900)] -translate-y-[2px]"
-      : "bg-gray-500 hover:bg-blue-600 shadow-[0_4px_0_0_theme(colors.gray.700)] hover:shadow-[0_4px_0_0_theme(colors.blue.800)] active:translate-y-[2px] active:shadow-none";
+      ? "bg-green-700"
+      : "bg-gray-500 hover:bg-blue-600";
     return (
       <button
         ref={ref}
