@@ -22,6 +22,38 @@ import {
   SideAds,
 } from "./components/GameUI";
 
+// 定数をコンポーネント外へ移動
+const BUY_AMOUNTS = [1, 2, 5, 10, 50, 100, 200];
+
+// 等比級数の和の公式を使用して一括購入価格を計算する: a(r^n - 1) / (r - 1)
+const calculateBulkPrice = (baseCost, scale, currentCount, amount) => {
+  const r = new Decimal(scale);
+  const a = new Decimal(baseCost).times(r.pow(currentCount));
+  if (r.eq(1)) return a.times(amount);
+  return a.times(r.pow(amount).minus(1)).div(r.minus(1)).floor();
+};
+
+// ティアごとの倍率計算（エボリューションとレボリューションの効果を集約）
+const getTierMultiplier = (tier, evolution, cpUpgrades) => {
+  const level = evolution[`tier${tier}`] || 0;
+  const revLevel = Math.max(0, level - 10);
+  // 自己倍率: エボリューション10回までは2^n、それ以降はレボリューション5倍
+  let mult = new Decimal(2).pow(Math.min(level, 10));
+  if (revLevel > 0) mult = mult.times(new Decimal(5).pow(revLevel));
+
+  // 「一つ上のティア」へのレボリューション効果（自分より下のティアが革命している場合、自分に5倍）
+  if (tier > 1) {
+    const prevRev = Math.max(0, (evolution[`tier${tier - 1}`] || 0) - 10);
+    if (prevRev > 0) mult = mult.times(new Decimal(5).pow(prevRev));
+  }
+  // 特殊ルール: エイリアン未解放時、国連(Tier 4)の革命は開発者(Tier 1)を強化
+  if (tier === 1 && !cpUpgrades?.aliens) {
+    const unRev = Math.max(0, (evolution.tier4 || 0) - 10);
+    if (unRev > 0) mult = mult.times(new Decimal(5).pow(unRev));
+  }
+  return mult;
+};
+
 // Lazy load tab components
 const AchievementsTab = React.lazy(
   () => import("./components/AchievementsTab"),
@@ -175,6 +207,14 @@ export default function App() {
       language: "en",
       usedLanguages: ["en"],
       resetPromptShown: false,
+      evolution: {
+        tier1: 0,
+        tier2: 0,
+        tier3: 0,
+        tier4: 0,
+        tier5: 0,
+        tier6: 0,
+      },
       buyAmountIndex: 0,
       activePromotionKey: null,
       activePromotionEndTime: 0,
@@ -220,6 +260,7 @@ export default function App() {
           automation: parsed.automation ?? defaultState.automation,
           automationEnabled: parsed.automationEnabled ?? defaultState.automationEnabled,
           cpUpgrades: parsed.cpUpgrades ?? defaultState.cpUpgrades,
+          evolution: parsed.evolution ?? defaultState.evolution,
         };
       }
     } catch (e) {
@@ -339,12 +380,12 @@ export default function App() {
       }
       return prev;
     });
-  }, [getDimensionPrice, getBulkPrice, currentBuyAmount]);
+  }, [currentBuyAmount]);
 
   const buyExpansionLine = useCallback(() => {
     setGameState((prev) => {
       const amount = currentBuyAmount;
-      const totalCost = getBulkPrice(getExpansionLinePrice, prev.expansionLines, amount);
+      const totalCost = calculateBulkPrice(EXPANSION_LINE.baseCost, EXPANSION_LINE.scale, prev.expansionLines, amount);
       if (prev.money.gte(totalCost)) {
         return {
           ...prev,
@@ -354,7 +395,7 @@ export default function App() {
       }
       return prev;
     });
-  }, [getExpansionLinePrice, getBulkPrice, currentBuyAmount]);
+  }, [currentBuyAmount]);
 
   const buyAutomator = useCallback((key, cost) => {
     setGameState((prev) => {
@@ -395,6 +436,26 @@ export default function App() {
         }
       });
       return { ...prev, automationEnabled: nextEnabled };
+    });
+  }, []);
+
+  const evolveTier = useCallback((tier) => {
+    setGameState((prev) => {
+      const currentLevel = prev.evolution[`tier${tier}`] || 0;
+      // レボリューション以降は価格を指数関数的に跳ね上げる
+      const req = currentLevel < 10 
+        ? new Decimal(10).times(Decimal.pow(10, currentLevel))
+        : new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9));
+
+      if (new Decimal(prev.dimensions[`tier${tier}`]).gte(req)) {
+        return {
+          ...prev,
+          manualDimensions: { ...prev.manualDimensions, [`tier${tier}`]: 0 }, // リセット
+          dimensions: { ...prev.dimensions, [`tier${tier}`]: 0 },
+          evolution: { ...prev.evolution, [`tier${tier}`]: currentLevel + 1 },
+        };
+      }
+      return prev;
     });
   }, []);
 
@@ -474,19 +535,6 @@ export default function App() {
     ]);
   }, []);
 
-  const StarGrade = useCallback(({ grade }) => {
-    if (!grade) return null;
-    return (
-      <span className="inline-flex ml-1">
-        {[...Array(grade)].map((_, i) => (
-          <svg key={i} className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-        ))}
-      </span>
-    );
-  }, []);
-
   const gameStateRef = useRef(gameState);
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -517,8 +565,9 @@ export default function App() {
   const gps = React.useMemo(() => {
     const devCount = new Decimal(gameState.dimensions.tier1);
     const expansionMult = new Decimal(1).plus(gameState.expansionLines);
-    return devCount.times(expansionMult);
-  }, [gameState.dimensions.tier1, gameState.expansionLines]);
+    const evolutionMult = getTierMultiplier(1, gameState.evolution, gameState.cpUpgrades);
+    return devCount.times(expansionMult).times(evolutionMult);
+  }, [gameState.dimensions.tier1, gameState.expansionLines, gameState.evolution, gameState.cpUpgrades]);
 
   const mps = React.useMemo(() => {
     let rate = gameState.cpUpgrades.fiber ? 0.15 : 0.05;
@@ -549,17 +598,18 @@ export default function App() {
           let totalGamesGained = new Decimal(0);
           
           for (let i = 0; i < numTicks; i++) {
-            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled } = tempState;
+            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled, evolution, cpUpgrades } = tempState;
             
             // 1. Production Chain
-            const prodTier5 = (dimensions.tier6 * manualDimensions.tier5) * tickTime;
-            const prodTier4 = (dimensions.tier5 * manualDimensions.tier4) * tickTime;
-            const prodTier3 = (dimensions.tier4 * manualDimensions.tier3) * tickTime;
-            const prodTier2 = (dimensions.tier3 * manualDimensions.tier2) * tickTime;
-            const prodTier1 = (dimensions.tier2 * manualDimensions.tier1) * tickTime;
+            const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades);
+            const prodTier5 = (dimensions.tier6 * manualDimensions.tier5 * mult(6)) * tickTime;
+            const prodTier4 = (dimensions.tier5 * manualDimensions.tier4 * mult(5)) * tickTime;
+            const prodTier3 = (dimensions.tier4 * manualDimensions.tier3 * mult(4)) * tickTime;
+            const prodTier2 = (dimensions.tier3 * manualDimensions.tier2 * mult(3)) * tickTime;
+            const prodTier1 = (dimensions.tier2 * manualDimensions.tier1 * mult(2)) * tickTime;
             
             // 2. Resource Generation
-            const currentGps = new Decimal(dimensions.tier1).times(new Decimal(1).plus(expansionLines));
+            const currentGps = new Decimal(dimensions.tier1).times(new Decimal(1).plus(expansionLines)).times(mult(1));
             const gamesTick = currentGps.times(tickTime);
             totalGamesGained = totalGamesGained.plus(gamesTick);
             
@@ -625,7 +675,7 @@ export default function App() {
         setGameState(prev => ({ ...prev, lastTimestamp: now }));
       }
     }
-  }, [getDimensionPrice, getExpansionLinePrice, gameState.lastTimestamp]);
+  }, [getDimensionPrice, getExpansionLinePrice, gameState.lastTimestamp, gameState.evolution, gameState.cpUpgrades]);
 
   const lastTimeRef = useRef(null);
   const gpsRef = useRef(gps);
@@ -649,16 +699,17 @@ export default function App() {
           accumulatedTimeRef.current = 0;
 
           setGameState((prev) => {
-            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled } = prev;
+            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled, evolution, cpUpgrades } = prev;
             
             // Production Chain: (Above Total * Current Manual)
-            const newTier5 = dimensions.tier5 + (dimensions.tier6 * manualDimensions.tier5) * deltaTime;
-            const newTier4 = dimensions.tier4 + (newTier5 * manualDimensions.tier4) * deltaTime;
-            const newTier3 = dimensions.tier3 + (newTier4 * manualDimensions.tier3) * deltaTime;
-            const newTier2 = dimensions.tier2 + (newTier3 * manualDimensions.tier2) * deltaTime;
-            const newTier1 = dimensions.tier1 + (newTier2 * manualDimensions.tier1) * deltaTime;
+            const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades);
+            const newTier5 = dimensions.tier5 + (dimensions.tier6 * manualDimensions.tier5 * mult(6)) * deltaTime;
+            const newTier4 = dimensions.tier4 + (newTier5 * manualDimensions.tier4 * mult(5)) * deltaTime;
+            const newTier3 = dimensions.tier3 + (newTier4 * manualDimensions.tier3 * mult(4)) * deltaTime;
+            const newTier2 = dimensions.tier2 + (newTier3 * manualDimensions.tier2 * mult(3)) * deltaTime;
+            const newTier1 = dimensions.tier1 + (newTier2 * manualDimensions.tier1 * mult(2)) * deltaTime;
             
-            const currentGps = new Decimal(newTier1).times(new Decimal(1).plus(expansionLines));
+            const currentGps = new Decimal(newTier1).times(new Decimal(1).plus(expansionLines)).times(mult(1));
             const gamesGained = currentGps.times(deltaTime);
             
             const newTotalGames = prev.totalGames.plus(gamesGained);
@@ -952,6 +1003,38 @@ export default function App() {
                       const producedCount = totalCount - manualCount;
                       const price = getBulkPrice(getDimensionPrice, manualCount, currentBuyAmount, dim.tier);
                       
+                      const evolveLevel = gameState.evolution[`tier${dim.tier}`] || 0;
+                      const isRevolution = evolveLevel >= 10;
+                      const evolveReq = isRevolution 
+                        ? new Decimal(1e11).times(Decimal.pow(1000, evolveLevel - 9)) 
+                        : new Decimal(10).times(Decimal.pow(10, evolveLevel));
+                      const canEvolve = new Decimal(totalCount).gte(evolveReq);
+
+                      const baseColorClass = 
+                        dim.tier === 1 ? "bg-blue-600 hover:bg-blue-700" : 
+                        dim.tier === 2 ? "bg-emerald-600 hover:bg-emerald-700" : 
+                        dim.tier === 3 ? "bg-amber-600 hover:bg-amber-700" : 
+                        dim.tier === 4 ? "bg-red-700 hover:bg-red-800" : 
+                        dim.tier === 5 ? "bg-purple-700 hover:bg-purple-800" :
+                        "bg-indigo-900 hover:bg-indigo-950";
+                      
+                      let evolveColorClass = baseColorClass;
+                      if (isRevolution) {
+                        evolveColorClass = 
+                          dim.tier === 1 ? "bg-blue-900 hover:bg-blue-950" : 
+                          dim.tier === 2 ? "bg-emerald-900 hover:bg-emerald-950" : 
+                          dim.tier === 3 ? "bg-amber-900 hover:bg-amber-950" : 
+                          dim.tier === 4 ? "bg-red-950 hover:bg-black" : 
+                          dim.tier === 5 ? "bg-purple-950 hover:bg-black" :
+                          "bg-black hover:bg-gray-900";
+                      }
+
+                      // 生産情報のテキストを動的に変更
+                      const currentMult = getTierMultiplier(dim.tier, gameState.evolution, gameState.cpUpgrades);
+                      const prodInfo = dim.tier === 1 
+                        ? `+${format(new Decimal(1).plus(gameState.expansionLines).times(currentMult), 2)} games/s`
+                        : `+${format(new Decimal(gameState.manualDimensions[`tier${dim.tier-1}`] || 0).times(currentMult), 2)} tier${dim.tier - 1}/s`;
+
                       // Unlock logic: Tier 1 is always unlocked. Tier 2-5 unlock if the previous tier is owned.
                       // Tier 6 (Aliens) only unlocks if the CP upgrade 'aliens' is owned.
                       let isUnlocked = dim.tier === 1 || gameState.dimensions[`tier${dim.tier - 1}`] > 0 || totalCount > 0;
@@ -964,30 +1047,33 @@ export default function App() {
                           <div className="flex-1 text-sm font-bold text-gray-700 flex items-center gap-2">
                             <span className="text-xl">{dim.icon}</span>
                             <span>
-                              {t(`ui.${dim.nameKey}`) || dim.nameKey}: {format(manualCount)}
+                              {t(`ui.${dim.nameKey}`) || dim.nameKey}: {format(manualCount)} 
                               {producedCount > 0.01 && ` (+${format(producedCount)})`} {t(`ui.${dim.nameKey}_owned`) || "owned"}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-2 md:gap-3">
                             <ActionButton 
                               onClick={() => buyDimension(dim.tier)} 
                               disabled={gameState.money.lt(price)} 
                               currentValue={gameState.money} 
                               targetValue={price}
-                              colorClass={
-                                dim.tier === 1 ? "bg-blue-600 hover:bg-blue-700" : 
-                                dim.tier === 2 ? "bg-emerald-600 hover:bg-emerald-700" : 
-                                dim.tier === 3 ? "bg-amber-600 hover:bg-amber-700" : 
-                                dim.tier === 4 ? "bg-red-700 hover:bg-red-800" : 
-                                dim.tier === 5 ? "bg-purple-700 hover:bg-purple-800" :
-                                "bg-indigo-900 hover:bg-indigo-950"
-                              }
+                          colorClass={baseColorClass}
                               progressColorClass="bg-white/20"
                             >
                               {currentBuyAmount > 1 ? `x${currentBuyAmount} ` : ""}{t(`actions.buy_${dim.nameKey}_btn`) || "Buy"} ({format(price)}G)
                             </ActionButton>
+                            <ActionButton
+                              onClick={() => evolveTier(dim.tier)}
+                              disabled={!canEvolve}
+                              currentValue={new Decimal(totalCount)}
+                              targetValue={new Decimal(evolveReq)}
+                          colorClass={evolveColorClass}
+                              progressColorClass="bg-white/40"
+                            >
+                              {isRevolution ? (t("actions.revolution") || "Revolution") : (t("actions.evolve") || "Evolve")} ({format(evolveReq)})
+                            </ActionButton>
                             <div className="w-24 text-right text-[10px] font-mono text-gray-500 italic">
-                              {dim.tier === 1 ? `+${format(new Decimal(1).plus(gameState.expansionLines), 2)} games/s` : `+${format(gameState.manualDimensions[`tier${dim.tier-1}`], 2)} tier${dim.tier - 1}/s`}
+                              {prodInfo}
                             </div>
                           </div>
                         </div>

@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react";
+import React, { useState, memo, useMemo } from "react";
 import { achievementsList } from "../constants/gameData";
 
 const AchievementCard = memo(({ id, number, title, icon, isLocked, description, onUnlockAchievement }) => {
@@ -49,21 +49,23 @@ const AchievementCard = memo(({ id, number, title, icon, isLocked, description, 
 export default function AchievementsTab({ gameState, t, onUnlockAchievement }) {
   const [filter, setFilter] = useState("regular");
 
+  // unlockedAchievementsをSetに変換して検索を高速化 (O(1))
+  const unlockedSet = useMemo(() => new Set(gameState.unlockedAchievements), [gameState.unlockedAchievements]);
+
   const filteredList = useMemo(() => {
-    const list = achievementsList.filter(item => {
+    let list = achievementsList.filter(item => {
       if (filter === "regular") return !item.hidden;
       return item.hidden;
     });
 
     // 隠し実績タブに「クリックの達人」を注入
     if (filter === "hidden") {
-      list.push({
+      list = [...list, {
         key: "click-secret",
         icon: "🖱️",
         hidden: true,
-      });
+      }];
     }
-
     return list;
   }, [filter]);
 
@@ -101,7 +103,7 @@ export default function AchievementsTab({ gameState, t, onUnlockAchievement }) {
             title={t(`achievements.${item.key}`)}
             description={t(`achievements.${item.key}_desc`)}
             icon={item.icon}
-            isLocked={!gameState.unlockedAchievements.includes(item.key)}
+            isLocked={!unlockedSet.has(item.key)}
             onUnlockAchievement={onUnlockAchievement}
           />
         ))}
