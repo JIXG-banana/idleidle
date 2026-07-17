@@ -1,4 +1,5 @@
 import React from "react";
+import Decimal from "break_infinity.js";
 import { ActionButton } from "./Buttons";
 import { AUTOMATORS } from "../constants/gameData";
 
