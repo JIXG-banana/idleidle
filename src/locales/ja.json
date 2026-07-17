@@ -63,8 +63,10 @@
     "auto_tier4": "政府自動承認",
     "auto_tier5": "国連自動加盟",
     "auto_tier6": "エイリアン自動コンタクト",
+    "auto_evolve": "自動エボリューション",
+    "auto_revolution": "自動レボリューション",
     "all_on": "一括ON",
-    "all_off": "一括OFF"
+  "all_off": "一括OFF"
   },
   "capacity": {
     "reached_title": "キャパシティ到達！",
@@ -114,8 +116,12 @@
     "first-game_desc": "最初のゲームをリリースした",
     "capacity-reached": "特異点",
     "capacity-reached_desc": "キャパシティ限界に到達した",
+    "revolution-idle": "レボリューションアイドル",
+    "revolution-idle_desc": "レボリューション可能な状態で1時間放置した",
+    "revolution-idle_hint": "変革の歯車が回り始めるのを、ただじっと見守るのみ。",
     "click-secret": "クリックの達人",
-    "click-secret_desc": "隠し実績タブ内のカードをクリックして達成した"
+    "click-secret_desc": "隠し実績タブ内のカードをクリックして達成した",
+    "click-secret_hint": "真実は、その指の先にあるのかもしれない。"
   },
   "reset_prompt": {
     "title": "セーブデータが見つかりました",

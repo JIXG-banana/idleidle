@@ -181,6 +181,8 @@ export default function App() {
         tier4: false,
         tier5: false,
         tier6: false,
+        autoEvolve: false,
+        autoRevolution: false,
       },
       automationEnabled: {
         expansion: true,
@@ -190,6 +192,8 @@ export default function App() {
         tier4: true,
         tier5: true,
         tier6: true,
+        autoEvolve: true,
+        autoRevolution: true,
       },
       capacityPoints: 0,
       cpUpgrades: {
@@ -215,7 +219,16 @@ export default function App() {
         tier5: 0,
         tier6: 0,
       },
+      unlockedTiers: {
+        tier1: true,
+        tier2: false,
+        tier3: false,
+        tier4: false,
+        tier5: false,
+        tier6: false,
+      },
       buyAmountIndex: 0,
+      revolutionReadyTime: 0,
       activePromotionKey: null,
       activePromotionEndTime: 0,
       promotionCooldowns: {},
@@ -255,12 +268,16 @@ export default function App() {
           money,
           totalGames,
           currentGames,
-          dimensions,
-          manualDimensions,
-          automation: parsed.automation ?? defaultState.automation,
-          automationEnabled: parsed.automationEnabled ?? defaultState.automationEnabled,
-          cpUpgrades: parsed.cpUpgrades ?? defaultState.cpUpgrades,
-          evolution: parsed.evolution ?? defaultState.evolution,
+          // 階層があるオブジェクトは必ずデフォルト値とマージして undefined を防ぐ
+          dimensions: { ...defaultState.dimensions, ...dimensions },
+          manualDimensions: { ...defaultState.manualDimensions, ...manualDimensions },
+          automation: { ...defaultState.automation, ...parsed.automation },
+          automationEnabled: { ...defaultState.automationEnabled, ...parsed.automationEnabled },
+          cpUpgrades: { ...defaultState.cpUpgrades, ...parsed.cpUpgrades },
+          evolution: { ...defaultState.evolution, ...parsed.evolution },
+          unlockedTiers: { ...defaultState.unlockedTiers, ...parsed.unlockedTiers },
+          unlockedAchievements: Array.isArray(parsed.unlockedAchievements) ? parsed.unlockedAchievements : [],
+          usedLanguages: Array.isArray(parsed.usedLanguages) ? parsed.usedLanguages : ["en"],
         };
       }
     } catch (e) {
@@ -279,6 +296,28 @@ export default function App() {
   useEffect(() => {
     i18n.changeLanguage(gameState.language);
   }, [gameState.language, i18n]);
+
+  // Once a tier is unlocked, it stays unlocked in the save data
+  useEffect(() => {
+    const { dimensions, unlockedTiers, cpUpgrades } = gameState;
+    const nextUnlocked = { ...unlockedTiers };
+    let changed = false;
+
+    for (let t = 2; t <= 5; t++) {
+      if (!nextUnlocked[`tier${t}`] && (dimensions[`tier${t - 1}`] > 0 || dimensions[`tier${t}`] > 0)) {
+        nextUnlocked[`tier${t}`] = true;
+        changed = true;
+      }
+    }
+    if (!nextUnlocked.tier6 && cpUpgrades.aliens && (dimensions.tier5 > 0 || dimensions.tier6 > 0)) {
+      nextUnlocked.tier6 = true;
+      changed = true;
+    }
+
+    if (changed) {
+      setGameState((prev) => ({ ...prev, unlockedTiers: nextUnlocked }));
+    }
+  }, [gameState.dimensions, gameState.cpUpgrades.aliens, gameState.unlockedTiers]);
 
   useEffect(() => {
     document.documentElement.lang = gameState.language;
@@ -399,19 +438,27 @@ export default function App() {
 
   const buyAutomator = useCallback((key, cost) => {
     setGameState((prev) => {
-      if (prev.currentGames.gte(cost) && !prev.automation[key]) {
-        return {
-          ...prev,
-          currentGames: prev.currentGames.minus(cost),
-          automation: {
-            ...prev.automation,
-            [key]: true,
-          },
-          automationEnabled: {
-            ...prev.automationEnabled,
-            [key]: true,
-          },
-        };
+      const auto = AUTOMATORS.find(a => a.key === key);
+      const isCP = auto?.currency === "CP";
+      
+      if (isCP) {
+        if (prev.capacityPoints >= cost && !prev.automation[key]) {
+          return {
+            ...prev,
+            capacityPoints: prev.capacityPoints - cost,
+            automation: { ...prev.automation, [key]: true },
+            automationEnabled: { ...prev.automationEnabled, [key]: true },
+          };
+        }
+      } else {
+        if (prev.currentGames.gte(cost) && !prev.automation[key]) {
+          return {
+            ...prev,
+            currentGames: prev.currentGames.minus(cost),
+            automation: { ...prev.automation, [key]: true },
+            automationEnabled: { ...prev.automationEnabled, [key]: true },
+          };
+        }
       }
       return prev;
     });
@@ -602,11 +649,11 @@ export default function App() {
             
             // 1. Production Chain
             const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades);
-            const prodTier5 = (dimensions.tier6 * manualDimensions.tier5 * mult(6)) * tickTime;
-            const prodTier4 = (dimensions.tier5 * manualDimensions.tier4 * mult(5)) * tickTime;
-            const prodTier3 = (dimensions.tier4 * manualDimensions.tier3 * mult(4)) * tickTime;
-            const prodTier2 = (dimensions.tier3 * manualDimensions.tier2 * mult(3)) * tickTime;
-            const prodTier1 = (dimensions.tier2 * manualDimensions.tier1 * mult(2)) * tickTime;
+            const prodTier5 = ((dimensions.tier6 || 0) * (manualDimensions.tier5 || 0) * mult(6)) * tickTime;
+            const prodTier4 = ((dimensions.tier5 || 0) * (manualDimensions.tier4 || 0) * mult(5)) * tickTime;
+            const prodTier3 = ((dimensions.tier4 || 0) * (manualDimensions.tier3 || 0) * mult(4)) * tickTime;
+            const prodTier2 = ((dimensions.tier3 || 0) * (manualDimensions.tier2 || 0) * mult(3)) * tickTime;
+            const prodTier1 = ((dimensions.tier2 || 0) * (manualDimensions.tier1 || 0) * mult(2)) * tickTime;
             
             // 2. Resource Generation
             const currentGps = new Decimal(dimensions.tier1).times(new Decimal(1).plus(expansionLines)).times(mult(1));
@@ -660,6 +707,28 @@ export default function App() {
                 tempState.dimensions.tier6++;
               }
             }
+            // Auto Evolve & Auto Revolution
+            for (let t = 1; t <= 6; t++) {
+              const currentLevel = tempState.evolution[`tier${t}`] || 0;
+              const isRev = currentLevel >= 10;
+              
+              if ((isRev && tempState.automation.autoRevolution) && (tempState.automationEnabled?.autoRevolution !== false)) {
+                const req = new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9));
+                if (new Decimal(tempState.dimensions[`tier${t}`]).gte(req)) {
+                  tempState.manualDimensions[`tier${t}`] = 0;
+                  tempState.dimensions[`tier${t}`] = 0;
+                  tempState.evolution[`tier${t}`] = currentLevel + 1;
+                }
+              } else if (!isRev && tempState.automation.autoEvolve && (tempState.automationEnabled?.autoEvolve !== false)) {
+                const req = new Decimal(10).times(Decimal.pow(10, currentLevel));
+                if (new Decimal(tempState.dimensions[`tier${t}`]).gte(req)) {
+                  tempState.manualDimensions[`tier${t}`] = 0;
+                  tempState.dimensions[`tier${t}`] = 0;
+                  tempState.evolution[`tier${t}`] = currentLevel + 1;
+                }
+              }
+            }
+
             // (Other automations omitted in sim for stability/simplicity, or could be added)
           }
           
@@ -723,6 +792,23 @@ export default function App() {
             let updatedDimensions = { ...dimensions, tier1: newTier1, tier2: newTier2, tier3: newTier3, tier4: newTier4, tier5: newTier5, tier6: dimensions.tier6 };
             let updatedManualDimensions = { ...manualDimensions };
             let updatedExpansionLines = expansionLines;
+            let updatedRevolutionReadyTime = prev.revolutionReadyTime || 0;
+
+            // Check if any tier is ready for Revolution (Level 10+ and enough resources)
+            let anyRevolutionReady = false;
+            for (let t = 1; t <= 6; t++) {
+              const currentLevel = evolution[`tier${t}`] || 0;
+              if (currentLevel >= 10) {
+                const req = new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9));
+                if (new Decimal(dimensions[`tier${t}`]).gte(req)) {
+                  anyRevolutionReady = true;
+                  break;
+                }
+              }
+            }
+            if (anyRevolutionReady) {
+              updatedRevolutionReadyTime += deltaTime;
+            }
 
             // Automation (Now updates both manual and total)
             if (automation.expansion && automationEnabled?.expansion !== false) {
@@ -781,6 +867,26 @@ export default function App() {
               }
             }
 
+            // Auto Evolve & Auto Revolution
+            let updatedEvolution = { ...evolution };
+            for (let t = 1; t <= 6; t++) {
+              const currentLevel = updatedEvolution[`tier${t}`] || 0;
+              const isRev = currentLevel >= 10;
+              
+              if ((isRev && automation.autoRevolution && automationEnabled?.autoRevolution !== false) || (!isRev && automation.autoEvolve && automationEnabled?.autoEvolve !== false)) {
+                const req = isRev 
+                  ? new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9))
+                  : new Decimal(10).times(Decimal.pow(10, currentLevel));
+                
+                if (new Decimal(updatedDimensions[`tier${t}`]).gte(req)) {
+                  // Execute Auto Evolve/Revolution
+                  updatedManualDimensions[`tier${t}`] = 0;
+                  updatedDimensions[`tier${t}`] = 0;
+                  updatedEvolution[`tier${t}`] = currentLevel + 1;
+                }
+              }
+            }
+
             return {
               ...prev,
               money: updatedMoney,
@@ -789,6 +895,8 @@ export default function App() {
               dimensions: updatedDimensions,
               manualDimensions: updatedManualDimensions,
               expansionLines: updatedExpansionLines,
+              evolution: updatedEvolution,
+              revolutionReadyTime: updatedRevolutionReadyTime,
             };
           });
         }
@@ -869,8 +977,9 @@ export default function App() {
   useEffect(() => {
     const checkAchievements = setInterval(() => {
       const currentState = gameStateRef.current;
+      if (!currentState || !currentState.unlockedAchievements) return;
       const newlyUnlocked = achievementsList.filter(
-        (ach) => !currentState.unlockedAchievements.includes(ach.key) && !seenAchievementsRef.current.has(ach.key) && ach.condition(currentState),
+        (ach) => !(currentState.unlockedAchievements || []).includes(ach.key) && !seenAchievementsRef.current.has(ach.key) && ach.condition(currentState),
       );
 
       if (newlyUnlocked.length > 0) {
@@ -905,7 +1014,8 @@ export default function App() {
   }, []);
 
   return (
-    <div className="p-3 md:p-5 pb-24 md:pb-5">
+    <ErrorBoundary>
+    <div className="p-3 md:p-5 pb-24 md:pb-5" translate="no">
       <AnimatePresence>
         {isLoading && <LoadingScreen key="loader" message={t("ui.loading") || "Loading..."} />}
       </AnimatePresence>
@@ -922,7 +1032,9 @@ export default function App() {
                     ...prev,
                     language: lang,
                     languageSelected: true,
-                    usedLanguages: prev.usedLanguages.includes(lang) ? prev.usedLanguages : [...prev.usedLanguages, lang],
+                    usedLanguages: (prev.usedLanguages || []).includes(lang) 
+                      ? (prev.usedLanguages || []) 
+                      : [...(prev.usedLanguages || []), lang],
                   }))}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95"
                 >
@@ -1035,10 +1147,8 @@ export default function App() {
                         ? `+${format(new Decimal(1).plus(gameState.expansionLines).times(currentMult), 2)} games/s`
                         : `+${format(new Decimal(gameState.manualDimensions[`tier${dim.tier-1}`] || 0).times(currentMult), 2)} tier${dim.tier - 1}/s`;
 
-                      // Unlock logic: Tier 1 is always unlocked. Tier 2-5 unlock if the previous tier is owned.
-                      // Tier 6 (Aliens) only unlocks if the CP upgrade 'aliens' is owned.
-                      let isUnlocked = dim.tier === 1 || gameState.dimensions[`tier${dim.tier - 1}`] > 0 || totalCount > 0;
-                      if (dim.tier === 6) isUnlocked = gameState.cpUpgrades.aliens;
+                      // Unlock logic: Use persisted unlockedTiers state
+                      let isUnlocked = gameState.unlockedTiers[`tier${dim.tier}`];
                       
                       if (!isUnlocked) return null;
 
@@ -1049,6 +1159,7 @@ export default function App() {
                             <span>
                               {t(`ui.${dim.nameKey}`) || dim.nameKey}: {format(manualCount)} 
                               {producedCount > 0.01 && ` (+${format(producedCount)})`} {t(`ui.${dim.nameKey}_owned`) || "owned"}
+                              <span className="ml-2 text-yellow-600 text-[10px] font-black">x{format(currentMult, 1)}</span>
                             </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 md:gap-3">
@@ -1183,5 +1294,6 @@ export default function App() {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

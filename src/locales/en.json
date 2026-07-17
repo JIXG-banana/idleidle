@@ -10,8 +10,8 @@
     "money_unit": "Gold",
     "developer": "Developer",
     "developer_owned": "owned",
-    "publisher": "Publisher",
-    "publisher_owned": "owned",
+    "company": "Company",
+    "company_owned": "owned",
     "conglomerate": "Conglomerate",
     "conglomerate_owned": "owned",
     "government": "Government",
@@ -38,7 +38,7 @@
   },
   "actions": {
     "buy_developer_btn": "Hire",
-    "buy_publisher_btn": "Contract",
+    "buy_company_btn": "Establish",
     "buy_conglomerate_btn": "Acquire",
     "buy_government_btn": "Approve",
     "buy_un_btn": "Join",
@@ -56,11 +56,13 @@
     "locked_prev": "Unlock previous automator first",
     "auto_expansion": "Auto Expansion Line",
     "auto_tier1": "Auto Hire Developers",
-    "auto_tier2": "Auto Contract Publishers",
+    "auto_tier2": "Auto Establish Companies",
     "auto_tier3": "Auto Acquire Conglomerates",
     "auto_tier4": "Auto Approve Government",
     "auto_tier5": "Auto Join UN",
-    "auto_tier6": "Auto Contact Aliens"
+    "auto_tier6": "Auto Contact Aliens",
+    "auto_evolve": "Auto Evolve",
+    "auto_revolution": "Auto Revolution"
   },
   "capacity": {
     "reached_title": "CAPACITY REACHED!",
@@ -109,7 +111,13 @@
     "first-game": "First Step",
     "first-game_desc": "Released your first game.",
     "capacity-reached": "Singularity",
-    "capacity-reached_desc": "Reached the capacity limit."
+    "capacity-reached_desc": "Reached the capacity limit.",
+    "revolution-idle": "Revolution Idle",
+    "revolution-idle_desc": "Stayed in a state where a Revolution was possible for 1 hour.",
+    "revolution-idle_hint": "Waiting for the wheels of change... even when they're already turning.",
+    "click-secret": "Click Master",
+    "click-secret_desc": "Unlocked by clicking the hidden achievement card.",
+    "click-secret_hint": "Sometimes, progress is just a touch away."
   },
   "reset_prompt": {
     "title": "Save Data Found",

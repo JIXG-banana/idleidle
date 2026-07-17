@@ -3,7 +3,7 @@ import { ActionButton } from "./Buttons";
 import { AUTOMATORS } from "../constants/gameData";
 
 export default function AutomationTab({ gameState, t, format, onBuyAutomator, onToggleAutomator, onToggleAllAutomators }) {
-  const { automation, automationEnabled = {}, currentGames } = gameState;
+  const { automation, automationEnabled = {}, currentGames, capacityPoints } = gameState;
   const ownedCount = Object.values(automation).filter(v => v).length;
 
   return (
@@ -36,8 +36,16 @@ export default function AutomationTab({ gameState, t, format, onBuyAutomator, on
 
       <div className="space-y-4">
         {AUTOMATORS.map((auto, index) => {
-          const isUnlocked = index === 0 || automation[AUTOMATORS[index - 1].key];
+          // Tier 6 (Alien) automation should only be visible if Alien Communication is unlocked
+          if (auto.key === "tier6" && !gameState.cpUpgrades.aliens) {
+            return null;
+          }
+
+          // Auto Expansion, Evolve and Revolution are always visible
+          const isAdvanced = auto.key === "expansion" || auto.key === "autoEvolve" || auto.key === "autoRevolution";
+          const isUnlocked = isAdvanced || index === 0 || automation[AUTOMATORS[index - 1].key];
           const isOwned = automation[auto.key];
+          const isCP = auto.currency === "CP";
           
           return (
             <div key={auto.key} className={`p-4 rounded-xl flex flex-col gap-3 transition-all ${isOwned ? "bg-green-50" : isUnlocked ? "bg-gray-50/50" : "bg-gray-200 opacity-50 select-none"}`}>
@@ -58,7 +66,9 @@ export default function AutomationTab({ gameState, t, format, onBuyAutomator, on
                     </button>
                   </div>
                 ) : isUnlocked && (
-                  <span className="text-xs font-bold text-blue-600">{format(auto.cost)} {t("ui.games_unit") || "Games"}</span>
+                  <span className={`text-xs font-bold ${isCP ? "text-purple-600" : "text-blue-600"}`}>
+                    {isCP ? `${auto.cost} CP` : `${format(auto.cost)} ${t("ui.games_unit") || "Games"}`}
+                  </span>
                 )}
               </div>
               
@@ -69,11 +79,11 @@ export default function AutomationTab({ gameState, t, format, onBuyAutomator, on
               ) : isUnlocked ? (
                 <ActionButton
                   onClick={() => onBuyAutomator(auto.key, auto.cost)}
-                  disabled={currentGames.lt(auto.cost)}
-                  currentValue={currentGames}
-                  targetValue={auto.cost}
-                  colorClass="bg-indigo-600 hover:bg-indigo-700"
-                  progressColorClass="bg-blue-400/30"
+                  disabled={isCP ? capacityPoints < auto.cost : currentGames.lt(auto.cost)}
+                  currentValue={isCP ? new Decimal(capacityPoints) : currentGames}
+                  targetValue={new Decimal(auto.cost)}
+                  colorClass={isCP ? "bg-purple-600 hover:bg-purple-700" : "bg-indigo-600 hover:bg-indigo-700"}
+                  progressColorClass={isCP ? "bg-purple-400/30" : "bg-blue-400/30"}
                 >
                   {t("automation.buy_btn") || "自動化をアンロック"}
                 </ActionButton>

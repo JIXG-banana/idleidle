@@ -13,7 +13,7 @@ export default function GraphTab({ history, t, format }) {
       label: t("ui.money", { count: "" }).replace(":", "").trim(),
     },
     { key: "developer", label: t("ui.developer") },
-    { key: "company", label: t("ui.publisher") },
+    { key: "company", label: t("ui.company") },
     { key: "conglomerate", label: t("ui.conglomerate") },
   ];
 

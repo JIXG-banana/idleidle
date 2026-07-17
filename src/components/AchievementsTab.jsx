@@ -1,7 +1,7 @@
 import React, { useState, memo, useMemo } from "react";
 import { achievementsList } from "../constants/gameData";
 
-const AchievementCard = memo(({ id, number, title, icon, isLocked, description, onUnlockAchievement }) => {
+const AchievementCard = memo(({ id, number, title, icon, isLocked, isHidden, description, hint, onUnlockAchievement }) => {
   const [showOverlay, setShowOverlay] = useState(false);
 
   const baseStyles =
@@ -36,10 +36,10 @@ const AchievementCard = memo(({ id, number, title, icon, isLocked, description, 
         }`}
       >
         <span className="text-[10px] text-blue-600 mb-1 font-black uppercase tracking-tighter">
-          Requirement
+          {isLocked && isHidden ? "Hint" : "Requirement"}
         </span>
-        <span className="text-[11px] text-gray-800 leading-tight">
-          {description}
+        <span className="text-[11px] text-gray-800 leading-tight font-medium">
+          {isLocked && isHidden ? hint : description}
         </span>
       </div>
     </div>
@@ -102,8 +102,10 @@ export default function AchievementsTab({ gameState, t, onUnlockAchievement }) {
             number={index + 1}
             title={t(`achievements.${item.key}`)}
             description={t(`achievements.${item.key}_desc`)}
+            hint={t(`achievements.${item.key}_hint`)}
             icon={item.icon}
             isLocked={!unlockedSet.has(item.key)}
+            isHidden={item.hidden}
             onUnlockAchievement={onUnlockAchievement}
           />
         ))}
