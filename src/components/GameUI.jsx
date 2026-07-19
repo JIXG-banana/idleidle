@@ -5,11 +5,11 @@ export const StaticAdsAndForm = memo(() => (
   <>
     <div className="mt-4">
       <div className="block md:hidden flex flex-col items-center leading-[0]">
-        <AdMax url="/ad-mobile.html" width="320" height="50" />
-        <AdMax url="/ad-mobile2.html" width="320" height="50" />
+        <AdMax url="./ad-mobile.html" width="320" height="50" />
+        <AdMax url="./ad-mobile2.html" width="320" height="50" />
       </div>
       <div className="hidden md:flex justify-center">
-        <AdMax url="/ad.html" width="300" height="250" />
+        <AdMax url="./ad.html" width="300" height="250" />
       </div>
     </div>
     {/*
@@ -29,6 +29,6 @@ export const StaticAdsAndForm = memo(() => (
 
 export const SideAds = memo(() => (
   <div className="hidden md:flex justify-center">
-    <AdMax url="/ad-side.html" width="160" height="600" />
+    <AdMax url="./ad-side.html" width="160" height="600" />
   </div>
 ));

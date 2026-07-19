@@ -12,7 +12,7 @@ export default function LoadingScreen({ message = "Loading..." }) {
       <div className="max-w-md w-full space-y-6">
         <div className="space-y-10">
           <div className="flex justify-center">
-            <img src="/favicon.ico" alt="Loading" className="w-24 h-24 animate-pulse" />
+            <img src="./apple-touch-icon.png" alt="Loading" className="w-24 h-24 animate-pulse" />
           </div>
           <div className="w-full h-1 bg-gray-900 overflow-hidden relative border border-gray-800">
             <motion.div 
