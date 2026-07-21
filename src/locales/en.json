@@ -34,7 +34,8 @@
     "capacity": "Capacity",
     "graph": "Graph",
     "achievements": "Achievements",
-    "setting": "Settings"
+    "setting": "Settings",
+    "solar_system": "Solar System"
   },
   "actions": {
     "buy_developer_btn": "Hire",
@@ -80,7 +81,12 @@
     "aliens_unlock": "Alien Communication",
     "aliens_unlock_desc": "Unlock the 'Alien' tier.",
     "satellite_upgrade": "Satellite Link",
-    "satellite_upgrade_desc": "Increase overall production speed."
+    "satellite_upgrade_desc": "Increase overall production speed.",
+    "solar_map_upgrade": "Solar System Map",
+    "solar_map_upgrade_desc": "Unlock the Solar System map tab."
+  },
+  "solar_system": {
+    "desc": "A projection of the planetary system."
   },
   "help": {
     "basics_title": "Basic Rules",
@@ -96,14 +102,17 @@
   "settings": {
     "language_label": "Language",
     "use_scientific": "Use Scientific Notation",
-    "bgm_label": "Enable BGM"
+    "bgm_label": "Enable BGM",
+    "promo_label": "Promo Code",
+    "promo_placeholder": "Enter code..."
   },
   "messages": {
     "save_success": "Game saved!",
     "export_success": "Save data copied to clipboard!",
     "copy_fail": "Failed to copy.",
     "import_prompt": "Paste your export string:",
-    "import_fail": "Import failed. Invalid data."
+    "import_fail": "Import failed. Invalid data.",
+    "invalid_promo": "Invalid Promo Code"
   },
   "achievements": {
     "tab_regular": "Regular",

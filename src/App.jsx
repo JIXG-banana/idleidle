@@ -62,6 +62,8 @@ const SettingTab = React.lazy(() => import("./components/SettingTab"));
 const GraphTab = React.lazy(() => import("./components/GraphTab"));
 const AutomationTab = React.lazy(() => import("./components/AutomationTab"));
 const CapacityTab = React.lazy(() => import("./components/CapacityTab"));
+const CheatWindow = React.lazy(() => import("./components/CheatWindow"));
+const SolarSystemTab = React.lazy(() => import("./components/SolarSystemTab"));
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -142,6 +144,12 @@ export default function App() {
   const [showResetPrompt, setShowResetPrompt] = useState(false);
   const [offlinePopupData, setOfflinePopupData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCheatWindow, setShowCheatWindow] = useState(false);
+
+  const activateDevMode = useCallback(() => {
+    setGameState(prev => ({ ...prev, devMode: true }));
+    setShowCheatWindow(true);
+  }, []);
 
   const removeToast = useCallback((id) => {
     setToastQueue((prev) => prev.filter((item) => item.id !== id));
@@ -232,6 +240,7 @@ export default function App() {
       activePromotionKey: null,
       activePromotionEndTime: 0,
       promotionCooldowns: {},
+      devMode: false,
     };
 
     try {
@@ -259,8 +268,19 @@ export default function App() {
           tier5: 0,
           tier6: 0,
         };
+        // Sanitize dimensions to ensure they are numbers
+        Object.keys(dimensions).forEach(key => {
+          if (dimensions[key] === null || dimensions[key] === undefined) {
+            dimensions[key] = 0;
+          }
+        });
 
         const manualDimensions = parsed.manualDimensions ?? dimensions;
+        Object.keys(manualDimensions).forEach(key => {
+          if (manualDimensions[key] === null || manualDimensions[key] === undefined) {
+            manualDimensions[key] = 0;
+          }
+        });
 
         return {
           ...defaultState,
@@ -494,7 +514,7 @@ export default function App() {
         ? new Decimal(10).times(Decimal.pow(10, currentLevel))
         : new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9));
 
-      if (new Decimal(prev.dimensions[`tier${tier}`]).gte(req)) {
+      if (new Decimal(prev.dimensions[`tier${tier}`] || 0).gte(req)) {
         return {
           ...prev,
           manualDimensions: { ...prev.manualDimensions, [`tier${tier}`]: 0 }, // リセット
@@ -610,8 +630,8 @@ export default function App() {
   }, [gameState.bgmEnabled, activeTab]);
 
   const gps = React.useMemo(() => {
-    const devCount = new Decimal(gameState.dimensions.tier1);
-    const expansionMult = new Decimal(1).plus(gameState.expansionLines);
+    const devCount = new Decimal(gameState.dimensions.tier1 || 0);
+    const expansionMult = new Decimal(1).plus(gameState.expansionLines || 0);
     const evolutionMult = getTierMultiplier(1, gameState.evolution, gameState.cpUpgrades);
     return devCount.times(expansionMult).times(evolutionMult);
   }, [gameState.dimensions.tier1, gameState.expansionLines, gameState.evolution, gameState.cpUpgrades]);
@@ -649,14 +669,14 @@ export default function App() {
             
             // 1. Production Chain
             const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades);
-            const prodTier5 = ((dimensions.tier6 || 0) * (manualDimensions.tier5 || 0) * mult(6)) * tickTime;
-            const prodTier4 = ((dimensions.tier5 || 0) * (manualDimensions.tier4 || 0) * mult(5)) * tickTime;
-            const prodTier3 = ((dimensions.tier4 || 0) * (manualDimensions.tier3 || 0) * mult(4)) * tickTime;
-            const prodTier2 = ((dimensions.tier3 || 0) * (manualDimensions.tier2 || 0) * mult(3)) * tickTime;
-            const prodTier1 = ((dimensions.tier2 || 0) * (manualDimensions.tier1 || 0) * mult(2)) * tickTime;
+            const prodTier5 = ((dimensions.tier6 || 0) * ((manualDimensions.tier5 || 0) + 1) * mult(6)) * tickTime;
+            const prodTier4 = ((dimensions.tier5 || 0) * ((manualDimensions.tier4 || 0) + 1) * mult(5)) * tickTime;
+            const prodTier3 = ((dimensions.tier4 || 0) * ((manualDimensions.tier3 || 0) + 1) * mult(4)) * tickTime;
+            const prodTier2 = ((dimensions.tier3 || 0) * ((manualDimensions.tier2 || 0) + 1) * mult(3)) * tickTime;
+            const prodTier1 = ((dimensions.tier2 || 0) * ((manualDimensions.tier1 || 0) + 1) * mult(2)) * tickTime;
             
             // 2. Resource Generation
-            const currentGps = new Decimal(dimensions.tier1).times(new Decimal(1).plus(expansionLines)).times(mult(1));
+            const currentGps = new Decimal(dimensions.tier1 || 0).times(new Decimal(1).plus(expansionLines || 0)).times(mult(1));
             const gamesTick = currentGps.times(tickTime);
             totalGamesGained = totalGamesGained.plus(gamesTick);
             
@@ -666,12 +686,12 @@ export default function App() {
             
             // Update counts
             tempState.dimensions = {
-              tier1: dimensions.tier1 + prodTier1,
-              tier2: dimensions.tier2 + prodTier2,
-              tier3: dimensions.tier3 + prodTier3,
-              tier4: dimensions.tier4 + prodTier4,
-              tier5: dimensions.tier5 + prodTier5,
-              tier6: dimensions.tier6,
+              tier1: (dimensions.tier1 || 0) + prodTier1,
+              tier2: (dimensions.tier2 || 0) + prodTier2,
+              tier3: (dimensions.tier3 || 0) + prodTier3,
+              tier4: (dimensions.tier4 || 0) + prodTier4,
+              tier5: (dimensions.tier5 || 0) + prodTier5,
+              tier6: dimensions.tier6 || 0,
             };
             tempState.totalGames = tempState.totalGames.plus(gamesTick);
             tempState.currentGames = tempState.currentGames.plus(gamesTick);
@@ -689,22 +709,22 @@ export default function App() {
             const autoTiers = [1, 2, 3, 4, 5];
             autoTiers.forEach(t => {
               if (automation[`tier${t}`] && automationEnabled?.[`tier${t}`] !== false) {
-                const price = getDimensionPrice(tempState.manualDimensions[`tier${t}`], t);
+                const price = getDimensionPrice(tempState.manualDimensions[`tier${t}`] || 0, t);
                 if (tempState.money.gte(price)) {
                   tempState.money = tempState.money.minus(price);
-                  tempState.manualDimensions[`tier${t}`]++;
-                  tempState.dimensions[`tier${t}`]++;
+                  tempState.manualDimensions[`tier${t}`] = (tempState.manualDimensions[`tier${t}`] || 0) + 1;
+                  tempState.dimensions[`tier${t}`] = (tempState.dimensions[`tier${t}`] || 0) + 1;
                 }
               }
             });
 
             // Tier 6 (Aliens) requires CP upgrade
             if (automation.tier6 && tempState.cpUpgrades.aliens && automationEnabled?.tier6 !== false) {
-              const price = getDimensionPrice(tempState.manualDimensions.tier6, 6);
+              const price = getDimensionPrice(tempState.manualDimensions.tier6 || 0, 6);
               if (tempState.money.gte(price)) {
                 tempState.money = tempState.money.minus(price);
-                tempState.manualDimensions.tier6++;
-                tempState.dimensions.tier6++;
+                tempState.manualDimensions.tier6 = (tempState.manualDimensions.tier6 || 0) + 1;
+                tempState.dimensions.tier6 = (tempState.dimensions.tier6 || 0) + 1;
               }
             }
             // Auto Evolve & Auto Revolution
@@ -714,14 +734,14 @@ export default function App() {
               
               if ((isRev && tempState.automation.autoRevolution) && (tempState.automationEnabled?.autoRevolution !== false)) {
                 const req = new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9));
-                if (new Decimal(tempState.dimensions[`tier${t}`]).gte(req)) {
+                if (new Decimal(tempState.dimensions[`tier${t}`] || 0).gte(req)) {
                   tempState.manualDimensions[`tier${t}`] = 0;
                   tempState.dimensions[`tier${t}`] = 0;
                   tempState.evolution[`tier${t}`] = currentLevel + 1;
                 }
               } else if (!isRev && tempState.automation.autoEvolve && (tempState.automationEnabled?.autoEvolve !== false)) {
                 const req = new Decimal(10).times(Decimal.pow(10, currentLevel));
-                if (new Decimal(tempState.dimensions[`tier${t}`]).gte(req)) {
+                if (new Decimal(tempState.dimensions[`tier${t}`] || 0).gte(req)) {
                   tempState.manualDimensions[`tier${t}`] = 0;
                   tempState.dimensions[`tier${t}`] = 0;
                   tempState.evolution[`tier${t}`] = currentLevel + 1;
@@ -770,15 +790,15 @@ export default function App() {
           setGameState((prev) => {
             const { dimensions, manualDimensions, expansionLines, automation, automationEnabled, evolution, cpUpgrades } = prev;
             
-            // Production Chain: (Above Total * Current Manual)
+            // Production Chain: (Above Total * (Current Manual + 1))
             const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades);
-            const newTier5 = dimensions.tier5 + (dimensions.tier6 * manualDimensions.tier5 * mult(6)) * deltaTime;
-            const newTier4 = dimensions.tier4 + (newTier5 * manualDimensions.tier4 * mult(5)) * deltaTime;
-            const newTier3 = dimensions.tier3 + (newTier4 * manualDimensions.tier3 * mult(4)) * deltaTime;
-            const newTier2 = dimensions.tier2 + (newTier3 * manualDimensions.tier2 * mult(3)) * deltaTime;
-            const newTier1 = dimensions.tier1 + (newTier2 * manualDimensions.tier1 * mult(2)) * deltaTime;
+            const newTier5 = (dimensions.tier5 || 0) + ((dimensions.tier6 || 0) * ((manualDimensions.tier5 || 0) + 1) * mult(6)) * deltaTime;
+            const newTier4 = (dimensions.tier4 || 0) + ((newTier5 || 0) * ((manualDimensions.tier4 || 0) + 1) * mult(5)) * deltaTime;
+            const newTier3 = (dimensions.tier3 || 0) + ((newTier4 || 0) * ((manualDimensions.tier3 || 0) + 1) * mult(4)) * deltaTime;
+            const newTier2 = (dimensions.tier2 || 0) + ((newTier3 || 0) * ((manualDimensions.tier2 || 0) + 1) * mult(3)) * deltaTime;
+            const newTier1 = (dimensions.tier1 || 0) + ((newTier2 || 0) * ((manualDimensions.tier1 || 0) + 1) * mult(2)) * deltaTime;
             
-            const currentGps = new Decimal(newTier1).times(new Decimal(1).plus(expansionLines)).times(mult(1));
+            const currentGps = new Decimal(newTier1 || 0).times(new Decimal(1).plus(expansionLines || 0)).times(mult(1));
             const gamesGained = currentGps.times(deltaTime);
             
             const newTotalGames = prev.totalGames.plus(gamesGained);
@@ -789,9 +809,9 @@ export default function App() {
             const newMoney = prev.money.plus(goldGained);
             
             let updatedMoney = newMoney;
-            let updatedDimensions = { ...dimensions, tier1: newTier1, tier2: newTier2, tier3: newTier3, tier4: newTier4, tier5: newTier5, tier6: dimensions.tier6 };
+            let updatedDimensions = { ...dimensions, tier1: newTier1, tier2: newTier2, tier3: newTier3, tier4: newTier4, tier5: newTier5, tier6: dimensions.tier6 || 0 };
             let updatedManualDimensions = { ...manualDimensions };
-            let updatedExpansionLines = expansionLines;
+            let updatedExpansionLines = expansionLines || 0;
             let updatedRevolutionReadyTime = prev.revolutionReadyTime || 0;
 
             // Check if any tier is ready for Revolution (Level 10+ and enough resources)
@@ -800,7 +820,7 @@ export default function App() {
               const currentLevel = evolution[`tier${t}`] || 0;
               if (currentLevel >= 10) {
                 const req = new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9));
-                if (new Decimal(dimensions[`tier${t}`]).gte(req)) {
+                if (new Decimal(dimensions[`tier${t}`] || 0).gte(req)) {
                   anyRevolutionReady = true;
                   break;
                 }
@@ -966,6 +986,7 @@ export default function App() {
   const handleTabSetting = useCallback(() => { setActiveTab("setting"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabAutomation = useCallback(() => { setActiveTab("automation"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabCapacity = useCallback(() => { setActiveTab("capacity"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
+  const handleTabSolar = useCallback(() => { setActiveTab("solar"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
 
   const seenAchievementsRef = useRef(new Set());
   useEffect(() => {
@@ -1088,7 +1109,7 @@ export default function App() {
             animate={{ scale: 1, rotate: 0, rotateX: 0, rotateY: 0, z: 0, opacity: 1 }}
             transition={{ duration: 0.1, ease: "linear" }}
           >
-            <div className="flex-1 border-2 md:border-4 border-gray-300 p-3 md:p-5 md:mr-5 rounded-lg overflow-y-auto min-h-[500px]">
+            <div className={`flex-1 border-2 md:border-4 border-gray-300 ${activeTab === "solar" ? "p-0" : "p-3 md:p-5"} md:mr-5 rounded-lg overflow-y-auto min-h-[500px]`}>
               {activeTab === "idle2" && (
                 <div ref={containerRef} className="flex flex-col gap-2 break-words relative">
                   <button onClick={() => setShowHelp(true)} className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full text-gray-600 font-bold shadow-sm z-10">?</button>
@@ -1120,7 +1141,7 @@ export default function App() {
                       const evolveReq = isRevolution 
                         ? new Decimal(1e11).times(Decimal.pow(1000, evolveLevel - 9)) 
                         : new Decimal(10).times(Decimal.pow(10, evolveLevel));
-                      const canEvolve = new Decimal(totalCount).gte(evolveReq);
+                      const canEvolve = new Decimal(totalCount || 0).gte(evolveReq);
 
                       const baseColorClass = 
                         dim.tier === 1 ? "bg-blue-600 hover:bg-blue-700" : 
@@ -1145,7 +1166,7 @@ export default function App() {
                       const currentMult = getTierMultiplier(dim.tier, gameState.evolution, gameState.cpUpgrades);
                       const prodInfo = dim.tier === 1 
                         ? `+${format(new Decimal(1).plus(gameState.expansionLines).times(currentMult), 2)} games/s`
-                        : `+${format(new Decimal(gameState.manualDimensions[`tier${dim.tier-1}`] || 0).times(currentMult), 2)} tier${dim.tier - 1}/s`;
+                        : `+${format(new Decimal((gameState.manualDimensions[`tier${dim.tier-1}`] || 0) + 1).times(currentMult), 2)} tier${dim.tier - 1}/s`;
 
                       // Unlock logic: Use persisted unlockedTiers state
                       let isUnlocked = gameState.unlockedTiers[`tier${dim.tier}`];
@@ -1176,8 +1197,8 @@ export default function App() {
                             <ActionButton
                               onClick={() => evolveTier(dim.tier)}
                               disabled={!canEvolve}
-                              currentValue={new Decimal(totalCount)}
-                              targetValue={new Decimal(evolveReq)}
+                              currentValue={new Decimal(totalCount || 0)}
+                              targetValue={new Decimal(evolveReq || 0)}
                           colorClass={evolveColorClass}
                               progressColorClass="bg-white/40"
                             >
@@ -1238,14 +1259,47 @@ export default function App() {
                       onResetCapacity={resetCapacity} 
                     />
                   )}
+                  {activeTab === "solar" && <SolarSystemTab t={t} />}
                   {activeTab === "graph" && <GraphTab history={history} t={t} format={format} />}
                   {activeTab === "achievements" && <AchievementsTab gameState={gameState} t={t} onUnlockAchievement={unlockAchievement} />}
-                  {activeTab === "setting" && <SettingTab gameState={gameState} setGameState={setGameState} i18n={i18n} t={t} onSave={handleManualSave} />}
+                  {activeTab === "setting" && (
+                    <SettingTab 
+                      gameState={gameState} 
+                      setGameState={setGameState} 
+                      i18n={i18n} t={t} 
+                      onSave={handleManualSave} 
+                      onActivateDevMode={activateDevMode}
+                    />
+                  )}
                 </Suspense>
               </ErrorBoundary>
+
+              {gameState.devMode && (
+                <div className="mt-8 pt-4 border-t border-gray-200">
+                  <button 
+                    onClick={() => setShowCheatWindow(true)}
+                    className="w-full bg-red-600 text-white font-black py-3 rounded-xl shadow-[0_4px_0_0_theme(colors.red.800)] active:translate-y-[2px] active:shadow-none transition-all"
+                  >
+                    🛠 OPEN CHEAT WINDOW
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
+
+        <AnimatePresence>
+          {showCheatWindow && (
+            <Suspense fallback={null}>
+              <CheatWindow 
+                gameState={gameState} 
+                setGameState={setGameState} 
+                onClose={() => setShowCheatWindow(false)}
+                format={format}
+              />
+            </Suspense>
+          )}
+        </AnimatePresence>
 
         <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 z-[110] flex flex-col-reverse gap-2 items-center pointer-events-none">
           <AnimatePresence>
@@ -1283,6 +1337,9 @@ export default function App() {
             <TabButton active={activeTab === "idle2"} onClick={handleTabIdle2}>{t("tabs.idle2")}</TabButton>
             {gameState.dimensions.tier3 > 0 && (
               <TabButton active={activeTab === "automation"} onClick={handleTabAutomation}>{t("tabs.automation") || "🤖"}</TabButton>
+            )}
+            {gameState.cpUpgrades.solarMap && (
+              <TabButton active={activeTab === "solar"} onClick={handleTabSolar}>{t("tabs.solar_system") || "☀️"}</TabButton>
             )}
             <TabButton active={activeTab === "capacity"} onClick={handleTabCapacity}>{t("tabs.capacity") || "🌐"}</TabButton>
             <TabButton active={activeTab === "graph"} onClick={handleTabGraph}>{t("tabs.graph") || "📊"}</TabButton>

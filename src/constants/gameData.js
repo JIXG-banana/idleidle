@@ -33,6 +33,7 @@ export const CP_SHOP = [
   { id: "macro", cost: 2, nameKey: "macro_upgrade", icon: "🤖" },
   { id: "aliens", cost: 3, nameKey: "aliens_unlock", icon: "👽" },
   { id: "satellite", cost: 5, nameKey: "satellite_upgrade", icon: "📡" },
+  { id: "solarMap", cost: 10, nameKey: "solar_map_upgrade", icon: "☀️" },
 ];
 
 export const achievementsList = [

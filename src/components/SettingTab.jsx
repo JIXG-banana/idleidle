@@ -1,9 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import CryptoJS from "crypto-js";
 import { ActionButton } from "./Buttons";
 import { SECRET_KEY } from "../constants/gameData";
 
-export default function SettingTab({ gameState, setGameState, i18n, t, onSave }) {
+export default function SettingTab({ gameState, setGameState, i18n, t, onSave, onActivateDevMode }) {
+  const [promoCode, setPromoCode] = useState("");
+
+  const handlePromoSubmit = (e) => {
+    e.preventDefault();
+    if (promoCode === "qwerty123456789") {
+      onActivateDevMode();
+      setPromoCode("");
+      alert("DEV MODE ACTIVATED");
+    } else {
+      alert(t("messages.invalid_promo") || "Invalid Promo Code");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 p-3 rounded">
@@ -37,6 +50,21 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave })
           <option value="emoji">絵文字 (Emoji)</option>
         </select>
       </div>
+
+      <div className="p-3 bg-gray-100 rounded-xl flex flex-col gap-2 border border-gray-200 shadow-inner">
+        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("settings.promo_label") || "Promo Code"}</label>
+        <form onSubmit={handlePromoSubmit} className="flex gap-2">
+          <input 
+            type="text" 
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value)}
+            placeholder={t("settings.promo_placeholder") || "Enter code..."}
+            className="flex-1 p-2 border border-gray-300 rounded-lg text-sm font-mono"
+          />
+          <button type="submit" className="bg-gray-800 text-white font-bold px-4 py-2 rounded-lg text-sm hover:bg-black transition-colors">OK</button>
+        </form>
+      </div>
+
       <div className="flex flex-col gap-2 p-3 rounded">
         <label className="font-bold flex items-center cursor-pointer gap-2">
           <input

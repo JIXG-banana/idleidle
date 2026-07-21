@@ -34,7 +34,8 @@
     "capacity": "キャパシティ",
     "graph": "グラフ",
     "achievements": "実績",
-    "setting": "設定"
+    "setting": "設定",
+    "solar_system": "太陽系マップ"
   },
   "actions": {
     "buy_developer_btn": "雇用",
@@ -84,7 +85,12 @@
     "aliens_unlock": "エイリアンとの交信",
     "aliens_unlock_desc": "未知の領域「エイリアン」をアンロックします。",
     "satellite_upgrade": "衛星通信",
-    "satellite_upgrade_desc": "全体の生産速度が向上します。"
+    "satellite_upgrade_desc": "全体の生産速度が向上します。",
+    "solar_map_upgrade": "太陽系マップ",
+    "solar_map_upgrade_desc": "太陽系シミュレーターをアンロックします。"
+  },
+  "solar_system": {
+    "desc": "惑星系の投影シミュレーション。"
   },
   "help": {
     "basics_title": "基本ルール",
@@ -100,14 +106,17 @@
   "settings": {
     "language_label": "言語設定",
     "use_scientific": "指数表記を使用する",
-    "bgm_label": "BGM 有効"
+    "bgm_label": "BGM 有効",
+    "promo_label": "プロモコード",
+    "promo_placeholder": "コードを入力..."
   },
   "messages": {
     "save_success": "ゲームを保存しました！",
     "export_success": "セーブデータをクリップボードにコピーしました！",
     "copy_fail": "コピーに失敗しました。",
     "import_prompt": "エクスポートした文字列を貼り付けてください：",
-    "import_fail": "インポートに失敗しました。データが正しくありません。"
+    "import_fail": "インポートに失敗しました。データが正しくありません。",
+    "invalid_promo": "無効なコードです"
   },
   "achievements": {
     "tab_regular": "通常実績",
