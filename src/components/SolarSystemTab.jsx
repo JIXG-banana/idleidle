@@ -2,18 +2,30 @@ import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
+import sunTexture from "../assets/2k_sun.jpg";
+import mercuryTexture from "../assets/2k_mercury.jpg";
+import venusTexture from "../assets/2k_venus_atmosphere.jpg";
+import earthTexture from "../assets/2k_earth_daymap.jpg";
+import moonTexture from "../assets/2k_moon.jpg";
+import marsTexture from "../assets/2k_mars.jpg";
+import jupiterTexture from "../assets/2k_jupiter.jpg";
+import saturnTexture from "../assets/2k_saturn.jpg";
+import saturnRingTexture from "../assets/2k_saturn_ring_alpha.png";
+import uranusTexture from "../assets/2k_uranus.jpg";
+import neptuneTexture from "../assets/2k_neptune.jpg";
+
 const PLANET_DATA = {
-  Sun: { radius: 12, distance: 0, speed: 0, rotSpeed: 0.001, color: 0xffaa00, texture: "/2k_sun.jpg" },
-  Mercury: { radius: 1.2, distance: 22, speed: 0.041, rotSpeed: 0.005, color: 0xa6a6a6, texture: "/2k_mercury.jpg" },
-  Venus: { radius: 2.0, distance: 32, speed: 0.016, rotSpeed: -0.002, color: 0xe3bb76, texture: "/2k_venus_atmosphere.jpg" },
+  Sun: { radius: 12, distance: 0, speed: 0, rotSpeed: 0.001, color: 0xffaa00, texture: sunTexture },
+  Mercury: { radius: 1.2, distance: 22, speed: 0.041, rotSpeed: 0.005, color: 0xa6a6a6, texture: mercuryTexture },
+  Venus: { radius: 2.0, distance: 32, speed: 0.016, rotSpeed: -0.002, color: 0xe3bb76, texture: venusTexture },
   Earth: { 
     radius: 2.2, distance: 45, speed: 0.010, rotSpeed: 0.04, color: 0x2233ff, 
-    texture: "/2k_earth_daymap.jpg",
-    moons: [{ name: "Moon", distance: 4.5, size: 0.6, speed: 0.13, color: 0xcccccc, texture: "/2k_moon.jpg" }]
+    texture: earthTexture,
+    moons: [{ name: "Moon", distance: 4.5, size: 0.6, speed: 0.13, color: 0xcccccc, texture: moonTexture }]
   },
   Mars: { 
     radius: 1.6, distance: 58, speed: 0.0053, rotSpeed: 0.038, color: 0xc1440e,
-    texture: "/2k_mars.jpg",
+    texture: marsTexture,
     moons: [
       { name: "Phobos", distance: 2.8, size: 0.3, speed: 0.2, color: 0x888888 },
       { name: "Deimos", distance: 3.8, size: 0.25, speed: 0.15, color: 0x777777 }
@@ -21,7 +33,7 @@ const PLANET_DATA = {
   },
   Jupiter: { 
     radius: 5.5, distance: 80, speed: 0.00084, rotSpeed: 0.02, color: 0xb07f35,
-    texture: "/2k_jupiter.jpg",
+    texture: jupiterTexture,
     moons: [
       { name: "Io", distance: 8, size: 0.5, speed: 0.1, color: 0xffffaa },
       { name: "Europa", distance: 10, size: 0.45, speed: 0.08, color: 0xffffff },
@@ -32,16 +44,16 @@ const PLANET_DATA = {
   Saturn: { 
     radius: 4.5, distance: 105, speed: 0.00034, rotSpeed: 0.02, color: 0xe2bf7d, 
     hasRings: true, 
-    texture: "/2k_saturn.jpg",
-    ringTexture: "/2k_saturn_ring_alpha.png",
+    texture: saturnTexture,
+    ringTexture: saturnRingTexture,
     moons: [{ name: "Titan", distance: 11, size: 0.8, speed: 0.05, color: 0xffcc88 }]
   },
   Uranus: { 
-    radius: 3.2, distance: 130, speed: 0.00012, rotSpeed: -0.01, color: 0x4b70dd, texture: "/2k_uranus.jpg",
+    radius: 3.2, distance: 130, speed: 0.00012, rotSpeed: -0.01, color: 0x4b70dd, texture: uranusTexture,
     moons: [{ name: "Titania", distance: 6, size: 0.5, speed: 0.07, color: 0xdddddd }]
   },
   Neptune: { 
-    radius: 3.0, distance: 155, speed: 0.00006, rotSpeed: 0.01, color: 0x274687, texture: "/2k_neptune.jpg",
+    radius: 3.0, distance: 155, speed: 0.00006, rotSpeed: 0.01, color: 0x274687, texture: neptuneTexture,
     moons: [{ name: "Triton", distance: 6, size: 0.6, speed: 0.06, color: 0xffffff }]
   }
 };
