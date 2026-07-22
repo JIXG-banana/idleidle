@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
@@ -48,10 +48,62 @@ const PLANET_DATA = {
 
 export default function SolarSystemTab() {
   const containerRef = useRef(null);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLowDetail, setIsLowDetail] = useState(false);
+  const [trackedPlanet, setTrackedPlanet] = useState(null);
+  const trackedPlanetRef = useRef(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    let isMounted = true;
+    const loadingManager = new THREE.LoadingManager();
+    const textureLoader = new THREE.TextureLoader(loadingManager);
+    const textures = {};
+
+    // Timeout for slow network (e.g., 3 seconds)
+    const timeoutId = setTimeout(() => {
+      if (isLoading && isMounted) {
+        console.warn("Network slow, switching to simplified models.");
+        setIsLowDetail(true);
+        setIsLoading(false);
+      }
+    }, 3500);
+
+    loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+      if (isMounted) {
+        setLoadingProgress((itemsLoaded / itemsTotal) * 100);
+      }
+    };
+
+    loadingManager.onLoad = () => {
+      clearTimeout(timeoutId);
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    };
+
+    loadingManager.onError = (url) => {
+      console.error("Error loading texture:", url);
+    };
+
+    // Preload textures
+    const textureUrls = [];
+    Object.values(PLANET_DATA).forEach(data => {
+      if (data.texture) textureUrls.push(data.texture);
+      if (data.ringTexture) textureUrls.push(data.ringTexture);
+      if (data.moons) {
+        data.moons.forEach(m => {
+          if (m.texture) textureUrls.push(m.texture);
+        });
+      }
+    });
+
+    textureUrls.forEach(url => {
+      textures[url] = textureLoader.load(url);
+    });
 
     // Scene
     const scene = new THREE.Scene();
@@ -68,10 +120,10 @@ export default function SolarSystemTab() {
     camera.position.set(0, 100, 200);
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: !isLowDetail });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = !isLowDetail;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
@@ -83,25 +135,21 @@ export default function SolarSystemTab() {
     controls.minDistance = 20;
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.15); // Increased for base visibility
+    const ambientLight = new THREE.AmbientLight(0xffffff, isLowDetail ? 0.5 : 0.15);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.PointLight(0xffffff, 500, 3000, 1.2); // Set intensity to 500
+    const sunLight = new THREE.PointLight(0xffffff, 500, 3000, 1.2);
     sunLight.position.set(0, 0, 0);
-    sunLight.castShadow = true;
-    // Optimize shadow camera for large scale
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 1000;
+    sunLight.castShadow = !isLowDetail;
+    if (!isLowDetail) {
+      sunLight.shadow.mapSize.width = 1024;
+      sunLight.shadow.mapSize.height = 1024;
+    }
     scene.add(sunLight);
-
-    // Texture Loader
-    const textureLoader = new THREE.TextureLoader();
 
     // Celestial Bodies
     const planets = {};
-    const orbitLines = [];
+    const segments = isLowDetail ? 16 : 32;
 
     Object.keys(PLANET_DATA).forEach((key) => {
       const data = PLANET_DATA[key];
@@ -109,20 +157,34 @@ export default function SolarSystemTab() {
       scene.add(planetContainer);
 
       let planetMesh;
-      const geo = new THREE.SphereGeometry(data.radius, 32, 32);
-      const matParams = {};
-      if (data.texture) {
-        matParams.map = textureLoader.load(data.texture);
+      const geo = new THREE.SphereGeometry(data.radius, segments, segments);
+      
+      let mat;
+      if (!isLowDetail && data.texture && textures[data.texture]) {
+        const matParams = { map: textures[data.texture] };
+        if (key === "Sun") {
+          mat = new THREE.MeshBasicMaterial(matParams);
+        } else {
+          mat = new THREE.MeshPhongMaterial({ ...matParams, shininess: 5 });
+        }
       } else {
-        matParams.color = data.color;
+        const matParams = { color: data.color };
+        if (key === "Sun") {
+          mat = new THREE.MeshBasicMaterial(matParams);
+        } else {
+          mat = new THREE.MeshLambertMaterial(matParams);
+        }
+      }
+
+      planetMesh = new THREE.Mesh(geo, mat);
+      if (!isLowDetail && key !== "Sun") {
+        planetMesh.castShadow = true;
+        planetMesh.receiveShadow = true;
       }
 
       if (key === "Sun") {
-        const mat = new THREE.MeshBasicMaterial(matParams);
-        planetMesh = new THREE.Mesh(geo, mat);
-
-        // Reverted Sun Glow (Single layer)
-        const glowGeo = new THREE.SphereGeometry(data.radius * 1.15, 32, 32);
+        // Sun Glow
+        const glowGeo = new THREE.SphereGeometry(data.radius * 1.15, segments, segments);
         const glowMat = new THREE.MeshBasicMaterial({
           color: 0xffcc00,
           transparent: true,
@@ -131,17 +193,11 @@ export default function SolarSystemTab() {
         });
         planetMesh.add(new THREE.Mesh(glowGeo, glowMat));
       } else {
-        const mat = new THREE.MeshPhongMaterial({
-          ...matParams,
-          shininess: 5
-        });
-        planetMesh = new THREE.Mesh(geo, mat);
-        planetMesh.castShadow = true;
-        planetMesh.receiveShadow = true;
-
+        // Orbit line
+        const orbitPoints = 64;
         const points = [];
-        for (let i = 0; i <= 128; i++) {
-          const theta = (i / 128) * Math.PI * 2;
+        for (let i = 0; i <= orbitPoints; i++) {
+          const theta = (i / orbitPoints) * Math.PI * 2;
           points.push(new THREE.Vector3(Math.cos(theta) * data.distance, 0, Math.sin(theta) * data.distance));
         }
         const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
@@ -156,54 +212,59 @@ export default function SolarSystemTab() {
       if (data.hasRings) {
         const innerRadius = data.radius * 1.4;
         const outerRadius = data.radius * 2.2;
-        const ringGeo = new THREE.RingGeometry(innerRadius, outerRadius, 64);
+        const ringGeo = new THREE.RingGeometry(innerRadius, outerRadius, isLowDetail ? 32 : 64);
         
         const pos = ringGeo.attributes.position;
         const uv = ringGeo.attributes.uv;
         for (let i = 0; i < pos.count; i++) {
           const vx = pos.getX(i);
           const vy = pos.getY(i);
-          const distance = Math.sqrt(vx * vx + vy * vy);
-          const norm = (distance - innerRadius) / (outerRadius - innerRadius);
+          const dist = Math.sqrt(vx * vx + vy * vy);
+          const norm = (dist - innerRadius) / (outerRadius - innerRadius);
           uv.setXY(i, norm, 0.5);
         }
 
-        const ringMatParams = {
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.9,
-          shininess: 5
-        };
-        if (data.ringTexture) {
-          ringMatParams.map = textureLoader.load(data.ringTexture);
+        let ringMat;
+        if (!isLowDetail && data.ringTexture && textures[data.ringTexture]) {
+          ringMat = new THREE.MeshPhongMaterial({
+            map: textures[data.ringTexture],
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9,
+            shininess: 5
+          });
         } else {
-          ringMatParams.color = 0xc5ab6e;
+          ringMat = new THREE.MeshLambertMaterial({
+            color: 0xc5ab6e,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.6
+          });
         }
-        const ringMat = new THREE.MeshPhongMaterial(ringMatParams);
         const ringMesh = new THREE.Mesh(ringGeo, ringMat);
         ringMesh.rotation.x = Math.PI / 2;
-        ringMesh.castShadow = true;
-        ringMesh.receiveShadow = true;
+        if (!isLowDetail) {
+          ringMesh.castShadow = true;
+          ringMesh.receiveShadow = true;
+        }
         planetContainer.add(ringMesh);
       }
 
       const planetMoons = [];
       if (data.moons) {
         data.moons.forEach(moonData => {
-          const moonGeo = new THREE.SphereGeometry(moonData.size, 16, 16);
-          const moonMatParams = {};
-          if (moonData.texture) {
-            moonMatParams.map = textureLoader.load(moonData.texture);
+          const moonGeo = new THREE.SphereGeometry(moonData.size, isLowDetail ? 8 : 16, isLowDetail ? 8 : 16);
+          let moonMat;
+          if (!isLowDetail && moonData.texture && textures[moonData.texture]) {
+            moonMat = new THREE.MeshPhongMaterial({ map: textures[moonData.texture], shininess: 0 });
           } else {
-            moonMatParams.color = moonData.color;
+            moonMat = new THREE.MeshLambertMaterial({ color: moonData.color || 0x888888 });
           }
-          const moonMat = new THREE.MeshPhongMaterial({
-            ...moonMatParams,
-            shininess: 0
-          });
           const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-          moonMesh.castShadow = true;
-          moonMesh.receiveShadow = true;
+          if (!isLowDetail) {
+            moonMesh.castShadow = true;
+            moonMesh.receiveShadow = true;
+          }
           planetContainer.add(moonMesh);
           planetMoons.push({
             mesh: moonMesh,
@@ -226,7 +287,7 @@ export default function SolarSystemTab() {
 
     // Starfield
     const starsGeometry = new THREE.BufferGeometry();
-    const starsCount = 5000;
+    const starsCount = isLowDetail ? 2000 : 5000;
     const posArray = new Float32Array(starsCount * 3);
     for (let i = 0; i < starsCount * 3; i++) {
       posArray[i] = (Math.random() - 0.5) * 1500;
@@ -258,11 +319,18 @@ export default function SolarSystemTab() {
         });
       });
 
+      if (trackedPlanetRef.current && planets[trackedPlanetRef.current]) {
+        const targetPos = planets[trackedPlanetRef.current].container.position;
+        controls.target.lerp(targetPos, 0.1);
+      }
+
       controls.update();
       renderer.render(scene, camera);
     };
 
-    animate();
+    if (!isLoading) {
+      animate();
+    }
 
     const handleResize = () => {
       if (!container) return;
@@ -273,6 +341,8 @@ export default function SolarSystemTab() {
     window.addEventListener("resize", handleResize);
 
     return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
       if (container.contains(renderer.domElement)) {
@@ -290,9 +360,64 @@ export default function SolarSystemTab() {
       });
       renderer.dispose();
     };
-  }, []);
+  }, [isLoading, isLowDetail]);
+
+  const selectPlanet = (name) => {
+    setTrackedPlanet(name);
+    trackedPlanetRef.current = name;
+  };
 
   return (
-    <div ref={containerRef} className="w-full h-full min-h-[500px] bg-black overflow-hidden relative" />
+    <div ref={containerRef} className="w-full h-full min-h-[500px] bg-black overflow-hidden relative">
+      {/* UI Overlay for Planet Selection */}
+      <div className="absolute top-4 right-4 z-40 flex flex-wrap justify-end gap-1 max-w-[200px] md:max-w-none">
+        <button
+          onClick={() => selectPlanet(null)}
+          className={`px-2 py-1 rounded text-[10px] font-bold border transition-all ${
+            trackedPlanet === null 
+              ? "bg-white text-black border-white" 
+              : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+          }`}
+        >
+          FREE CAM
+        </button>
+        {Object.keys(PLANET_DATA).map(name => (
+          <button
+            key={name}
+            onClick={() => selectPlanet(name)}
+            className={`px-2 py-1 rounded text-[10px] font-bold border transition-all ${
+              trackedPlanet === name 
+                ? "bg-white text-black border-white" 
+                : "bg-black/40 text-white/70 border-white/20 hover:bg-black/60"
+            }`}
+          >
+            {name.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-white font-mono p-6">
+          <div className="w-full max-w-xs space-y-4">
+            <div className="text-center text-xs tracking-widest uppercase opacity-50">Initializing Solar Map</div>
+            <div className="h-1 w-full bg-gray-900 overflow-hidden rounded-full border border-gray-800">
+              <div 
+                className="h-full bg-white transition-all duration-300 ease-out"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] opacity-40">
+              <span>Sector {Math.floor(loadingProgress * 2.4)}</span>
+              <span>{Math.round(loadingProgress)}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {isLowDetail && !isLoading && (
+        <div className="absolute top-4 left-4 z-40 bg-black/50 backdrop-blur-sm border border-white/10 px-3 py-1 rounded text-[10px] text-white/60 pointer-events-none font-mono">
+          LOW DETAIL MODE (SLOW NETWORK DETECTED)
+        </div>
+      )}
+    </div>
   );
 }
