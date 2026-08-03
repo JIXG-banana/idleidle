@@ -16,23 +16,23 @@ import neptuneTexture from "../assets/2k_neptune.jpg";
 
 const PLANET_DATA = {
   Sun: { radius: 12, distance: 0, speed: 0, rotSpeed: 0.001, color: 0xffaa00, texture: sunTexture },
-  Mercury: { radius: 1.2, distance: 22, speed: 0.041, rotSpeed: 0.005, color: 0xa6a6a6, texture: mercuryTexture },
-  Venus: { radius: 2.0, distance: 32, speed: 0.016, rotSpeed: -0.002, color: 0xe3bb76, texture: venusTexture },
-  Earth: { 
-    radius: 2.2, distance: 45, speed: 0.010, rotSpeed: 0.04, color: 0x2233ff, 
+  Mercury: { radius: 1.2, distance: 18, speed: 0.042, rotSpeed: 0.0012, color: 0xa6a6a6, texture: mercuryTexture },
+  Venus: { radius: 2.0, distance: 28, speed: 0.016, rotSpeed: -0.0006, color: 0xe3bb76, texture: venusTexture },
+  Earth: {
+    radius: 2.2, distance: 40, speed: 0.010, rotSpeed: 0.04, color: 0x2233ff,
     texture: earthTexture,
     moons: [{ name: "Moon", distance: 4.5, size: 0.6, speed: 0.13, color: 0xcccccc, texture: moonTexture }]
   },
-  Mars: { 
-    radius: 1.6, distance: 58, speed: 0.0053, rotSpeed: 0.038, color: 0xc1440e,
+  Mars: {
+    radius: 1.6, distance: 58, speed: 0.0052, rotSpeed: 0.035, color: 0xc1440e,
     texture: marsTexture,
     moons: [
       { name: "Phobos", distance: 2.8, size: 0.3, speed: 0.2, color: 0x888888 },
       { name: "Deimos", distance: 3.8, size: 0.25, speed: 0.15, color: 0x777777 }
     ]
   },
-  Jupiter: { 
-    radius: 5.5, distance: 80, speed: 0.00084, rotSpeed: 0.02, color: 0xb07f35,
+  Jupiter: {
+    radius: 5.5, distance: 96, speed: 0.00084, rotSpeed: 0.08, color: 0xb07f35,
     texture: jupiterTexture,
     moons: [
       { name: "Io", distance: 8, size: 0.5, speed: 0.1, color: 0xffffaa },
@@ -41,19 +41,19 @@ const PLANET_DATA = {
       { name: "Callisto", distance: 14, size: 0.65, speed: 0.04, color: 0x888888 }
     ]
   },
-  Saturn: { 
-    radius: 4.5, distance: 105, speed: 0.00034, rotSpeed: 0.02, color: 0xe2bf7d, 
-    hasRings: true, 
+  Saturn: {
+    radius: 4.5, distance: 130, speed: 0.00033, rotSpeed: 0.07, color: 0xe2bf7d,
+    hasRings: true,
     texture: saturnTexture,
     ringTexture: saturnRingTexture,
     moons: [{ name: "Titan", distance: 11, size: 0.8, speed: 0.05, color: 0xffcc88 }]
   },
-  Uranus: { 
-    radius: 3.2, distance: 130, speed: 0.00012, rotSpeed: -0.01, color: 0x4b70dd, texture: uranusTexture,
+  Uranus: {
+    radius: 3.2, distance: 170, speed: 0.00012, rotSpeed: -0.02, color: 0x4b70dd, texture: uranusTexture,
     moons: [{ name: "Titania", distance: 6, size: 0.5, speed: 0.07, color: 0xdddddd }]
   },
-  Neptune: { 
-    radius: 3.0, distance: 155, speed: 0.00006, rotSpeed: 0.01, color: 0x274687, texture: neptuneTexture,
+  Neptune: {
+    radius: 3.0, distance: 210, speed: 0.00006, rotSpeed: 0.03, color: 0x274687, texture: neptuneTexture,
     moons: [{ name: "Triton", distance: 6, size: 0.6, speed: 0.06, color: 0xffffff }]
   }
 };
@@ -205,6 +205,18 @@ export default function SolarSystemTab() {
         });
         planetMesh.add(new THREE.Mesh(glowGeo, glowMat));
       } else {
+        if (key !== "Earth") {
+          const auraGeo = new THREE.SphereGeometry(data.radius * 1.18, segments, segments);
+          const auraMat = new THREE.MeshBasicMaterial({
+            color: 0xff3333,
+            transparent: true,
+            opacity: 0.16,
+            side: THREE.BackSide
+          });
+          const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+          planetMesh.add(auraMesh);
+        }
+
         // Orbit line
         const orbitPoints = 64;
         const points = [];
@@ -332,8 +344,20 @@ export default function SolarSystemTab() {
       });
 
       if (trackedPlanetRef.current && planets[trackedPlanetRef.current]) {
-        const targetPos = planets[trackedPlanetRef.current].container.position;
+        const targetPlanet = planets[trackedPlanetRef.current];
+        const targetPos = targetPlanet.container.position;
         controls.target.lerp(targetPos, 0.1);
+
+        const planetRadius = targetPlanet.mesh.geometry.parameters.radius || 1;
+        const desiredDistance = Math.max(20, planetRadius * 7 + 12);
+        const currentDistance = camera.position.distanceTo(controls.target);
+        const distanceDelta = desiredDistance - currentDistance;
+
+        if (Math.abs(distanceDelta) > 0.01) {
+          const zoomStrength = Math.max(0.02, Math.min(0.12, Math.abs(distanceDelta) / 220));
+          const direction = camera.position.clone().sub(controls.target).normalize();
+          camera.position.addScaledVector(direction, distanceDelta * zoomStrength);
+        }
       }
 
       controls.update();
