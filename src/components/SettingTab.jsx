@@ -4,7 +4,7 @@ import { ActionButton } from "./Buttons";
 import { SECRET_KEY } from "../constants/gameData";
 import { 
   onAuthStateChanged, 
-  signInWithPopup, 
+  signInWithRedirect, 
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
@@ -17,10 +17,10 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // メール/パスワード認証用の入力状態
+  // メール/パスワード認証用
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isRegisterMode, setIsRegisterMode] = useState(false); // 登録かログインかの切り替え Flag
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   // 1. ログイン状態の監視
   useEffect(() => {
@@ -30,11 +30,10 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
     return () => unsubscribe();
   }, []);
 
-  // 2. Googleログイン処理
+  // 2. Googleログイン処理（リダイレクト方式）
   const handleGoogleLogin = async () => {
-    console.log("auth:", auth, "provider:", googleProvider);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       console.error("ログインエラー:", error);
       alert("Googleログインに失敗しました");
@@ -48,11 +47,9 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
 
     try {
       if (isRegisterMode) {
-        // 新規アカウント作成
         await createUserWithEmailAndPassword(auth, email, password);
         alert("アカウントを作成してログインしました！");
       } else {
-        // 既存アカウントでログイン
         await signInWithEmailAndPassword(auth, email, password);
       }
       setEmail("");
@@ -71,18 +68,24 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
     }
   };
 
-  // 4. クラウドセーブ（Firestoreへ書き込み）
+  // 4. クラウドセーブ（エクスポートと同じ暗号化文字列で保存）
   const handleCloudSave = async () => {
     if (!user) return alert("ログインが必要です");
     setLoading(true);
 
     try {
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, {
-        gameState: {
+      // エクスポートと同じ暗号化処理
+      const encryptedData = CryptoJS.AES.encrypt(
+        JSON.stringify({
           ...gameState,
           lastTimestamp: Date.now(),
-        },
+        }),
+        SECRET_KEY,
+      ).toString();
+
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, {
+        saveData: encryptedData,
         updatedAt: Date.now()
       }, { merge: true });
 
@@ -95,7 +98,7 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
     }
   };
 
-  // 5. クラウドロード（Firestoreから読み込み）
+  // 5. クラウドロード（インポートと同じ復号化処理で復元）
   const handleCloudLoad = async () => {
     if (!user) return alert("ログインが必要です");
     setLoading(true);
@@ -104,9 +107,19 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
       const userRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(userRef);
 
-      if (docSnap.exists() && docSnap.data().gameState) {
-        setGameState(docSnap.data().gameState);
-        alert("クラウドからデータをロードしました！");
+      if (docSnap.exists() && docSnap.data().saveData) {
+        const importText = docSnap.data().saveData;
+        
+        // インポートと同じ復号化処理
+        const decrypted = CryptoJS.AES.decrypt(
+          importText,
+          SECRET_KEY,
+        ).toString(CryptoJS.enc.Utf8);
+
+        if (!decrypted) throw new Error("復号エラー");
+
+        localStorage.setItem("save", importText);
+        window.location.reload();
       } else {
         alert("クラウドにセーブデータが見つかりませんでした");
       }
