@@ -162,7 +162,7 @@ const parseSaveData = (saveData) => {
       manualDimensions: { ...DEFAULT_GAME_STATE.manualDimensions, ...manualDimensions },
       automation: { ...DEFAULT_GAME_STATE.automation, ...parsed.automation },
       automationEnabled: { ...DEFAULT_GAME_STATE.automationEnabled, ...parsed.automationEnabled },
-      cpUpgrades: { ...DEFAULT_GAME_STATE.cpUpgrades, ...parsed.cpUpgrades },
+      cpUpgrades: {}, // Mandatory reset: all previous upgrades are cleared
       evolution: { ...DEFAULT_GAME_STATE.evolution, ...parsed.evolution },
       unlockedTiers: { ...DEFAULT_GAME_STATE.unlockedTiers, ...parsed.unlockedTiers },
       unlockedAchievements: Array.isArray(parsed.unlockedAchievements) ? parsed.unlockedAchievements : [],
