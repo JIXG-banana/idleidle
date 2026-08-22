@@ -1,6 +1,5 @@
 import React from "react";
-import { ActionButton } from "./Buttons";
-import { CP_SHOP } from "../constants/gameData";
+import { CP_SHOP, CP_CONNECTORS } from "../constants/gameData";
 
 export default function CapacityTab({ gameState, t, format, onBuyCPUpgrade, onResetCapacity }) {
   const { money, capacityPoints, cpUpgrades } = gameState;
@@ -37,7 +36,7 @@ export default function CapacityTab({ gameState, t, format, onBuyCPUpgrade, onRe
         </div>
       )}
 
-      { (capacityPoints > 0 || Object.values(cpUpgrades).some(v => v) || isCapacityReached) && (
+      {(capacityPoints > 0 || Object.values(cpUpgrades).some(v => v) || isCapacityReached) && (
         <div className="mt-8">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold">{t("capacity.shop_title") || "CP Shop"}</h3>
@@ -46,31 +45,81 @@ export default function CapacityTab({ gameState, t, format, onBuyCPUpgrade, onRe
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            {CP_SHOP.map((item) => {
-              const isOwned = cpUpgrades[item.id];
-              return (
-                <div key={item.id} className={`p-4 rounded-xl flex items-center gap-4 transition-all ${isOwned ? "bg-indigo-50" : "bg-white"}`}>
-                  <div className="text-3xl">{item.icon}</div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-sm">{t(`capacity.${item.nameKey}`) || item.id}</h4>
-                    <p className="text-[10px] text-gray-500 leading-tight mt-1">{t(`capacity.${item.nameKey}_desc`) || "Upgrade description"}</p>
-                  </div>
-                  {isOwned ? (
-                    <span className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">{t("ui.owned") || "Owned"}</span>
-                  ) : (
-                    <button
-                      onClick={() => onBuyCPUpgrade(item.id, item.cost)}
-                      disabled={capacityPoints < item.cost}
-                      className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${capacityPoints >= item.cost ? "bg-indigo-600 text-white shadow-[0_4px_0_0_theme(colors.indigo.800)] active:translate-y-[2px] active:shadow-none" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
-                    >
-                      {item.cost} CP
-                    </button>
-                  )}
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 md:p-8 flex justify-center overflow-visible">
+            {/* Wrapper that accounts for the scaled height to prevent clipping and allow page scroll */}
+            <div 
+              className="flex justify-center items-start" 
+              style={{ 
+                height: 'calc(929px * 1.3 + 160px)', 
+                width: 'calc(511px * 1.3)',
+                minWidth: 'calc(511px * 1.3)'
+              }}
+            >
+              {/* Scaling wrapper: origin-top ensures it grows downwards */}
+              <div className="origin-top scale-[1.3]"> 
+                <div 
+                  className="relative bg-gray-50 mb-8" 
+                  style={{ width: '511px', height: '929px', minWidth: '511px' }}
+                >
+                  <svg 
+                    className="absolute inset-0 pointer-events-none" 
+                    width="511" 
+                    height="929"
+                    viewBox="0 0 511 929"
+                  >
+                    <g transform="translate(115, 0)">
+                      {CP_CONNECTORS.map((d, i) => (
+                        <path 
+                          key={i} 
+                          d={d} 
+                          fill="none" 
+                          stroke="black" 
+                          strokeWidth="1" 
+                        />
+                      ))}
+                    </g>
+                  </svg>
 
+                  {CP_SHOP.map((item) => {
+                    const isOwned = cpUpgrades[item.id];
+                    const canAfford = capacityPoints >= item.cost;
+                    
+                    const parents = item.parents || [];
+                    const ownedParentsCount = parents.filter(p => cpUpgrades[p]).length;
+                    
+                    const isSecret = parents.length > 0 && ownedParentsCount === 0;
+                    const isLocked = parents.length > 0 && ownedParentsCount < parents.length;
+                    
+                    const isPurchasable = !isOwned && !isLocked && canAfford;
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onBuyCPUpgrade(item.id, item.cost)}
+                        disabled={isOwned || !isPurchasable}
+                        className={`absolute border border-black flex items-center justify-center text-[8px] font-bold p-1 leading-tight transition-all duration-200 z-10 ${
+                          isOwned 
+                            ? "bg-black text-white" 
+                            : "bg-white text-black hover:bg-gray-100 active:scale-95"
+                        } ${isSecret ? "opacity-30 grayscale" : (isLocked ? "opacity-50 grayscale" : "")}`}
+                        style={{
+                          left: `${item.x + 115}px`,
+                          top: `${item.y}px`,
+                          width: `40px`,
+                          height: `40px`,
+                          boxShadow: isOwned ? 'none' : '2px 2px 0px 0px rgba(0,0,0,1)'
+                        }}
+                        title={isSecret ? "???" : t(`capacity.${item.nameKey}`)}
+                      >
+                        <div className="text-center break-all">
+                          {isSecret ? "?" : t(`capacity.${item.nameKey}`)}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            </div>
           </div>
         </div>
       )}

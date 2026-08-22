@@ -129,7 +129,8 @@ export default function SolarSystemTab() {
       0.1,
       2000
     );
-    camera.position.set(0, 100, 200);
+    // Adjust starting position to be more centered/overview
+    camera.position.set(0, 200, 300);
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: !isLowDetail });
@@ -145,6 +146,7 @@ export default function SolarSystemTab() {
     controls.dampingFactor = 0.05;
     controls.maxDistance = 800;
     controls.minDistance = 20;
+    controls.target.set(0, 0, 0); // Explicitly center target on Sun
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, isLowDetail ? 0.5 : 0.15);

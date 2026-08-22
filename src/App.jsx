@@ -110,6 +110,7 @@ const DEFAULT_GAME_STATE = {
   activePromotionEndTime: 0,
   promotionCooldowns: {},
   devMode: false,
+  automationTabUnlocked: false,
 };
 
 // セーブデータのパース用ヘルパー
@@ -166,6 +167,7 @@ const parseSaveData = (saveData) => {
       unlockedTiers: { ...DEFAULT_GAME_STATE.unlockedTiers, ...parsed.unlockedTiers },
       unlockedAchievements: Array.isArray(parsed.unlockedAchievements) ? parsed.unlockedAchievements : [],
       usedLanguages: Array.isArray(parsed.usedLanguages) ? parsed.usedLanguages : ["en"],
+      automationTabUnlocked: parsed.automationTabUnlocked ?? false,
     };
   } catch (e) {
     console.error("Failed to parse save data:", e);
@@ -422,10 +424,20 @@ export default function App() {
       changed = true;
     }
 
-    if (changed) {
-      setGameState((prev) => ({ ...prev, unlockedTiers: nextUnlocked }));
+    let nextAutomationUnlocked = gameState.automationTabUnlocked;
+    if (!nextAutomationUnlocked && nextUnlocked.tier3) {
+      nextAutomationUnlocked = true;
+      changed = true;
     }
-  }, [gameState.dimensions, gameState.cpUpgrades.aliens, gameState.unlockedTiers]);
+
+    if (changed) {
+      setGameState((prev) => ({ 
+        ...prev, 
+        unlockedTiers: nextUnlocked,
+        automationTabUnlocked: nextAutomationUnlocked
+      }));
+    }
+  }, [gameState.dimensions, gameState.cpUpgrades.aliens, gameState.unlockedTiers, gameState.automationTabUnlocked]);
 
   useEffect(() => {
     document.documentElement.lang = gameState.language;
@@ -1073,6 +1085,13 @@ export default function App() {
   const handleTabCapacity = useCallback(() => { setActiveTab("capacity"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabSolar = useCallback(() => { setActiveTab("solar"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
 
+  // Auto-reset capacity when reaching 1e60 gold
+  useEffect(() => {
+    if (gameState.money.gte("1e60")) {
+      resetCapacity();
+    }
+  }, [gameState.money, resetCapacity]);
+
   const seenAchievementsRef = useRef(new Set());
   useEffect(() => {
     if (gameState.unlockedAchievements) {
@@ -1187,7 +1206,7 @@ export default function App() {
       )}
 
       <div className="flex flex-col md:flex-row">
-        <div className="flex-1 flex flex-col" style={{ perspective: "1500px" }}>
+        <div className="flex-1 flex flex-col min-w-0" style={{ perspective: "1500px" }}>
           <motion.div
             className="flex-1 flex flex-col"
             style={{ transformOrigin: "center center" }}
@@ -1418,10 +1437,10 @@ export default function App() {
           ))}
         </AnimatePresence>
 
-        <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 p-3 z-50 md:static md:w-40 md:bg-transparent md:border-t-0 md:p-0 flex flex-col gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-none">
+        <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 p-3 z-50 md:sticky md:top-5 md:self-start md:w-40 md:bg-transparent md:border-t-0 md:p-0 flex flex-col gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-none">
           <div className="flex flex-row md:flex-col gap-2 overflow-x-auto">
             <TabButton active={activeTab === "idle2"} onClick={handleTabIdle2}>{t("tabs.idle2")}</TabButton>
-            {gameState.dimensions.tier3 > 0 && (
+            {gameState.automationTabUnlocked && (
               <TabButton active={activeTab === "automation"} onClick={handleTabAutomation}>{t("tabs.automation") || "🤖"}</TabButton>
             )}
             {gameState.cpUpgrades.solarMap && (
