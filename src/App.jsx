@@ -10,6 +10,9 @@ import CryptoJS from "crypto-js";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
 import AccessCounter from "./AccessCounter";
 import bgm from "./assets/idleidle.mp3";
 import LoadingScreen from "./components/LoadingScreen";
@@ -24,6 +27,151 @@ import {
 
 // 定数をコンポーネント外へ移動
 const BUY_AMOUNTS = [1, 2, 5, 10, 50, 100, 200];
+
+// デフォルトのゲームステート
+const DEFAULT_GAME_STATE = {
+  money: new Decimal(100),
+  totalGames: new Decimal(0),
+  currentGames: new Decimal(0),
+  dimensions: {
+    tier1: 0,
+    tier2: 0,
+    tier3: 0,
+    tier4: 0,
+    tier5: 0,
+    tier6: 0,
+  },
+  manualDimensions: {
+    tier1: 0,
+    tier2: 0,
+    tier3: 0,
+    tier4: 0,
+    tier5: 0,
+    tier6: 0,
+  },
+  expansionLines: 0,
+  automation: {
+    expansion: false,
+    tier1: false,
+    tier2: false,
+    tier3: false,
+    tier4: false,
+    tier5: false,
+    tier6: false,
+    autoEvolve: false,
+    autoRevolution: false,
+  },
+  automationEnabled: {
+    expansion: true,
+    tier1: true,
+    tier2: true,
+    tier3: true,
+    tier4: true,
+    tier5: true,
+    tier6: true,
+    autoEvolve: true,
+    autoRevolution: true,
+  },
+  capacityPoints: 0,
+  cpUpgrades: {
+    ssd: false,
+    fiber: false,
+    macro: false,
+    aliens: false,
+    satellite: false,
+  },
+  unlockedAchievements: [],
+  languageSelected: false,
+  useScientific: false,
+  bgmEnabled: true,
+  lastTimestamp: Date.now(),
+  language: "en",
+  usedLanguages: ["en"],
+  resetPromptShown: false,
+  evolution: {
+    tier1: 0,
+    tier2: 0,
+    tier3: 0,
+    tier4: 0,
+    tier5: 0,
+    tier6: 0,
+  },
+  unlockedTiers: {
+    tier1: true,
+    tier2: false,
+    tier3: false,
+    tier4: false,
+    tier5: false,
+    tier6: false,
+  },
+  buyAmountIndex: 0,
+  revolutionReadyTime: 0,
+  activePromotionKey: null,
+  activePromotionEndTime: 0,
+  promotionCooldowns: {},
+  devMode: false,
+};
+
+// セーブデータのパース用ヘルパー
+const parseSaveData = (saveData) => {
+  if (!saveData) return null;
+  try {
+    let parsed;
+    try {
+      const bytes = CryptoJS.AES.decrypt(saveData, SECRET_KEY);
+      const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+      if (!decryptedData) throw new Error("error");
+      parsed = JSON.parse(decryptedData);
+    } catch {
+      parsed = JSON.parse(saveData);
+    }
+    
+    const money = new Decimal(parsed.money ?? 100);
+    const totalGames = new Decimal(parsed.totalGames ?? parsed.games ?? 0);
+    const currentGames = new Decimal(parsed.currentGames ?? parsed.games ?? 0);
+
+    const dimensions = parsed.dimensions ?? {
+      tier1: parsed.developer ?? 0,
+      tier2: parsed.company ?? 0,
+      tier3: parsed.conglomerate ?? 0,
+      tier4: parsed.government ?? 0,
+      tier5: 0,
+      tier6: 0,
+    };
+    Object.keys(dimensions).forEach(key => {
+      if (dimensions[key] === null || dimensions[key] === undefined) {
+        dimensions[key] = 0;
+      }
+    });
+
+    const manualDimensions = parsed.manualDimensions ?? dimensions;
+    Object.keys(manualDimensions).forEach(key => {
+      if (manualDimensions[key] === null || manualDimensions[key] === undefined) {
+        manualDimensions[key] = 0;
+      }
+    });
+
+    return {
+      ...DEFAULT_GAME_STATE,
+      ...parsed,
+      money,
+      totalGames,
+      currentGames,
+      dimensions: { ...DEFAULT_GAME_STATE.dimensions, ...dimensions },
+      manualDimensions: { ...DEFAULT_GAME_STATE.manualDimensions, ...manualDimensions },
+      automation: { ...DEFAULT_GAME_STATE.automation, ...parsed.automation },
+      automationEnabled: { ...DEFAULT_GAME_STATE.automationEnabled, ...parsed.automationEnabled },
+      cpUpgrades: { ...DEFAULT_GAME_STATE.cpUpgrades, ...parsed.cpUpgrades },
+      evolution: { ...DEFAULT_GAME_STATE.evolution, ...parsed.evolution },
+      unlockedTiers: { ...DEFAULT_GAME_STATE.unlockedTiers, ...parsed.unlockedTiers },
+      unlockedAchievements: Array.isArray(parsed.unlockedAchievements) ? parsed.unlockedAchievements : [],
+      usedLanguages: Array.isArray(parsed.usedLanguages) ? parsed.usedLanguages : ["en"],
+    };
+  } catch (e) {
+    console.error("Failed to parse save data:", e);
+    return null;
+  }
+};
 
 // 等比級数の和の公式を使用して一括購入価格を計算する: a(r^n - 1) / (r - 1)
 const calculateBulkPrice = (baseCost, scale, currentCount, amount) => {
@@ -159,152 +307,92 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const offlineProcessedRef = useRef(false);
 
+  const [user, setUser] = useState(null);
   const [gameState, setGameState] = useState(() => {
-    const defaultState = {
-      money: new Decimal(100),
-      totalGames: new Decimal(0),
-      currentGames: new Decimal(0),
-      dimensions: {
-        tier1: 0,
-        tier2: 0,
-        tier3: 0,
-        tier4: 0,
-        tier5: 0,
-        tier6: 0,
-      },
-      manualDimensions: {
-        tier1: 0,
-        tier2: 0,
-        tier3: 0,
-        tier4: 0,
-        tier5: 0,
-        tier6: 0,
-      },
-      expansionLines: 0,
-      automation: {
-        expansion: false,
-        tier1: false,
-        tier2: false,
-        tier3: false,
-        tier4: false,
-        tier5: false,
-        tier6: false,
-        autoEvolve: false,
-        autoRevolution: false,
-      },
-      automationEnabled: {
-        expansion: true,
-        tier1: true,
-        tier2: true,
-        tier3: true,
-        tier4: true,
-        tier5: true,
-        tier6: true,
-        autoEvolve: true,
-        autoRevolution: true,
-      },
-      capacityPoints: 0,
-      cpUpgrades: {
-        ssd: false,
-        fiber: false,
-        macro: false,
-        aliens: false,
-        satellite: false,
-      },
-      unlockedAchievements: [],
-      languageSelected: false,
-      useScientific: false,
-      bgmEnabled: true,
-      lastTimestamp: Date.now(),
-      language: "en",
-      usedLanguages: ["en"],
-      resetPromptShown: false,
-      evolution: {
-        tier1: 0,
-        tier2: 0,
-        tier3: 0,
-        tier4: 0,
-        tier5: 0,
-        tier6: 0,
-      },
-      unlockedTiers: {
-        tier1: true,
-        tier2: false,
-        tier3: false,
-        tier4: false,
-        tier5: false,
-        tier6: false,
-      },
-      buyAmountIndex: 0,
-      revolutionReadyTime: 0,
-      activePromotionKey: null,
-      activePromotionEndTime: 0,
-      promotionCooldowns: {},
-      devMode: false,
-    };
-
-    try {
-      const saveData = localStorage.getItem("save");
-      if (saveData) {
-        let parsed;
-        try {
-          const bytes = CryptoJS.AES.decrypt(saveData, SECRET_KEY);
-          const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
-          if (!decryptedData) throw new Error("error");
-          parsed = JSON.parse(decryptedData);
-        } catch {
-          parsed = JSON.parse(saveData);
-        }
-        
-        const money = new Decimal(parsed.money ?? 100);
-        const totalGames = new Decimal(parsed.totalGames ?? parsed.games ?? 0);
-        const currentGames = new Decimal(parsed.currentGames ?? parsed.games ?? 0);
-
-        const dimensions = parsed.dimensions ?? {
-          tier1: parsed.developer ?? 0,
-          tier2: parsed.company ?? 0,
-          tier3: parsed.conglomerate ?? 0,
-          tier4: parsed.government ?? 0,
-          tier5: 0,
-          tier6: 0,
-        };
-        // Sanitize dimensions to ensure they are numbers
-        Object.keys(dimensions).forEach(key => {
-          if (dimensions[key] === null || dimensions[key] === undefined) {
-            dimensions[key] = 0;
-          }
-        });
-
-        const manualDimensions = parsed.manualDimensions ?? dimensions;
-        Object.keys(manualDimensions).forEach(key => {
-          if (manualDimensions[key] === null || manualDimensions[key] === undefined) {
-            manualDimensions[key] = 0;
-          }
-        });
-
-        return {
-          ...defaultState,
-          ...parsed,
-          money,
-          totalGames,
-          currentGames,
-          // 階層があるオブジェクトは必ずデフォルト値とマージして undefined を防ぐ
-          dimensions: { ...defaultState.dimensions, ...dimensions },
-          manualDimensions: { ...defaultState.manualDimensions, ...manualDimensions },
-          automation: { ...defaultState.automation, ...parsed.automation },
-          automationEnabled: { ...defaultState.automationEnabled, ...parsed.automationEnabled },
-          cpUpgrades: { ...defaultState.cpUpgrades, ...parsed.cpUpgrades },
-          evolution: { ...defaultState.evolution, ...parsed.evolution },
-          unlockedTiers: { ...defaultState.unlockedTiers, ...parsed.unlockedTiers },
-          unlockedAchievements: Array.isArray(parsed.unlockedAchievements) ? parsed.unlockedAchievements : [],
-          usedLanguages: Array.isArray(parsed.usedLanguages) ? parsed.usedLanguages : ["en"],
-        };
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return { ...defaultState, resetPromptShown: true };
+    const saveData = localStorage.getItem("save");
+    const parsed = parseSaveData(saveData);
+    if (parsed) return parsed;
+    return { ...DEFAULT_GAME_STATE, resetPromptShown: true };
   });
+
+  const gameStateRef = useRef(gameState);
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  // クラウドへのセーブ処理
+  const handleSaveToCloud = useCallback(async (currentUser = user, currentState = gameStateRef.current) => {
+    if (!currentUser) return;
+    try {
+      const encryptedData = CryptoJS.AES.encrypt(
+        JSON.stringify({
+          ...currentState,
+          lastTimestamp: Date.now(),
+        }),
+        SECRET_KEY,
+      ).toString();
+
+      const userRef = doc(db, "users", currentUser.uid);
+      await setDoc(userRef, {
+        saveData: encryptedData,
+        updatedAt: Date.now()
+      }, { merge: true });
+      console.log("Cloud auto-save successful");
+    } catch (error) {
+      console.error("Cloud auto-save error:", error);
+    }
+  }, [user]);
+
+  // クラウドからのロード処理
+  const syncFromCloud = useCallback(async (currentUser) => {
+    try {
+      const userRef = doc(db, "users", currentUser.uid);
+      const docSnap = await getDoc(userRef);
+
+      if (docSnap.exists() && docSnap.data().saveData) {
+        const cloudSaveData = docSnap.data().saveData;
+        const parsedCloud = parseSaveData(cloudSaveData);
+        
+        if (parsedCloud) {
+          const cloudTimestamp = parsedCloud.lastTimestamp || 0;
+          const localTimestamp = gameStateRef.current.lastTimestamp || 0;
+
+          // クラウドの方が新しい場合のみ同期
+          if (cloudTimestamp > localTimestamp) {
+            setGameState(parsedCloud);
+            localStorage.setItem("save", cloudSaveData);
+            console.log("Sync from cloud successful (cloud is newer)");
+          } else {
+            console.log("Cloud save is older than local save, skipping sync");
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Cloud sync error:", error);
+    }
+  }, []);
+
+  // ログイン状態の監視と初期同期
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        syncFromCloud(currentUser);
+      }
+    });
+    return () => unsubscribe();
+  }, [syncFromCloud]);
+
+  // 終了時のオートセーブ
+  useEffect(() => {
+    const handleUnload = () => {
+      if (user) {
+        handleSaveToCloud(user, gameStateRef.current);
+      }
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [user, handleSaveToCloud]);
 
   useEffect(() => {
     const hasSave = localStorage.getItem("save");
@@ -601,11 +689,6 @@ export default function App() {
       },
     ]);
   }, []);
-
-  const gameStateRef = useRef(gameState);
-  useEffect(() => {
-    gameStateRef.current = gameState;
-  }, [gameState]);
 
   // BGM control effect (Moved here to fix ReferenceError)
   useEffect(() => {
@@ -957,6 +1040,7 @@ export default function App() {
         try {
           const encrypted = CryptoJS.AES.encrypt(JSON.stringify(stateToSave), SECRET_KEY).toString();
           localStorage.setItem("save", encrypted);
+          if (user) handleSaveToCloud(user, stateToSave);
         } catch (e) { console.error("Auto-save failed:", e); }
       }, 0);
     }, 20000);
@@ -964,7 +1048,7 @@ export default function App() {
       clearTimeout(enableTimer);
       clearInterval(autoSaveInterval);
     };
-  }, []);
+  }, [user, handleSaveToCloud]);
 
   const handleManualSave = useCallback(() => {
     const stateToSave = {
@@ -974,11 +1058,12 @@ export default function App() {
     try {
       const encrypted = CryptoJS.AES.encrypt(JSON.stringify(stateToSave), SECRET_KEY).toString();
       localStorage.setItem("save", encrypted);
+      if (user) handleSaveToCloud(user, stateToSave);
       alert(t("messages.save_success"));
     } catch (e) {
       console.error("Manual save failed:", e);
     }
-  }, [t]);
+  }, [t, user, handleSaveToCloud]);
 
   const handleTabIdle2 = useCallback(() => { setActiveTab("idle2"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabGraph = useCallback(() => { setActiveTab("graph"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
@@ -1269,6 +1354,7 @@ export default function App() {
                       i18n={i18n} t={t} 
                       onSave={handleManualSave} 
                       onActivateDevMode={activateDevMode}
+                      user={user}
                     />
                   )}
                 </Suspense>

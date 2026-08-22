@@ -3,18 +3,17 @@ import CryptoJS from "crypto-js";
 import { ActionButton } from "./Buttons";
 import { SECRET_KEY } from "../constants/gameData";
 import { 
-  onAuthStateChanged, 
-  signInWithRedirect, 
+  signInWithPopup, 
+  GoogleAuthProvider,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { auth, db, googleProvider } from "../firebase";
+import { db, auth } from "../firebase";
 
-export default function SettingTab({ gameState, setGameState, i18n, t, onSave, onActivateDevMode }) {
+export default function SettingTab({ gameState, setGameState, i18n, t, onSave, onActivateDevMode, user }) {
   const [promoCode, setPromoCode] = useState("");
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // メール/パスワード認証用
@@ -22,21 +21,14 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
   const [password, setPassword] = useState("");
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 
-  // 1. ログイン状態の監視
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 2. Googleログイン処理（リダイレクト方式）
+  // 2. Googleログイン処理
   const handleGoogleLogin = async () => {
     try {
-      await signInWithRedirect(auth, googleProvider);
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error("ログインエラー:", error);
-      alert("Googleログインに失敗しました");
+      console.error("Googleログインエラー:", error);
+      alert(`Googleログインエラー:\n[${error.code}]\n${error.message}`);
     }
   };
 
@@ -68,13 +60,12 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
     }
   };
 
-  // 4. クラウドセーブ（エクスポートと同じ暗号化文字列で保存）
+  // 4. クラウドセーブ（ローカル保存と同じAES暗号化ロジック）
   const handleCloudSave = async () => {
     if (!user) return alert("ログインが必要です");
     setLoading(true);
 
     try {
-      // エクスポートと同じ暗号化処理
       const encryptedData = CryptoJS.AES.encrypt(
         JSON.stringify({
           ...gameState,
@@ -98,7 +89,7 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
     }
   };
 
-  // 5. クラウドロード（インポートと同じ復号化処理で復元）
+  // 5. クラウドロード（ローカル読み込みと同じ復号化ロジック）
   const handleCloudLoad = async () => {
     if (!user) return alert("ログインが必要です");
     setLoading(true);
@@ -110,7 +101,6 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
       if (docSnap.exists() && docSnap.data().saveData) {
         const importText = docSnap.data().saveData;
         
-        // インポートと同じ復号化処理
         const decrypted = CryptoJS.AES.decrypt(
           importText,
           SECRET_KEY,
@@ -258,7 +248,6 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {/* Google ログイン */}
             <button
               onClick={handleGoogleLogin}
               className="w-full bg-white hover:bg-gray-50 text-gray-800 font-bold py-2 border border-gray-300 rounded-lg text-xs shadow-sm flex items-center justify-center gap-2 transition-colors"
@@ -272,7 +261,6 @@ export default function SettingTab({ gameState, setGameState, i18n, t, onSave, o
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
 
-            {/* メール/パスワード フォーム */}
             <form onSubmit={handleEmailAuth} className="flex flex-col gap-2">
               <input 
                 type="email" 
