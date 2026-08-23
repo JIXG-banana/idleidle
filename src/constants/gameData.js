@@ -42,17 +42,19 @@ export const CP_SHOP = [
   { id: "multidimensional", cost: 1, nameKey: "multidimensional_simulation", x: 200.5, y: 481.0, parents: ["hypercomputer"] },
   { id: "aliens", cost: 1, nameKey: "aliens_unlock", x: 40.5, y: 481.0, parents: ["optical_comm"] },
   { id: "solarMap", cost: 1, nameKey: "solar_map_upgrade", x: 120.5, y: 561.0, parents: ["aliens", "infinite_engine", "multidimensional"] },
-  { id: "solar_network", cost: 1, nameKey: "solar_system_exploration_network", x: 160.5, y: 641.0, parents: ["solarMap"] },
-  { id: "radiation", cost: 1, nameKey: "cosmic_radiation_protection", x: 80.5, y: 641.0, parents: ["solarMap"] },
-  { id: "aviation", cost: 1, nameKey: "interplanetary_aviation", x: 0.5, y: 641.0, parents: ["solarMap"] },
-  { id: "station", cost: 1, nameKey: "space_station_improvement", x: 240.5, y: 641.0, parents: ["solarMap"] },
-  { id: "conquest", cost: 1, nameKey: "other_planet_conquest", x: 120.5, y: 721.0, parents: ["solar_network", "radiation"] },
-  { id: "habitation", cost: 1, nameKey: "other_planet_habitation", x: 40.5, y: 721.0, parents: ["radiation", "aviation"] },
-  { id: "unification", cost: 1, nameKey: "earth_unification", x: 200.5, y: 721.0, parents: ["station", "solar_network"] },
-  { id: "transfer", cost: 1, nameKey: "interplanetary_transfer", x: 80.5, y: 801.0, parents: ["conquest", "habitation"] },
-  { id: "exploration", cost: 1, nameKey: "outer_solar_system_exploration", x: 160.5, y: 801.0, parents: ["unification"] },
-  { id: "resolve_capacity", cost: 1, nameKey: "resolve_capacity_shortage", x: 80.5, y: 881.0, parents: ["exploration", "transfer", "colonization"] },
-  { id: "colonization", cost: 1, nameKey: "other_planet_colonization", x: 0.5, y: 801.0, parents: ["habitation"] },
+
+  // --- 以降、未実装スキル (ユーザー許可待ちのため強制的にロック状態にする) ---
+  { id: "solar_network", cost: 999999, nameKey: "solar_system_exploration_network", x: 160.5, y: 641.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "radiation", cost: 999999, nameKey: "cosmic_radiation_protection", x: 80.5, y: 641.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "aviation", cost: 999999, nameKey: "interplanetary_aviation", x: 0.5, y: 641.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "station", cost: 999999, nameKey: "space_station_improvement", x: 240.5, y: 641.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "conquest", cost: 999999, nameKey: "other_planet_conquest", x: 120.5, y: 721.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "habitation", cost: 999999, nameKey: "other_planet_habitation", x: 40.5, y: 721.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "unification", cost: 999999, nameKey: "earth_unification", x: 200.5, y: 721.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "transfer", cost: 999999, nameKey: "interplanetary_transfer", x: 80.5, y: 801.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "exploration", cost: 999999, nameKey: "outer_solar_system_exploration", x: 160.5, y: 801.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "colonization", cost: 999999, nameKey: "other_planet_colonization", x: 0.5, y: 801.0, parents: ["UNIMPLEMENTED_LOCK"] },
+  { id: "resolve_capacity", cost: 999999, nameKey: "resolve_capacity_shortage", x: 80.5, y: 881.0, parents: ["UNIMPLEMENTED_LOCK"] },
 ];
 
 export const CP_CONNECTORS = [

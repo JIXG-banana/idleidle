@@ -50,6 +50,11 @@ const DEFAULT_GAME_STATE = {
     tier6: 0,
   },
   expansionLines: 0,
+  shards: 0,
+  loginBonus: {
+    lastClaimed: null,
+    streak: 0,
+  },
   automation: {
     expansion: false,
     tier1: false,
@@ -74,11 +79,31 @@ const DEFAULT_GAME_STATE = {
   },
   capacityPoints: 0,
   cpUpgrades: {
+    "5g": false,
+    submarine: false,
+    macro: false,
+    gpu: false,
     ssd: false,
     fiber: false,
-    macro: false,
+    supercomputer: false,
+    nanotech: false,
+    optical_comm: false,
+    hypercomputer: false,
+    infinite_engine: false,
+    multidimensional: false,
     aliens: false,
-    satellite: false,
+    solarMap: false,
+    solar_network: false,
+    radiation: false,
+    aviation: false,
+    station: false,
+    conquest: false,
+    habitation: false,
+    unification: false,
+    transfer: false,
+    exploration: false,
+    colonization: false,
+    resolve_capacity: false,
   },
   unlockedAchievements: [],
   languageSelected: false,
@@ -162,12 +187,14 @@ const parseSaveData = (saveData) => {
       manualDimensions: { ...DEFAULT_GAME_STATE.manualDimensions, ...manualDimensions },
       automation: { ...DEFAULT_GAME_STATE.automation, ...parsed.automation },
       automationEnabled: { ...DEFAULT_GAME_STATE.automationEnabled, ...parsed.automationEnabled },
-      cpUpgrades: {}, // Mandatory reset: all previous upgrades are cleared
+      cpUpgrades: { ...DEFAULT_GAME_STATE.cpUpgrades, ...parsed.cpUpgrades },
       evolution: { ...DEFAULT_GAME_STATE.evolution, ...parsed.evolution },
       unlockedTiers: { ...DEFAULT_GAME_STATE.unlockedTiers, ...parsed.unlockedTiers },
       unlockedAchievements: Array.isArray(parsed.unlockedAchievements) ? parsed.unlockedAchievements : [],
       usedLanguages: Array.isArray(parsed.usedLanguages) ? parsed.usedLanguages : ["en"],
       automationTabUnlocked: parsed.automationTabUnlocked ?? false,
+      shards: parsed.shards ?? 0,
+      loginBonus: parsed.loginBonus ?? DEFAULT_GAME_STATE.loginBonus,
     };
   } catch (e) {
     console.error("Failed to parse save data:", e);
@@ -184,23 +211,56 @@ const calculateBulkPrice = (baseCost, scale, currentCount, amount) => {
 };
 
 // ティアごとの倍率計算（エボリューションとレボリューションの効果を集約）
-const getTierMultiplier = (tier, evolution, cpUpgrades) => {
-  const level = evolution[`tier${tier}`] || 0;
-  const revLevel = Math.max(0, level - 10);
-  // 自己倍率: エボリューション10回までは2^n、それ以降はレボリューション5倍
-  let mult = new Decimal(2).pow(Math.min(level, 10));
-  if (revLevel > 0) mult = mult.times(new Decimal(5).pow(revLevel));
+const getTierMultiplier = (tier, evolution, cpUpgrades, dimensions = {}, capacityPoints = 0) => {
+  const totalLevel = evolution[`tier${tier}`] || 0;
+  const cycle = Math.floor(totalLevel / 10);
+  const step = totalLevel % 10;
+  
+  // 基礎倍率: 各ステップで2倍、レボリューション(10回目)でさらに5倍
+  let mult = new Decimal(2).pow(step);
+  if (cycle > 0) {
+    // 過去のサイクル分のレボリューション倍率 (5倍 * 2^10) を累乗
+    const cycleMult = new Decimal(5).times(new Decimal(2).pow(10));
+    mult = mult.times(cycleMult.pow(cycle));
+  }
 
-  // 「一つ上のティア」へのレボリューション効果（自分より下のティアが革命している場合、自分に5倍）
+  // 下位ティアの「革命（サイクル達成）」によるバフ
   if (tier > 1) {
-    const prevRev = Math.max(0, (evolution[`tier${tier - 1}`] || 0) - 10);
-    if (prevRev > 0) mult = mult.times(new Decimal(5).pow(prevRev));
+    const prevTotalLevel = evolution[`tier${tier - 1}`] || 0;
+    const prevCycle = Math.floor(prevTotalLevel / 10);
+    if (prevCycle > 0) {
+      mult = mult.times(new Decimal(5).pow(prevCycle));
+    }
   }
-  // 特殊ルール: エイリアン未解放時、国連(Tier 4)の革命は開発者(Tier 1)を強化
+  
+  // 特殊ルール: エイリアン未解放時、国連(Tier 4)のレボリューションは開発者(Tier 1)を強化
   if (tier === 1 && !cpUpgrades?.aliens) {
-    const unRev = Math.max(0, (evolution.tier4 || 0) - 10);
-    if (unRev > 0) mult = mult.times(new Decimal(5).pow(unRev));
+    const unTotalLevel = evolution.tier4 || 0;
+    const unCycle = Math.floor(unTotalLevel / 10);
+    if (unCycle > 0) {
+      mult = mult.times(new Decimal(5).pow(unCycle));
+    }
   }
+
+  // Supercomputer Upgrade: Double Developer (Tier 1) efficiency
+  if (tier === 1 && cpUpgrades?.supercomputer) {
+    mult = mult.times(2);
+  }
+
+  // Hypercomputer Upgrade: Hierarchical synergy
+  // Tier n is boosted by Tier n+1 count
+  if (cpUpgrades?.hypercomputer && tier < 6) {
+    const nextTierCount = new Decimal(dimensions[`tier${tier + 1}`] || 0);
+    const synergyMult = new Decimal(1).plus(nextTierCount.div(100));
+    mult = mult.times(synergyMult);
+  }
+
+  // Infinite Engine Upgrade: Boost production based on CP count
+  if (cpUpgrades?.infinite_engine) {
+    const cpMult = new Decimal(1).plus(capacityPoints || 0);
+    mult = mult.times(cpMult);
+  }
+
   return mult;
 };
 
@@ -293,6 +353,7 @@ export default function App() {
   const [moneyEffects, setMoneyEffects] = useState([]);
   const [showResetPrompt, setShowResetPrompt] = useState(false);
   const [offlinePopupData, setOfflinePopupData] = useState(null);
+  const [loginBonusPopupData, setLoginBonusPopupData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCheatWindow, setShowCheatWindow] = useState(false);
 
@@ -487,8 +548,12 @@ export default function App() {
   const getDimensionPrice = useCallback((count, tier) => {
     const dim = DIMENSIONS.find(d => d.tier === tier);
     if (!dim) return new Decimal(Infinity);
-    return new Decimal(dim.baseCost).times(new Decimal(dim.scale).pow(count)).floor();
-  }, []);
+    let price = new Decimal(dim.baseCost).times(new Decimal(dim.scale).pow(count));
+    if (gameState.cpUpgrades.submarine) {
+      price = price.times(0.8);
+    }
+    return price.floor();
+  }, [gameState.cpUpgrades.submarine]);
 
   const getExpansionLinePrice = useCallback((count) => {
     return new Decimal(EXPANSION_LINE.baseCost).times(new Decimal(EXPANSION_LINE.scale).pow(count)).floor();
@@ -539,7 +604,7 @@ export default function App() {
       }
       return prev;
     });
-  }, [currentBuyAmount]);
+  }, [currentBuyAmount, getDimensionPrice, getBulkPrice]);
 
   const buyExpansionLine = useCallback(() => {
     setGameState((prev) => {
@@ -608,18 +673,27 @@ export default function App() {
 
   const evolveTier = useCallback((tier) => {
     setGameState((prev) => {
-      const currentLevel = prev.evolution[`tier${tier}`] || 0;
-      // レボリューション以降は価格を指数関数的に跳ね上げる
-      const req = currentLevel < 10 
-        ? new Decimal(10).times(Decimal.pow(10, currentLevel))
-        : new Decimal(1e11).times(Decimal.pow(1000, currentLevel - 9));
+      const totalLevel = prev.evolution[`tier${tier}`] || 0;
+      const step = totalLevel % 10;
+      const cycle = Math.floor(totalLevel / 10);
+
+      // 必要数の計算: 10 * 10^step * (1000^cycle)
+      let req = new Decimal(10).times(Decimal.pow(10, step));
+      if (cycle > 0) {
+        req = req.times(Decimal.pow(1000, cycle));
+      }
+
+      // ナノテクノロジー効果: 必要条件20%減少
+      if (prev.cpUpgrades.nanotech) {
+        req = req.times(0.8).floor();
+      }
 
       if (new Decimal(prev.dimensions[`tier${tier}`] || 0).gte(req)) {
         return {
           ...prev,
           manualDimensions: { ...prev.manualDimensions, [`tier${tier}`]: 0 }, // リセット
           dimensions: { ...prev.dimensions, [`tier${tier}`]: 0 },
-          evolution: { ...prev.evolution, [`tier${tier}`]: currentLevel + 1 },
+          evolution: { ...prev.evolution, [`tier${tier}`]: totalLevel + 1 },
         };
       }
       return prev;
@@ -654,9 +728,10 @@ export default function App() {
 
   const resetCapacity = useCallback(() => {
     setGameState((prev) => {
-      if (!prev.money.gte("1e60")) return prev;
+      if (!prev.totalGames.gte("1e50")) return prev;
       
-      const newCP = prev.capacityPoints + 1;
+      const cpGain = prev.cpUpgrades.ssd ? 2 : 1;
+      const newCP = prev.capacityPoints + cpGain;
       return {
         ...prev,
         money: new Decimal(100),
@@ -678,26 +753,29 @@ export default function App() {
         },
         expansionLines: 0,
         automation: {
-          expansion: prev.cpUpgrades.ssd,
-          tier1: prev.cpUpgrades.macro,
-          tier2: false,
-          tier3: false,
-          tier4: false,
-          tier5: false,
-          tier6: false,
+          expansion: prev.cpUpgrades.macro || prev.cpUpgrades.ssd ? prev.automation.expansion : false,
+          tier1: prev.cpUpgrades.macro ? prev.automation.tier1 : false,
+          tier2: prev.cpUpgrades.macro ? prev.automation.tier2 : false,
+          tier3: prev.cpUpgrades.macro ? prev.automation.tier3 : false,
+          tier4: prev.cpUpgrades.macro ? prev.automation.tier4 : false,
+          tier5: prev.cpUpgrades.macro ? prev.automation.tier5 : false,
+          tier6: prev.cpUpgrades.macro ? prev.automation.tier6 : false,
+          autoEvolve: prev.automation.autoEvolve,
+          autoRevolution: prev.automation.autoRevolution,
         },
+        automationEnabled: prev.automationEnabled,
         capacityPoints: newCP,
         lastTimestamp: Date.now(),
       };
     });
-    setActiveTab("idle2");
+    const cpGain = gameStateRef.current.cpUpgrades.ssd ? 2 : 1;
     setToastQueue((q) => [
       ...q,
       {
         id: `capacity-reset-${Date.now()}`,
         icon: "🌐",
         type: "info",
-        title: "Capacity Reset Successful! +1 CP",
+        title: `Capacity Reset Successful! +${cpGain} CP`,
       },
     ]);
   }, []);
@@ -727,14 +805,44 @@ export default function App() {
   const gps = React.useMemo(() => {
     const devCount = new Decimal(gameState.dimensions.tier1 || 0);
     const expansionMult = new Decimal(1).plus(gameState.expansionLines || 0);
-    const evolutionMult = getTierMultiplier(1, gameState.evolution, gameState.cpUpgrades);
-    return devCount.times(expansionMult).times(evolutionMult);
-  }, [gameState.dimensions.tier1, gameState.expansionLines, gameState.evolution, gameState.cpUpgrades]);
+    const evolutionMult = getTierMultiplier(1, gameState.evolution, gameState.cpUpgrades, gameState.dimensions, gameState.capacityPoints);
+    let totalGps = devCount.times(expansionMult).times(evolutionMult);
+    if (gameState.cpUpgrades["5g"]) totalGps = totalGps.times(2);
+    if (gameState.cpUpgrades.fiber) totalGps = totalGps.times(2);
+    if (gameState.cpUpgrades.optical_comm) totalGps = totalGps.times(5);
+    return totalGps;
+  }, [gameState.dimensions, gameState.expansionLines, gameState.evolution, gameState.cpUpgrades, gameState.capacityPoints]);
 
   const mps = React.useMemo(() => {
-    let rate = gameState.cpUpgrades.fiber ? 0.15 : 0.05;
-    return gameState.totalGames.times(rate);
-  }, [gameState.totalGames, gameState.cpUpgrades.fiber]);
+    let rate = 0.05;
+    let totalMps = gameState.totalGames.times(rate);
+    
+    // GPU Upgrade: Increase gold based on Tier 1 count
+    if (gameState.cpUpgrades.gpu) {
+      const tier1Count = new Decimal(gameState.dimensions.tier1 || 0);
+      const gpuMult = new Decimal(1).plus(tier1Count.div(1000));
+      totalMps = totalMps.times(gpuMult);
+    }
+
+    if (gameState.cpUpgrades["5g"]) totalMps = totalMps.times(2);
+    if (gameState.cpUpgrades.fiber) totalMps = totalMps.times(2);
+    if (gameState.cpUpgrades.optical_comm) totalMps = totalMps.times(5);
+
+    // Infinite Engine Upgrade: Boost gold based on CP
+    if (gameState.cpUpgrades.infinite_engine) {
+      const cpMult = new Decimal(1).plus(gameState.capacityPoints || 0);
+      totalMps = totalMps.times(cpMult);
+    }
+
+    // Multidimensional Simulation: Boost gold based on log10 of Total Games
+    if (gameState.cpUpgrades.multidimensional) {
+      const logGames = Decimal.log10(gameState.totalGames.plus(1));
+      const multiMult = Decimal.max(1, logGames);
+      totalMps = totalMps.times(multiMult);
+    }
+
+    return totalMps;
+  }, [gameState.totalGames, gameState.cpUpgrades["5g"], gameState.cpUpgrades.fiber, gameState.cpUpgrades.optical_comm, gameState.cpUpgrades.infinite_engine, gameState.cpUpgrades.multidimensional, gameState.capacityPoints, gameState.cpUpgrades.gpu, gameState.dimensions.tier1]);
 
   useEffect(() => {
     if (offlineProcessedRef.current) return;
@@ -760,23 +868,56 @@ export default function App() {
           let totalGamesGained = new Decimal(0);
           
           for (let i = 0; i < numTicks; i++) {
-            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled, evolution, cpUpgrades } = tempState;
-            
+            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled, evolution, cpUpgrades, capacityPoints } = tempState;
+
             // 1. Production Chain
-            const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades);
-            const prodTier5 = ((dimensions.tier6 || 0) * ((manualDimensions.tier5 || 0) + 1) * mult(6)) * tickTime;
-            const prodTier4 = ((dimensions.tier5 || 0) * ((manualDimensions.tier4 || 0) + 1) * mult(5)) * tickTime;
-            const prodTier3 = ((dimensions.tier4 || 0) * ((manualDimensions.tier3 || 0) + 1) * mult(4)) * tickTime;
-            const prodTier2 = ((dimensions.tier3 || 0) * ((manualDimensions.tier2 || 0) + 1) * mult(3)) * tickTime;
-            const prodTier1 = ((dimensions.tier2 || 0) * ((manualDimensions.tier1 || 0) + 1) * mult(2)) * tickTime;
-            
+            const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades, dimensions, capacityPoints);
+            let speedMult = 1;
+            if (cpUpgrades["5g"]) speedMult *= 2;
+            if (cpUpgrades.fiber) speedMult *= 2;
+            if (cpUpgrades.optical_comm) speedMult *= 5;
+
+            const prodTier5 = ((dimensions.tier6 || 0) * ((manualDimensions.tier5 || 0) + 1) * mult(6)) * tickTime * speedMult;
+            const prodTier4 = ((dimensions.tier5 || 0) * ((manualDimensions.tier4 || 0) + 1) * mult(5)) * tickTime * speedMult;
+            const prodTier3 = ((dimensions.tier4 || 0) * ((manualDimensions.tier3 || 0) + 1) * mult(4)) * tickTime * speedMult;
+            const prodTier2 = ((dimensions.tier3 || 0) * ((manualDimensions.tier2 || 0) + 1) * mult(3)) * tickTime * speedMult;
+            const prodTier1 = ((dimensions.tier2 || 0) * ((manualDimensions.tier1 || 0) + 1) * mult(2)) * tickTime * speedMult;
+
             // 2. Resource Generation
-            const currentGps = new Decimal(dimensions.tier1 || 0).times(new Decimal(1).plus(expansionLines || 0)).times(mult(1));
+            let currentGps = new Decimal(dimensions.tier1 || 0).times(new Decimal(1).plus(expansionLines || 0)).times(mult(1));
+            if (cpUpgrades["5g"]) currentGps = currentGps.times(2);
+            if (cpUpgrades.fiber) currentGps = currentGps.times(2);
+            if (cpUpgrades.optical_comm) currentGps = currentGps.times(5);
+
             const gamesTick = currentGps.times(tickTime);
             totalGamesGained = totalGamesGained.plus(gamesTick);
-            
-            let goldRate = tempState.cpUpgrades.fiber ? 0.15 : 0.05;
-            const goldTick = tempState.totalGames.plus(gamesTick.div(2)).times(goldRate).times(tickTime);
+
+            let goldRate = 0.05;
+            let goldTick = tempState.totalGames.plus(gamesTick.div(2)).times(goldRate).times(tickTime);
+
+            if (cpUpgrades.gpu) {
+              const tier1Count = new Decimal(tempState.dimensions.tier1 || 0);
+              const gpuMult = new Decimal(1).plus(tier1Count.div(1000));
+              goldTick = goldTick.times(gpuMult);
+            }
+
+            if (cpUpgrades["5g"]) goldTick = goldTick.times(2);
+            if (cpUpgrades.fiber) goldTick = goldTick.times(2);
+            if (cpUpgrades.optical_comm) goldTick = goldTick.times(5);
+
+            // Infinite Engine: Gold boost
+            if (cpUpgrades.infinite_engine) {
+              const cpMult = new Decimal(1).plus(capacityPoints || 0);
+              goldTick = goldTick.times(cpMult);
+            }
+
+            // Multidimensional Simulation: Gold boost
+            if (cpUpgrades.multidimensional) {
+              const logGames = Decimal.log10(tempState.totalGames.plus(gamesTick.div(2)).plus(1));
+              const multiMult = Decimal.max(1, logGames);
+              goldTick = goldTick.times(multiMult);
+            }
+
             totalGoldGained = totalGoldGained.plus(goldTick);
             
             // Update counts
@@ -853,13 +994,123 @@ export default function App() {
             games: totalGamesGained 
           });
           
+          // --- Login Bonus Logic Start ---
+          const today = new Date().toISOString().split('T')[0];
+          const lastClaimed = tempState.loginBonus?.lastClaimed;
+          
+          if (lastClaimed !== today) {
+            let newStreak = (tempState.loginBonus?.streak || 0) + 1;
+            
+            // Check if consecutive day
+            if (lastClaimed) {
+              const lastDate = new Date(lastClaimed);
+              const nextDate = new Date(lastDate);
+              nextDate.setDate(lastDate.getDate() + 1);
+              const nextDateStr = nextDate.toISOString().split('T')[0];
+              
+              if (lastClaimed !== nextDateStr && today !== nextDateStr) {
+                // Not consecutive, reset streak
+                newStreak = 1;
+              }
+            } else {
+              newStreak = 1;
+            }
+            
+            if (newStreak > 7) newStreak = 1;
+            
+            let rewardType = "";
+            let rewardValue = "";
+            
+            if (newStreak <= 4) {
+              const percentages = [0.05, 0.10, 0.15, 0.20];
+              const percent = percentages[newStreak - 1];
+              const goldBonus = tempState.money.times(percent);
+              tempState.money = tempState.money.plus(goldBonus);
+              rewardType = "gold";
+              rewardValue = goldBonus;
+            } else {
+              const shardRewards = [1, 2, 5];
+              const shardBonus = shardRewards[newStreak - 5];
+              tempState.shards = (tempState.shards || 0) + shardBonus;
+              rewardType = "shards";
+              rewardValue = shardBonus;
+            }
+            
+            tempState.loginBonus = {
+              lastClaimed: today,
+              streak: newStreak
+            };
+            
+            setLoginBonusPopupData({
+              streak: newStreak,
+              type: rewardType,
+              value: rewardValue
+            });
+          }
+          // --- Login Bonus Logic End ---
+
           return { ...tempState, lastTimestamp: now };
         });
       } else {
-        setGameState(prev => ({ ...prev, lastTimestamp: now }));
+        // --- Login Bonus Logic for short offline time ---
+        setGameState(prev => {
+          const today = new Date().toISOString().split('T')[0];
+          const lastClaimed = prev.loginBonus?.lastClaimed;
+          
+          if (lastClaimed !== today) {
+            let tempState = { ...prev };
+            let newStreak = (tempState.loginBonus?.streak || 0) + 1;
+            
+            if (lastClaimed) {
+              const lastDate = new Date(lastClaimed);
+              const nextDate = new Date(lastDate);
+              nextDate.setDate(lastDate.getDate() + 1);
+              const nextDateStr = nextDate.toISOString().split('T')[0];
+              
+              if (lastClaimed !== nextDateStr && today !== nextDateStr) {
+                newStreak = 1;
+              }
+            } else {
+              newStreak = 1;
+            }
+            
+            if (newStreak > 7) newStreak = 1;
+            
+            let rewardType = "";
+            let rewardValue = "";
+            
+            if (newStreak <= 4) {
+              const percentages = [0.05, 0.10, 0.15, 0.20];
+              const percent = percentages[newStreak - 1];
+              const goldBonus = tempState.money.times(percent);
+              tempState.money = tempState.money.plus(goldBonus);
+              rewardType = "gold";
+              rewardValue = goldBonus;
+            } else {
+              const shardRewards = [1, 2, 5];
+              const shardBonus = shardRewards[newStreak - 5];
+              tempState.shards = (tempState.shards || 0) + shardBonus;
+              rewardType = "shards";
+              rewardValue = shardBonus;
+            }
+            
+            tempState.loginBonus = {
+              lastClaimed: today,
+              streak: newStreak
+            };
+            
+            setLoginBonusPopupData({
+              streak: newStreak,
+              type: rewardType,
+              value: rewardValue
+            });
+            return { ...tempState, lastTimestamp: now };
+          }
+          return { ...prev, lastTimestamp: now };
+        });
       }
     }
-  }, [getDimensionPrice, getExpansionLinePrice, gameState.lastTimestamp, gameState.evolution, gameState.cpUpgrades]);
+  }, [getDimensionPrice, getExpansionLinePrice, gameState.lastTimestamp, gameState.evolution, gameState.cpUpgrades, gameState.capacityPoints]);
 
   const lastTimeRef = useRef(null);
   const gpsRef = useRef(gps);
@@ -883,24 +1134,56 @@ export default function App() {
           accumulatedTimeRef.current = 0;
 
           setGameState((prev) => {
-            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled, evolution, cpUpgrades } = prev;
+            const { dimensions, manualDimensions, expansionLines, automation, automationEnabled, evolution, cpUpgrades, capacityPoints } = prev;
             
             // Production Chain: (Above Total * (Current Manual + 1))
-            const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades);
-            const newTier5 = (dimensions.tier5 || 0) + ((dimensions.tier6 || 0) * ((manualDimensions.tier5 || 0) + 1) * mult(6)) * deltaTime;
-            const newTier4 = (dimensions.tier4 || 0) + ((newTier5 || 0) * ((manualDimensions.tier4 || 0) + 1) * mult(5)) * deltaTime;
-            const newTier3 = (dimensions.tier3 || 0) + ((newTier4 || 0) * ((manualDimensions.tier3 || 0) + 1) * mult(4)) * deltaTime;
-            const newTier2 = (dimensions.tier2 || 0) + ((newTier3 || 0) * ((manualDimensions.tier2 || 0) + 1) * mult(3)) * deltaTime;
-            const newTier1 = (dimensions.tier1 || 0) + ((newTier2 || 0) * ((manualDimensions.tier1 || 0) + 1) * mult(2)) * deltaTime;
+            const mult = (t) => getTierMultiplier(t, evolution, cpUpgrades, dimensions, capacityPoints);
+            let speedMult = 1;
+            if (cpUpgrades["5g"]) speedMult *= 2;
+            if (cpUpgrades.fiber) speedMult *= 2;
+            if (cpUpgrades.optical_comm) speedMult *= 5;
+
+            const newTier5 = (dimensions.tier5 || 0) + ((dimensions.tier6 || 0) * ((manualDimensions.tier5 || 0) + 1) * mult(6)) * deltaTime * speedMult;
+            const newTier4 = (dimensions.tier4 || 0) + ((newTier5 || 0) * ((manualDimensions.tier4 || 0) + 1) * mult(5)) * deltaTime * speedMult;
+            const newTier3 = (dimensions.tier3 || 0) + ((newTier4 || 0) * ((manualDimensions.tier3 || 0) + 1) * mult(4)) * deltaTime * speedMult;
+            const newTier2 = (dimensions.tier2 || 0) + ((newTier3 || 0) * ((manualDimensions.tier2 || 0) + 1) * mult(3)) * deltaTime * speedMult;
+            const newTier1 = (dimensions.tier1 || 0) + ((newTier2 || 0) * ((manualDimensions.tier1 || 0) + 1) * mult(2)) * deltaTime * speedMult;
             
-            const currentGps = new Decimal(newTier1 || 0).times(new Decimal(1).plus(expansionLines || 0)).times(mult(1));
+            let currentGps = new Decimal(newTier1 || 0).times(new Decimal(1).plus(expansionLines || 0)).times(mult(1));
+            if (cpUpgrades["5g"]) currentGps = currentGps.times(2);
+            if (cpUpgrades.fiber) currentGps = currentGps.times(2);
+            if (cpUpgrades.optical_comm) currentGps = currentGps.times(5);
+
             const gamesGained = currentGps.times(deltaTime);
             
             const newTotalGames = prev.totalGames.plus(gamesGained);
             const newCurrentGames = prev.currentGames.plus(gamesGained);
             
-            let goldRate = prev.cpUpgrades.fiber ? 0.15 : 0.05;
-            const goldGained = newTotalGames.times(goldRate).times(deltaTime);
+            let goldRate = 0.05;
+            let goldGained = newTotalGames.plus(prev.totalGames).div(2).times(goldRate).times(deltaTime);
+            
+            if (cpUpgrades.gpu) {
+              const tier1Count = new Decimal(newTier1 || 0);
+              const gpuMult = new Decimal(1).plus(tier1Count.div(1000));
+              goldGained = goldGained.times(gpuMult);
+            }
+            if (cpUpgrades["5g"]) goldGained = goldGained.times(2);
+            if (cpUpgrades.fiber) goldGained = goldGained.times(2);
+            if (cpUpgrades.optical_comm) goldGained = goldGained.times(5);
+
+            // Infinite Engine: Gold boost
+            if (cpUpgrades.infinite_engine) {
+              const cpMult = new Decimal(1).plus(capacityPoints || 0);
+              goldGained = goldGained.times(cpMult);
+            }
+
+            // Multidimensional Simulation: Gold boost
+            if (cpUpgrades.multidimensional) {
+              const logGames = Decimal.log10(newTotalGames.plus(prev.totalGames).div(2).plus(1));
+              const multiMult = Decimal.max(1, logGames);
+              goldGained = goldGained.times(multiMult);
+            }
+
             const newMoney = prev.money.plus(goldGained);
             
             let updatedMoney = newMoney;
@@ -1085,12 +1368,12 @@ export default function App() {
   const handleTabCapacity = useCallback(() => { setActiveTab("capacity"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
   const handleTabSolar = useCallback(() => { setActiveTab("solar"); setTimeout(updateTargetPos, 50); }, [updateTargetPos]);
 
-  // Auto-reset capacity when reaching 1e60 gold
+  // Auto-reset capacity when reaching 1e50 total games
   useEffect(() => {
-    if (gameState.money.gte("1e60")) {
+    if (gameState.totalGames.gte("1e50")) {
       resetCapacity();
     }
-  }, [gameState.money, resetCapacity]);
+  }, [gameState.totalGames, resetCapacity]);
 
   const seenAchievementsRef = useRef(new Set());
   useEffect(() => {
@@ -1201,9 +1484,43 @@ export default function App() {
               </div>
             </div>
             <button onClick={() => setOfflinePopupData(null)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-95 shadow-[0_4px_0_0_theme(colors.blue.800)]">{t("ui.close")}</button>
-          </div>
-        </div>
-      )}
+            </div>
+            </div>
+            )}
+
+            {loginBonusPopupData && (
+            <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 text-center">
+            <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border-4 border-yellow-400"
+            >
+            <div className="text-4xl mb-4">🎁</div>
+            <h2 className="text-2xl font-black mb-2 text-gray-800">{t("ui.login_bonus_title") || "Login Bonus"}</h2>
+            <p className="text-sm text-gray-500 mb-4">{t("ui.login_streak", { streak: loginBonusPopupData.streak })}</p>
+
+            <div className="bg-yellow-50 rounded-2xl p-6 mb-6 flex flex-col items-center gap-2 border-2 border-yellow-100 shadow-inner">
+              <span className="text-lg font-bold text-yellow-800">
+                {loginBonusPopupData.type === "gold" 
+                  ? `+${format(loginBonusPopupData.value)} Gold` 
+                  : `+${loginBonusPopupData.value} Shards`}
+              </span>
+              <span className="text-xs text-yellow-600 font-medium font-bold">
+                {loginBonusPopupData.type === "gold" 
+                  ? (t("ui.login_gold_desc") || "Current Gold increased!") 
+                  : (t("ui.login_shard_desc") || "Special item acquired!")}
+              </span>
+            </div>
+
+            <button 
+              onClick={() => setLoginBonusPopupData(null)} 
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 rounded-xl transition-all active:scale-95 shadow-[0_4px_0_0_theme(colors.yellow.700)]"
+            >
+              {t("ui.claim") || "Claim!"}
+            </button>
+            </motion.div>
+            </div>
+            )}
 
       <div className="flex flex-col md:flex-row">
         <div className="flex-1 flex flex-col min-w-0" style={{ perspective: "1500px" }}>
@@ -1225,6 +1542,11 @@ export default function App() {
                     <h1 ref={moneyRef} className="text-xl sm:text-2xl md:text-4xl font-bold">{t("ui.money", { count: format(gameState.money) })}</h1>
                     <span className="text-xs sm:text-base">+{format(mps, 2)}/s</span>
                   </div>
+                  {gameState.shards > 0 && (
+                    <div className="flex w-full items-center gap-2 mt-1">
+                      <span className="text-purple-600 font-bold text-sm md:text-lg">✨ {gameState.shards} Shards</span>
+                    </div>
+                  )}
                   {moneyEffects.map((e) => (
                     <div key={e.id} className="floating-money" style={{ left: e.x, top: e.y }}>{e.amount}</div>
                   ))}
@@ -1240,34 +1562,45 @@ export default function App() {
                       const producedCount = totalCount - manualCount;
                       const price = getBulkPrice(getDimensionPrice, manualCount, currentBuyAmount, dim.tier);
                       
-                      const evolveLevel = gameState.evolution[`tier${dim.tier}`] || 0;
-                      const isRevolution = evolveLevel >= 10;
-                      const evolveReq = isRevolution 
-                        ? new Decimal(1e11).times(Decimal.pow(1000, evolveLevel - 9)) 
-                        : new Decimal(10).times(Decimal.pow(10, evolveLevel));
+                      const totalLevel = gameState.evolution[`tier${dim.tier}`] || 0;
+                      const step = totalLevel % 10;
+                      const cycle = Math.floor(totalLevel / 10);
+                      const isRevolution = step === 9;
+
+                      let evolveReq = new Decimal(10).times(Decimal.pow(10, step));
+                      if (cycle > 0) {
+                        evolveReq = evolveReq.times(Decimal.pow(1000, cycle));
+                      }
+
+                      // Nanotech discount for UI display
+                      if (gameState.cpUpgrades.nanotech) {
+                        evolveReq = evolveReq.times(0.8).floor();
+                      }
+
                       const canEvolve = new Decimal(totalCount || 0).gte(evolveReq);
 
                       const baseColorClass = 
-                        dim.tier === 1 ? "bg-blue-600 hover:bg-blue-700" : 
-                        dim.tier === 2 ? "bg-emerald-600 hover:bg-emerald-700" : 
-                        dim.tier === 3 ? "bg-amber-600 hover:bg-amber-700" : 
-                        dim.tier === 4 ? "bg-red-700 hover:bg-red-800" : 
+                        dim.tier === 1 ? "bg-blue-600 hover:bg-blue-700" :
+                        dim.tier === 2 ? "bg-emerald-600 hover:bg-emerald-700" :
+                        dim.tier === 3 ? "bg-amber-600 hover:bg-amber-700" :
+                        dim.tier === 4 ? "bg-red-700 hover:bg-red-800" :
                         dim.tier === 5 ? "bg-purple-700 hover:bg-purple-800" :
                         "bg-indigo-900 hover:bg-indigo-950";
-                      
+
                       let evolveColorClass = baseColorClass;
-                      if (isRevolution) {
-                        evolveColorClass = 
-                          dim.tier === 1 ? "bg-blue-900 hover:bg-blue-950" : 
-                          dim.tier === 2 ? "bg-emerald-900 hover:bg-emerald-950" : 
-                          dim.tier === 3 ? "bg-amber-900 hover:bg-amber-950" : 
-                          dim.tier === 4 ? "bg-red-950 hover:bg-black" : 
+                      // Cycle 1+ get deeper colors
+                      if (cycle > 0 || isRevolution) {
+                        evolveColorClass =
+                          dim.tier === 1 ? "bg-blue-900 hover:bg-blue-950" :
+                          dim.tier === 2 ? "bg-emerald-900 hover:bg-emerald-950" :
+                          dim.tier === 3 ? "bg-amber-900 hover:bg-amber-950" :
+                          dim.tier === 4 ? "bg-red-950 hover:bg-black" :
                           dim.tier === 5 ? "bg-purple-950 hover:bg-black" :
                           "bg-black hover:bg-gray-900";
                       }
 
                       // 生産情報のテキストを動的に変更
-                      const currentMult = getTierMultiplier(dim.tier, gameState.evolution, gameState.cpUpgrades);
+                      const currentMult = getTierMultiplier(dim.tier, gameState.evolution, gameState.cpUpgrades, gameState.dimensions, gameState.capacityPoints);
                       const prodInfo = dim.tier === 1 
                         ? `+${format(new Decimal(1).plus(gameState.expansionLines).times(currentMult), 2)} games/s`
                         : `+${format(new Decimal((gameState.manualDimensions[`tier${dim.tier-1}`] || 0) + 1).times(currentMult), 2)} tier${dim.tier - 1}/s`;
@@ -1426,7 +1759,7 @@ export default function App() {
                   <section><h3 className="font-bold text-blue-600 mb-1">{t("help.basics_title")}</h3><p>{t("help.basics_text")}</p></section>
                   <section><h3 className="font-bold text-blue-600 mb-1">{t("help.production_title") || "Production Chain"}</h3><p>{t("help.production_text") || "Higher tiers produce lower tiers. Tier 1 produces games. Games produce Gold."}</p></section>
                   <section><h3 className="font-bold text-blue-600 mb-1">{t("help.automation_title")}</h3><p>{t("help.automation_text")}</p></section>
-                  <section><h3 className="font-bold text-blue-600 mb-1">{t("help.capacity_title") || "Capacity Reset"}</h3><p>{t("help.capacity_text") || "Reaching 1.00e60 Gold allows you to reset for Capacity Points (CP) to buy powerful upgrades."}</p></section>
+                  <section><h3 className="font-bold text-blue-600 mb-1">{t("help.capacity_title") || "Capacity Reset"}</h3><p>{t("help.capacity_text") || "Reaching 1.00e50 Games allows you to reset for Capacity Points (CP) to buy powerful upgrades."}</p></section>
                 </div>
                 <button onClick={() => setShowHelp(false)} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">{t("ui.close")}</button>
               </motion.div>
